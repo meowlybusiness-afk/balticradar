@@ -3,7 +3,7 @@ name: BalticRadar collect
 # Runs in GitHub's cloud on a schedule - your PC can be OFF.
 on:
   schedule:
-    - cron: "*/30 * * * *"     # every 30 minutes (GitHub min is ~5 min; may be delayed under load)
+    - cron: "*/5 * * * *"     # every 30 minutes (GitHub min is ~5 min; may be delayed under load)
   workflow_dispatch: {}          # also lets you run it manually from the Actions tab
 
 jobs:
