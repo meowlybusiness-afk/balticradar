@@ -263,6 +263,32 @@ if USE_SB:
         _post("ads",[{"ad_id":f["ad_id"],"car_id":cid,"source":f.get("source"),"source_url":f.get("source_url"),"active":True,"first_seen":now_iso(),"last_seen":now_iso()}],upsert=True)
         _post("price_history",[{"car_id":cid,"ts":now_iso(),"price":f.get("price_eur"),"mileage":f.get("mileage_km")}])
         return "NEW_CAR"
+    def bump_seen(ad_ids):
+        ids=[a for a in ad_ids if a]
+        for i in range(0,len(ids),50):
+            ch=ids[i:i+50]
+            try: _patch("ads",{"ad_id":f"in.({','.join(ch)})"},{"last_seen":now_iso()})
+            except Exception as e: print("bump_seen err",repr(e))
+    def get_cursor(src):
+        try:
+            r=_get("crawl_state",{"source":f"eq.{src}","select":"next_page","limit":"1"})
+            return r[0]["next_page"] if r else 1
+        except Exception: return 1
+    def set_cursor(src,page):
+        try: _post("crawl_state",[{"source":src,"next_page":page}],upsert=True)
+        except Exception as e: print("set_cursor err",repr(e))
+    def deactivate(days=3):
+        # mark ads not seen in `days` as inactive; row + VIN stay, site hides them
+        cut=(datetime.datetime.utcnow()-datetime.timedelta(days=days)).isoformat()+"Z"
+        try:
+            stale=_get("ads",{"active":"eq.true","last_seen":f"lt.{cut}","select":"ad_id,car_id","limit":"5000"})
+            if not stale: print("deactivate: none"); return
+            _patch("ads",{"active":"eq.true","last_seen":f"lt.{cut}"},{"active":False})
+            cids=list({s["car_id"] for s in stale if s.get("car_id")})
+            for i in range(0,len(cids),50):
+                _patch("cars",{"car_id":f"in.({','.join(cids[i:i+50])})"},{"active":False})
+            print(f"deactivate: {len(stale)} ads hidden (VIN kept)")
+        except Exception as e: print("deactivate err",repr(e))
     print("STORAGE: Supabase")
 else:
     _MEM={"ads":{}}; _CARS={}
@@ -277,13 +303,17 @@ else:
     def export_json(path="listings.json"):
         rows=sorted(_CARS.values(),key=lambda c:c.get("first_seen",""),reverse=True)
         json.dump({"updated":now_iso(),"cars":rows},open(path,"w",encoding="utf-8"),ensure_ascii=False,indent=2)
+    def bump_seen(ad_ids): pass
+    def get_cursor(src): return 1
+    def set_cursor(src,page): pass
+    def deactivate(days=3): pass
     print("STORAGE: listings.json preview (set SUPABASE_* for full catalogue)")
 
 # ============================================================ run
 SS_PAGES=int(os.environ.get("SS_PAGES",5)); AP_PAGES=int(os.environ.get("AP_PAGES",3))
 A24_PAGES=int(os.environ.get("A24_PAGES",1)); DETAIL_CAP=int(os.environ.get("DETAIL_CAP",200))
 SS_DETAIL=int(os.environ.get("SS_DETAIL",1)); PAUSE=0.5
-AP_BASE="https://lv.autoplius.lt/sludinajumi/lietotas-automasinas?order_by=1&order_direction=DESC&older_not=7"
+AP_BASE="https://lv.autoplius.lt/sludinajumi/lietotas-automasinas?order_by=1&order_direction=DESC"
 A24_BASE="https://eng.auto24.ee/kasutatud/nimekiri.php?ad=7"
 SS_BASE="https://www.ss.lv/lv/transport/cars/today/"
 SS_H={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36","Accept-Language":"lv,en;q=0.9"}
@@ -291,7 +321,7 @@ _ss=requests.Session(); _ss.headers.update(SS_H)
 def ss_page(n): return SS_BASE if n==1 else f"{SS_BASE}page{n}.html"
 
 def run():
-    new=seen=0
+    new=seen=0; seen_ids=set()
     for n in range(1,SS_PAGES+1):
         try: r=_ss.get(ss_page(n),timeout=25); html=r.text
         except Exception as e: print("ss.lv page",n,"ERR",e); break
@@ -299,7 +329,7 @@ def run():
         print(f"ss.lv page {n}: HTTP {r.status_code}, {len(rows)} rows")
         if not rows: break
         for f in rows:
-            seen+=1
+            seen+=1; seen_ids.add(f["ad_id"])
             if has_ad(f["ad_id"]): continue
             f["source"]="ss.lv"
             if SS_DETAIL:
@@ -319,27 +349,38 @@ def run():
     try:
         with browser_session() as page:
             fetch=make_fetch(page)
-            def crawl(name, base, pages, plist, pdetail, country, paginate):
+            def crawl(name, base, pages, plist, pdetail, country, paginate, cursor_key=None):
                 nonlocal new,seen,details
-                for n in range(1,pages+1):
+                start=get_cursor(cursor_key) if cursor_key else 1
+                empty=False
+                for n in range(start, start+pages):
                     url=paginate(base,n) if paginate else base
                     try: txt=fetch(url)
                     except Exception as e: print(name,"page",n,"fetch ERR",repr(e)); break
-                    for ad in plist(txt)["ads"]:
-                        seen+=1
+                    ads=plist(txt)["ads"]
+                    if not ads: empty=True; print(f"{name} page {n}: 0 ads (end)"); break
+                    for ad in ads:
+                        seen+=1; seen_ids.add(ad["ad_id"])
                         if has_ad(ad["ad_id"]): continue
-                        if details>=DETAIL_CAP: print(name,"hit DETAIL_CAP"); return
+                        if details>=DETAIL_CAP:
+                            print(name,"hit DETAIL_CAP")
+                            if cursor_key: set_cursor(cursor_key,n)
+                            return
                         details+=1
                         try:
                             f=pdetail(fetch(ad["url"]),source_url=ad["url"]); f["ad_id"]=ad["ad_id"]; f["source"]=name
                             if country: f.setdefault("country",country)
                             save(f); new+=1
                         except Exception as e: print("  skip",ad["ad_id"],repr(e))
-                    print(f"{name} page {n}: new total {new}, details {details}"); time.sleep(PAUSE)
-            crawl("autoplius",AP_BASE,AP_PAGES,lambda t:ap_list(t,"lv"),ap_detail,None,page_url)
+                    print(f"{name} page {n} (cursor): new total {new}, details {details}"); time.sleep(PAUSE)
+                if cursor_key: set_cursor(cursor_key, 1 if empty else start+pages)
+            crawl("autoplius",AP_BASE,AP_PAGES,lambda t:ap_list(t,"lv"),ap_detail,None,page_url,"autoplius")
             crawl("auto24",A24_BASE,A24_PAGES,a24_list,a24_detail,"EE",None)
     except Exception as e:
         print("browser phase error:",repr(e))
+    bump_seen(seen_ids)
+    if os.environ.get("DEACTIVATE")=="1":
+        deactivate(int(os.environ.get("DEACTIVATE_DAYS",3)))
     print(f"DONE. seen={seen}, new stored={new}")
     if not USE_SB: export_json()
 
