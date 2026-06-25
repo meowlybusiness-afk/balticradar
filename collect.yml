@@ -1,0 +1,42 @@
+name: BalticRadar collect
+
+# Runs in GitHub's cloud on a schedule - your PC can be OFF.
+on:
+  schedule:
+    - cron: "*/15 * * * *"     # every 30 minutes (GitHub min is ~5 min; may be delayed under load)
+  workflow_dispatch: {}          # also lets you run it manually from the Actions tab
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Collect (ss.lv + autoplius + auto24 -> Supabase)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SS_PAGES: "10"
+          AP_PAGES: "25"
+          A24_PAGES: "3"
+          DETAIL_CAP: "300"     # per run; keeps each run bounded. History builds across runs.
+        run: python run_all.py
+
+      - name: Send alert emails (skips sending if RESEND_API_KEY not set)
+        continue-on-error: true
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          LOOKBACK_H: "2"
+        run: python notify.py
