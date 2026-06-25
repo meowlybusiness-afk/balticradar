@@ -3,7 +3,7 @@ name: BalticRadar collect
 # Runs in GitHub's cloud on a schedule - your PC can be OFF.
 on:
   schedule:
-    - cron: "*/5 * * * *"     # every 30 minutes (GitHub min is ~5 min; may be delayed under load)
+    - cron: "*/15 * * * *"     # every 30 minutes (GitHub min is ~5 min; may be delayed under load)
   workflow_dispatch: {}          # also lets you run it manually from the Actions tab
 
 jobs:
@@ -27,12 +27,14 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SS_PAGES: "10"
-          AP_PAGES: "5"
+          AP_PAGES: "25"
           A24_PAGES: "3"
           DETAIL_CAP: "300"     # per run; keeps each run bounded. History builds across runs.
+          BACKFILL: "100"       # date this many cars per run that still lack a posted date
         run: python run_all.py
 
       - name: Send alert emails (skips sending if RESEND_API_KEY not set)
+        continue-on-error: true
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
