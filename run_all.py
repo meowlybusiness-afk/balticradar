@@ -76,7 +76,7 @@ def ap_detail(html, source_url=None):
         "body":_kw(kw,AP_LABELS["body"]),"drivetrain":_kw(kw,AP_LABELS["drivetrain"]),
         "owner_code":_kw(kw,AP_LABELS["owner_code"]),"vin_prefix":vin,"price_eur":price,
         "mileage_km":_digits(_kw(kw,AP_LABELS["mileage"])),"color":_kw(kw,AP_LABELS["color"]),
-        "photos":photos,"location":location,"country":country}
+        "photos":photos,"location":location,"country":country,"posted":rel_posted(html)}
 
 # ============================================================ autoplius listing
 AP_AD=re.compile(r'https://[a-z]{2}\.autoplius\.lt/(?:sludinajumi|skelbimai|ads|objavlenija)/[^\s"\')]+?-(\d+)\.html')
@@ -131,7 +131,7 @@ def a24_detail(html, source_url=None):
     return {"ad_id":ad_id,"source_url":ogurl or source_url,"make":make,"model":model,"year":year,
         "engine_cc":engine_cc,"fuel":fuel,"gearbox":gear,"body":body,"drivetrain":None,
         "owner_code":None,"vin_prefix":vin,"price_eur":price,"mileage_km":mileage,
-        "engine_l":engine_l,"power_kw":power,"photos":photos,"location":"Estonia","country":"EE"}
+        "engine_l":engine_l,"power_kw":power,"photos":photos,"location":"Estonia","country":"EE","posted":rel_posted(html)}
 
 # ============================================================ ss.lv
 def ss_fuel(tok):
@@ -180,6 +180,17 @@ def ss_detail_desc(html):
     m=re.search(r'<meta\s+name=["\']description["\']\s+content=["\'](.*?)["\']',html,re.I|re.S)
     if not m: return None
     return re.sub(r"^Sludinājumi\..*?€\.?\s*","",m.group(1).strip()) or None
+def ss_detail_posted(html):
+    m=re.search(r"Datums:\s*(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})",html)
+    if not m: return None
+    d,mo,y,H,Mi=m.groups(); return f"{y}-{mo}-{d}T{H}:{Mi}:00Z"
+def rel_posted(html):
+    # autoplius "pirms 4 stundām / 5 dienām / 30 min" -> approx ISO timestamp
+    m=re.search(r"[Pp]irms\s+(\d+)\s+(min\w*|stund\w*|dien\w*)",html) or re.search(r"[Pp]irms\s+(\d+)\s*([dh])\b",html)
+    if not m: return None
+    n=int(m.group(1)); u=m.group(2).lower()
+    secs=60 if u.startswith("min") else 86400 if (u.startswith("dien") or u=="d") else 3600
+    return (datetime.datetime.utcnow()-datetime.timedelta(seconds=n*secs)).isoformat()+"Z"
 
 # ============================================================ headless fetcher
 from contextlib import contextmanager
@@ -258,7 +269,7 @@ if USE_SB:
             "engine_l":f.get("engine_l"),"power_kw":f.get("power_kw"),"fuel":f.get("fuel"),"gearbox":f.get("gearbox"),
             "body":f.get("body"),"drivetrain":f.get("drivetrain"),"color":f.get("color"),"owner_code":f.get("owner_code"),
             "vin_prefix":f.get("vin_prefix"),"location":f.get("location"),"photos":f.get("photos") or [],
-            "source_url":f.get("source_url"),"description":f.get("description"),"last_price":f.get("price_eur"),
+            "source_url":f.get("source_url"),"description":f.get("description"),"posted":f.get("posted"),"last_price":f.get("price_eur"),
             "last_mileage":f.get("mileage_km"),"active":True,"first_seen":now_iso(),"last_seen":now_iso()}],upsert=True)
         _post("ads",[{"ad_id":f["ad_id"],"car_id":cid,"source":f.get("source"),"source_url":f.get("source_url"),"active":True,"first_seen":now_iso(),"last_seen":now_iso()}],upsert=True)
         _post("price_history",[{"car_id":cid,"ts":now_iso(),"price":f.get("price_eur"),"mileage":f.get("mileage_km")}])
@@ -341,6 +352,8 @@ def run():
                     if ml: f["mileage_km"]=ml
                     de=ss_detail_desc(d)
                     if de: f["description"]=de
+                    po=ss_detail_posted(d)
+                    if po: f["posted"]=po
                 except Exception: pass
             try: save(f); new+=1
             except Exception as e: print("  skip",f["ad_id"],repr(e))
