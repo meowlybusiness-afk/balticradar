@@ -208,9 +208,17 @@ def browser_session(headless=True):
         finally: b.close()
 def make_fetch(page, wait_ms=4000):
     def fetch(url):
-        page.goto(url,wait_until="domcontentloaded",timeout=40000)
-        page.wait_for_timeout(wait_ms)  # let Cloudflare JS challenge resolve (GitHub IPs get challenged more)
-        return page.content()
+        page.goto(url,wait_until="domcontentloaded",timeout=45000)
+        page.wait_for_timeout(wait_ms)
+        html=page.content()
+        # if a Cloudflare interstitial is shown, wait for its JS challenge to finish, then re-read
+        if ("Just a moment" in html or "challenge-platform" in html or "cf-browser-verification" in html
+                or "Checking your browser" in html):
+            page.wait_for_timeout(9000)
+            try: page.wait_for_load_state("networkidle", timeout=15000)
+            except Exception: pass
+            html=page.content()
+        return html
     return fetch
 
 # ============================================================ identity decision (in-memory mode)
@@ -396,7 +404,11 @@ def run():
                     try: txt=fetch(url)
                     except Exception as e: print(name,"page",n,"fetch ERR",repr(e)); break
                     ads=plist(txt)["ads"]
-                    if not ads: empty=True; print(f"{name} page {n}: 0 ads (end)"); break
+                    if not ads:
+                        empty=True
+                        ti=re.search(r"<title[^>]*>(.*?)</title>",txt,re.I|re.S)
+                        print(f"{name} page {n}: 0 ads | len={len(txt)} | title={(ti.group(1).strip()[:90] if ti else '?')} | head={txt[:200].replace(chr(10),' ')}")
+                        break
                     for ad in ads:
                         seen+=1; seen_ids.add(ad["ad_id"])
                         if has_ad(ad["ad_id"]): continue
