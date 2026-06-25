@@ -1,98 +1,121 @@
-"""BalticRadar - autoplius.lt detail-page parser (Stage 1 PARSE). Writes NOTHING."""
-import re, hashlib
+"""
+BalticRadar - FULL catalogue collector (all cars, all 3 sources).
+Storage:
+  * If SUPABASE_URL + SUPABASE_KEY are set -> writes to Supabase (scales to 100k+).
+  * Otherwise -> capped preview to listings.json (a few hundred) so you can see it.
 
-LABELS = {
-    "reg_date":"Pirmā reģistrācija","mileage":"Nobraukums","engine":"Dzinējs",
-    "fuel":"Degvielas tips","body":"Virsbūves tips","doors":"Durvju skaits",
-    "drivetrain":"Piedziņa","gearbox":"Ātrumkārbas tips","color":"Krāsa",
-    "inspection_until":"Tehniskā skate līdz","wheel_size":"Riteņu izmērs",
-    "reg_country":"Pirmās reģistrācijas valsts","owner_code":"Īpašnieka deklarācijas kods",
-}
+ss.lv is card-level (fast, no per-car page). autoplius/auto24 discover ad ids from
+listing pages, then fetch detail pages only for ad ids NOT already stored
+(incremental backfill - run repeatedly / on a schedule to fill the catalogue).
+"""
+import os, time, requests
+from listing_parse import parse_listing_page as ap_list, page_url
+from autoplius_parse import parse_listing as ap_detail
+from auto24_parse import parse_listing_page as a24_list, parse_listing as a24_detail
+import ss_parse
 
-def _meta(html, key, attr="name"):
-    m = re.search(rf'<meta\s+{attr}=["\']{re.escape(key)}["\']\s+content=["\'](.*?)["\']\s*/?>',
-                  html, re.IGNORECASE|re.DOTALL)
-    return m.group(1).strip() if m else None
+USE_SUPABASE = bool(os.environ.get("SUPABASE_URL") and os.environ.get("SUPABASE_KEY"))
 
-def _field_from_keywords(keywords, label):
-    if not keywords:
-        return None
-    m = re.search(rf'{re.escape(label)}\s+(.*?)(?:,\s*[A-ZĀČĒĢĪĶĻŅŠŪŽ][a-zāčēģīķļņšūž]+\s|$|,\s*[A-Z][a-z])', keywords)
-    return m.group(1).strip().rstrip(",").strip() if m else None
+# ---- politeness / scope knobs ----
+AP_PAGES  = int(os.environ.get("AP_PAGES", 3))     # autoplius listing pages per run
+A24_PAGES = int(os.environ.get("A24_PAGES", 1))
+SS_PAGES  = int(os.environ.get("SS_PAGES", 5))     # ss.lv pages (card-level, cheap)
+DETAIL_CAP = int(os.environ.get("DETAIL_CAP", 200))  # max NEW detail fetches per run
+SS_DETAIL = int(os.environ.get("SS_DETAIL", 1))   # 1=fetch ss.lv galleries (slower), 0=fast 1-photo
+PAUSE = 0.6
 
-def _digits(s):
-    return int(re.sub(r"\D","",s)) if s and re.search(r"\d",s) else None
+AP_BASE  = "https://lv.autoplius.lt/sludinajumi/lietotas-automasinas?order_by=1&order_direction=DESC"
+A24_BASE = "https://eng.auto24.ee/kasutatud/nimekiri.php?ad=7"
+SS_BASE  = "https://www.ss.lv/lv/transport/cars/today/"   # verified working; + page{n}.html
 
-def parse_listing(html, source_url=None):
-    keywords = _meta(html,"keywords")
-    title = _meta(html,"og:title",attr="property") or _meta(html,"title")
+SS_H = {"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                     "(KHTML, like Gecko) Chrome/120.0 Safari/537.36","Accept-Language":"lv,en;q=0.9"}
 
-    m = re.search(r"\bA(\d{6,})\b", title or keywords or "")
-    ad_id_display = ("A"+m.group(1)) if m else None
-    ad_id_num = m.group(1) if m else None
+# ---- storage backends ----
+if USE_SUPABASE:
+    import supabase_store as store
+    def has_ad(aid): return store.has_ad(aid)
+    def save(fields): return store.ingest(fields)
+    print("STORAGE: Supabase")
+else:
+    from collector import Store, _ingest, export_json
+    _mem = Store()
+    def has_ad(aid): return aid in _mem.ads
+    def save(fields):
+        st={"new":0,"repost":0,"same":0,"review":0,"seen":0}
+        _ingest(fields,_mem,fields.get("source"),fields.get("country") or "LT",st)
+        return next(k.upper() for k,v in st.items() if v and k!="seen")
+    print("STORAGE: listings.json preview (set SUPABASE_* env vars for full catalogue)")
 
-    # make/model from the stable keywords segment (never contains the ad_id); fallback title
-    make_model = ((keywords or title or "").split(",")[0]).strip() or None
-    make = model = None
-    if make_model:
-        p = make_model.split(" ",1); make=p[0]; model=p[1] if len(p)>1 else None
+def ss_page_url(n): return SS_BASE if n==1 else f"{SS_BASE}page{n}.html"
 
-    reg_date = _field_from_keywords(keywords, LABELS["reg_date"])
-    year = int(reg_date[:4]) if reg_date and reg_date[:4].isdigit() else None
+def run():
+    seen=new=0
+    # ---- ss.lv: card-level, no detail fetch ----
+    for n in range(1, SS_PAGES+1):
+        try:
+            r=_ss.get(ss_page_url(n),timeout=25); html=r.text
+        except Exception as e: print("ss.lv page",n,"ERR",e); break
+        rows=ss_parse.parse_listing_page(html)["ads"]
+        print(f"ss.lv page {n}: HTTP {r.status_code}, {len(rows)} rows, {len(html)} bytes  url={ss_page_url(n)}")
+        if not rows: break
+        for f in rows:
+            seen+=1
+            if has_ad(f["ad_id"]): continue
+            f["source"]="ss.lv"
+            if SS_DETAIL:
+                try:
+                    d=_ss.get(f["source_url"],timeout=20).text
+                    ph=ss_parse.detail_photos(d)
+                    if ph: f["photos"]=ph                  # full gallery (8-9 photos)
+                    ml=ss_parse.detail_mileage(d)
+                    if ml: f["mileage_km"]=ml
+                    de=ss_parse.detail_description(d)
+                    if de: f["description"]=de
+                except Exception: pass
+            try: save(f); new+=1
+            except Exception as e: print(f"  skip {f['ad_id']}: {e!r}")
+        time.sleep(PAUSE)
 
-    engine_raw = _field_from_keywords(keywords, LABELS["engine"])
-    em = re.search(r"(\d{3,5})", engine_raw) if engine_raw else None
-    engine_cc = int(em.group(1)) if em else None
+    # ---- autoplius + auto24: discover ids from listing, detail-fetch NEW ones ----
+    from fetcher_playwright import browser_session, make_fetch
+    details=0
+    with browser_session() as page:
+        fetch=make_fetch(page)
+        def crawl(name, base, pages, parse_list, parse_detail, country):
+            nonlocal seen,new,details
+            for n in range(1,pages+1):
+                url = base if n==1 else page_url(base,n)
+                for ad in parse_list(fetch(url))["ads"]:
+                    seen+=1
+                    if has_ad(ad["ad_id"]): continue
+                    if details>=DETAIL_CAP: print(name,"hit DETAIL_CAP"); return
+                    details+=1
+                    f=parse_detail(fetch(ad["url"]), source_url=ad["url"])
+                    f["ad_id"]=ad["ad_id"]; f["source"]=name
+                    if country: f.setdefault("country",country)
+                    try: save(f); new+=1
+                    except Exception as e: print(f"  skip {ad['ad_id']}: {e!r}")
+                print(f"{name} page {n}: new total {new}, details {details}")
+                time.sleep(PAUSE)
+        crawl("autoplius", AP_BASE, AP_PAGES, lambda p: ap_list(p,lang="lv"), ap_detail, None)
+        crawl("auto24", A24_BASE, A24_PAGES, a24_list, a24_detail, "EE")
 
-    mileage_km = _digits(_field_from_keywords(keywords, LABELS["mileage"]))
+    print(f"\nDONE. seen={seen}, new stored={new}")
+    if not USE_SUPABASE:
+        export_json(_mem,"listings.json"); print("wrote listings.json (preview)")
 
-    price_eur = None
-    pm = re.search(r"([\d][\d\s ]{2,})\s*€", html)
-    if pm: price_eur = _digits(pm.group(1))
-
-    vin_prefix = None
-    for cand in re.findall(r"\bVIN\b[^<]{0,40}", html, re.IGNORECASE):
-        tok = re.search(r"\b([A-HJ-NPR-Z0-9]{6,17})\b", cand)
-        if tok and re.search(r"[A-Z]",tok.group(1)) and re.search(r"\d",tok.group(1)):
-            vin_prefix = tok.group(1); break
-
-    photos = sorted(set(re.findall(r"https://autoplius-img\.dgn\.lt/[^\s\"')]+\.jpg", html)))
-    _ogimg = _meta(html,"og:image",attr="property")
-    if _ogimg and _ogimg not in photos: photos.insert(0, _ogimg)
-
-    # seller location + country (LV/LT/EE) from the seller block, default LT
-    seg = html.split("Tapatība apstiprināta", 1)
-    region_src = seg[1][:300] if len(seg) > 1 else html
-    CW = {"Latvija":"LV","Latvia":"LV","Igaunija":"EE","Estija":"EE","Estonia":"EE",
-          "Lietuva":"LT","Lithuania":"LT"}
-    lm = re.search(r"([A-ZĀ-Ž][^\n,<>]{1,28}),\s*(Lietuva|Latvija|Igaunija|Estija|Estonia|Latvia|Lithuania)", region_src)
-    location = f"{lm.group(1).strip()}, {lm.group(2)}" if lm else None
-    country = CW.get(lm.group(2), "LT") if lm else "LT"
-
-
-    return {
-        "ad_id":ad_id_display,"ad_id_num":ad_id_num,"source_url":source_url,
-        "make":make,"model":model,"year":year,"engine_cc":engine_cc,
-        "fuel":_field_from_keywords(keywords,LABELS["fuel"]),
-        "gearbox":_field_from_keywords(keywords,LABELS["gearbox"]),
-        "body":_field_from_keywords(keywords,LABELS["body"]),
-        "drivetrain":_field_from_keywords(keywords,LABELS["drivetrain"]),
-        "owner_code":_field_from_keywords(keywords,LABELS["owner_code"]),
-        "vin_prefix":vin_prefix,
-        "price_eur":price_eur,"mileage_km":mileage_km,
-        "reg_date":reg_date,
-        "reg_country":_field_from_keywords(keywords,LABELS["reg_country"]),
-        "color":_field_from_keywords(keywords,LABELS["color"]),
-        "photos":photos,
-        "location":location,
-        "country":country,
-    }
-
-def fingerprint(f):
-    parts=[(f.get("make") or "").lower().strip(),(f.get("model") or "").lower().strip(),
-           str(f.get("year") or ""),str(f.get("engine_cc") or ""),
-           (f.get("fuel") or "").lower().strip(),(f.get("gearbox") or "").lower().strip(),
-           (f.get("body") or "").lower().strip(),(f.get("drivetrain") or "").lower().strip(),
-           (f.get("owner_code") or "").lower().strip()]
-    raw="|".join(parts)
-    return hashlib.sha1(raw.encode()).hexdigest()[:16], raw
+if __name__=="__main__":
+    loop=int(os.environ.get("LOOP_MINUTES",0))
+    if loop>0:
+        import time as _t
+        print(f"LOOP MODE: collecting every {loop} min. Leave this window open (or minimize). Ctrl+C to stop.")
+        n=0
+        while True:
+            n+=1; print(f"\n===== cycle {n} =====")
+            try: run()
+            except Exception as e: print("cycle error:", repr(e))
+            print(f"--- sleeping {loop} min ---")
+            _t.sleep(loop*60)
+    else:
+        run()
