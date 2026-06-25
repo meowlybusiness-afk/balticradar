@@ -310,28 +310,31 @@ if USE_SB:
             print(f"deactivate: {len(stale)} ads hidden (VIN kept)")
         except Exception as e: print("deactivate err",repr(e))
     def backfill_posted(limit=120):
-        # fill `posted` for cars that don't have it yet (re-reads the source page)
-        try: rows=_get("cars",{"posted":"is.null","select":"car_id,source,source_url","limit":str(limit)})
+        # fill `posted` for ss.lv cars only (fast plain requests). autoplius/auto24
+        # date-backfill needs the browser + a non-blocked IP, handled separately.
+        try: rows=_get("cars",{"posted":"is.null","source":"eq.ss.lv","select":"car_id,source_url","limit":str(limit)})
         except Exception as e: print("backfill query err",repr(e)); return
-        if not rows: print("backfill posted: none left"); return
+        if not rows: print("backfill posted: no ss.lv left"); return
         n=0
-        for r in [x for x in rows if x.get("source")=="ss.lv"]:
+        for r in rows:
             try:
                 po=ss_detail_posted(_ss.get(r["source_url"],timeout=20).text)
                 if po: _patch("cars",{"car_id":f"eq.{r['car_id']}"},{"posted":po}); n+=1
             except Exception: pass
-        br=[x for x in rows if x.get("source") in ("autoplius","auto24")]
-        if br:
+        # On a residential IP (your PC) set BACKFILL_ALL=1 to also date autoplius/auto24 via browser
+        if os.environ.get("BACKFILL_ALL")=="1":
             try:
-                with browser_session() as page:
-                    fetch=make_fetch(page)
-                    for r in br:
-                        try:
-                            po=rel_posted(fetch(r["source_url"]))
-                            if po: _patch("cars",{"car_id":f"eq.{r['car_id']}"},{"posted":po}); n+=1
-                        except Exception: pass
-            except Exception as e: print("backfill browser err",repr(e))
-        print(f"backfill posted: dated {n}/{len(rows)}")
+                br=_get("cars",{"posted":"is.null","source":"in.(autoplius,auto24)","select":"car_id,source_url","limit":str(limit)})
+                if br:
+                    with browser_session() as page:
+                        fetch=make_fetch(page)
+                        for r in br:
+                            try:
+                                po=rel_posted(fetch(r["source_url"]))
+                                if po: _patch("cars",{"car_id":f"eq.{r['car_id']}"},{"posted":po}); n+=1
+                            except Exception: pass
+            except Exception as e: print("backfill_all err",repr(e))
+        print(f"backfill posted: dated {n}/{len(rows)} (+browser if BACKFILL_ALL)")
     print("STORAGE: Supabase")
 else:
     _MEM={"ads":{}}; _CARS={}
