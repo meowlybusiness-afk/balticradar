@@ -30,6 +30,7 @@ jobs:
           AP_PAGES: "25"
           A24_PAGES: "3"
           DETAIL_CAP: "300"     # per run; keeps each run bounded. History builds across runs.
+          BACKFILL: "100"       # date this many cars per run that still lack a posted date
         run: python run_all.py
 
       - name: Send alert emails (skips sending if RESEND_API_KEY not set)
