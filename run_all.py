@@ -206,10 +206,11 @@ def browser_session(headless=True):
         page=ctx.new_page()
         try: yield page
         finally: b.close()
-def make_fetch(page, wait_ms=1500):
+def make_fetch(page, wait_ms=4000):
     def fetch(url):
-        page.goto(url,wait_until="domcontentloaded",timeout=30000)
-        page.wait_for_timeout(wait_ms); return page.content()
+        page.goto(url,wait_until="domcontentloaded",timeout=40000)
+        page.wait_for_timeout(wait_ms)  # let Cloudflare JS challenge resolve (GitHub IPs get challenged more)
+        return page.content()
     return fetch
 
 # ============================================================ identity decision (in-memory mode)
