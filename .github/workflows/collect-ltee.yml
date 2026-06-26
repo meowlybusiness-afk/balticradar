@@ -1,0 +1,38 @@
+name: BalticRadar collect (LT + EE via proxy)
+
+# autoplius (LT) + auto24 (EE) only, routed through ScraperAPI residential proxies
+# (Cloudflare blocks GitHub's datacenter IPs directly). Runs less often than ss.lv
+# to protect ScraperAPI credits. Needs the SCRAPER_KEY repo secret to be set.
+on:
+  schedule:
+    - cron: "0 */6 * * *"    # every 6 hours (4 runs/day). Raise frequency only if your plan has spare credits.
+  workflow_dispatch: {}        # run manually any time from the Actions tab
+
+jobs:
+  collect-ltee:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: |
+          pip install -r requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Collect autoplius + auto24 -> Supabase (proxied)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SCRAPER_KEY: ${{ secrets.SCRAPER_KEY }}   # required: routes LT/EE through residential proxies
+          SS_PAGES: "0"         # skip ss.lv here (handled by the 5-min workflow)
+          AP_PAGES: "3"         # pages of autoplius list per run
+          A24_PAGES: "3"        # pages of auto24 list per run
+          DETAIL_CAP: "40"      # max proxied detail fetches per run -> protects credits
+          BACKFILL: "30"        # also date this many undated LT/EE cars per run
+          BACKFILL_ALL: "1"     # enable LT/EE date backfill (uses the proxy)
+        run: python run_all.py

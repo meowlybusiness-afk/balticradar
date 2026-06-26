@@ -1,15 +1,15 @@
-name: BalticRadar collect
+name: BalticRadar collect (ss.lv)
 
-# Runs in GitHub's cloud on a schedule - your PC can be OFF.
+# ss.lv only - direct + free, no proxy. Runs every 5 min in GitHub's cloud; PC can be OFF.
 on:
   schedule:
-    - cron: "*/5 * * * *"     # every 30 minutes (GitHub min is ~5 min; may be delayed under load)
-  workflow_dispatch: {}          # also lets you run it manually from the Actions tab
+    - cron: "*/5 * * * *"     # every 5 min (GitHub min; may be delayed under load)
+  workflow_dispatch: {}        # also runnable manually from the Actions tab
 
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
 
@@ -22,15 +22,13 @@ jobs:
           pip install -r requirements.txt
           python -m playwright install --with-deps chromium
 
-      - name: Collect (ss.lv + autoplius + auto24 -> Supabase)
+      - name: Collect ss.lv -> Supabase
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          SS_PAGES: "10"
-          AP_PAGES: "25"
-          A24_PAGES: "3"
-          DETAIL_CAP: "300"     # per run; keeps each run bounded. History builds across runs.
-          BACKFILL: "100"       # date this many cars per run that still lack a posted date
+          SS_PAGES: "10"        # ss.lv is direct + free, scan plenty
+          SKIP_LTEE: "1"        # autoplius/auto24 handled by the separate proxied workflow
+          BACKFILL: "100"       # ss.lv date backfill (free)
         run: python run_all.py
 
       - name: Send alert emails (skips sending if RESEND_API_KEY not set)
