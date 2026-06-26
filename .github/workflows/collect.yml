@@ -31,6 +31,6 @@ jobs:
           SS_BRANDS_PER_RUN: "8"
           SS_BRAND_PAGES: "6"
           SKIP_LTEE: "1"        # autoplius/auto24 handled by the separate proxied workflow
-          BACKFILL: "100"       # ss.lv date backfill (free)
+          BACKFILL: "180"       # ss.lv detail backfill: fill full photos/mileage/desc for swept cars
         run: python run_all.py
       # Alert emails are sent by the separate notify.yml workflow (twice a day digest).
