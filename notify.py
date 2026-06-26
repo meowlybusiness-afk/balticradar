@@ -34,21 +34,39 @@ def matches(car, sub):
     if sub.get("year_min") and (car.get("year") or 0)<sub["year_min"]: return False
     return True
 
+def car_row(c):
+    img=(c.get("photos") or [None])[0]
+    thumb=(f'<img src="{img}" width="120" height="80" style="border-radius:8px;object-fit:cover;display:block">'
+           if img else '<div style="width:120px;height:80px;background:#e7eaf0;border-radius:8px"></div>')
+    title=f"{c.get('make') or ''} {c.get('model') or ''} {c.get('year') or ''}".strip()
+    specs=" · ".join(str(x) for x in [c.get('last_mileage') and f"{c.get('last_mileage')} km",
+        c.get('fuel'), c.get('gearbox')] if x)
+    price=f"{c.get('last_price')} &euro;" if c.get('last_price') else ''
+    url=c.get("source_url") or SITE
+    return (f'<tr><td style="padding:8px 8px 8px 0;vertical-align:top">{thumb}</td>'
+            f'<td style="padding:8px 0;vertical-align:top;font-family:Arial,sans-serif">'
+            f'<a href="{url}" style="color:#16202e;text-decoration:none;font-weight:700;font-size:15px">{title}</a><br>'
+            f'<span style="color:#69748a;font-size:12px">{specs}</span><br>'
+            f'<span style="color:#ff4605;font-weight:800;font-size:15px">{price}</span></td></tr>')
+
 def send_email(sub, cars, extra=0):
     subject=f"{len(cars)} jauni auto pēc taviem kritērijiem | BalticRadar"
-    lines="\n".join(f"- {c.get('make')} {c.get('model')} {c.get('year') or ''}, "
-                    f"{c.get('last_price')} EUR  {c.get('source_url') or ''}" for c in cars)
-    more=f"\n\n...un vēl {extra} sludinājumi vietnē: {SITE}" if extra>0 else ""
-    body=(f"Sveiki{(' '+sub['name']) if sub.get('name') else ''},\n\n"
-          f"BalticRadar atrada jaunākos sludinājumus, kas atbilst taviem kritērijiem:\n\n{lines}{more}\n\n"
-          f"Skatīt visus: {SITE}\n\n"
-          f"— BalticRadar\n(Lai atrakstītos, atbildi uz šo e-pastu.)")
+    rows="".join(car_row(c) for c in cars)
+    more=f'<p style="color:#69748a;font-family:Arial">...un vēl {extra} sludinājumi vietnē.</p>' if extra>0 else ''
+    html=(f'<div style="background:#f5f6f8;padding:20px"><div style="max-width:580px;margin:0 auto;background:#fff;border-radius:14px;padding:24px">'
+          f'<div style="font-family:Arial,sans-serif;font-size:22px;font-weight:800;color:#16202e">Baltic<span style="color:#ff4605">Radar</span></div>'
+          f'<p style="font-family:Arial,sans-serif;color:#16202e">Sveiki{(" "+sub["name"]) if sub.get("name") else ""}! Jaunākie auto pēc taviem kritērijiem:</p>'
+          f'<table style="border-collapse:collapse;width:100%">{rows}</table>{more}'
+          f'<p style="margin:22px 0"><a href="{SITE}" style="background:#ff4605;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-family:Arial,sans-serif">Skatīt visus BalticRadar &rarr;</a></p>'
+          f'<p style="color:#9aa7b8;font-size:12px;font-family:Arial,sans-serif">Lai atrakstītos, atbildi uz šo e-pastu.</p></div></div>')
+    text="\n".join(f"- {c.get('make')} {c.get('model')} {c.get('year') or ''}, {c.get('last_price')} EUR  {c.get('source_url') or ''}" for c in cars)
+    text+=f"\n\nSkatīt visus: {SITE}"
     if not RESEND_KEY:
-        print(f"\n[NO EMAIL PROVIDER] would email {sub['email']}:\nSUBJECT: {subject}\n{body}\n")
+        print(f"\n[NO EMAIL PROVIDER] would email {sub['email']}: {subject} ({len(cars)} cars)\n")
         return True
     r=requests.post("https://api.resend.com/emails",
         headers={"Authorization":f"Bearer {RESEND_KEY}","Content-Type":"application/json"},
-        json={"from":FROM,"to":[sub["email"]],"subject":subject,"text":body},timeout=30)
+        json={"from":FROM,"to":[sub["email"]],"subject":subject,"html":html,"text":text},timeout=30)
     print("emailed",sub["email"],"->",r.status_code)
     return r.ok
 
