@@ -1,0 +1,7 @@
+name = "balticradar"
+compatibility_date = "2026-06-01"
+
+# Static-only deploy: serve the site files (index.html) from the repo root.
+# Static asset requests are free and unlimited on Cloudflare's free plan.
+[assets]
+directory = "."
