@@ -478,6 +478,7 @@ def run():
         brands=ss_brand_slugs()
         if brands:
             per=int(os.environ.get("SS_BRANDS_PER_RUN",8)); bp=int(os.environ.get("SS_BRAND_PAGES",6))
+            sdet=0; SSDET=int(os.environ.get("SS_SWEEP_DET",150))  # detail-fetch new swept cars so they get full galleries now
             start=get_cursor("ss_brand")
             if not isinstance(start,int) or start>=len(brands): start=0
             for slug in brands[start:start+per]:
@@ -490,6 +491,18 @@ def run():
                         seen+=1; seen_ids.add(f["ad_id"])
                         if has_ad(f["ad_id"]): continue
                         f["source"]="ss.lv"
+                        if sdet<SSDET:
+                            try:
+                                d=_ss.get(f["source_url"],timeout=20).text
+                                ph=ss_detail_photos(d)
+                                if ph: f["photos"]=ph
+                                ml=ss_detail_mileage(d)
+                                if ml is not None: f["mileage_km"]=ml
+                                f["description"]=ss_detail_desc(d) or "-"
+                                po=ss_detail_posted(d)
+                                if po: f["posted"]=po
+                                sdet+=1
+                            except Exception: pass
                         try: save(f); new+=1
                         except Exception: pass
                     time.sleep(0.25)
