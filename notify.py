@@ -13,6 +13,8 @@ import os, requests, datetime
 URL=os.environ.get("SUPABASE_URL","").rstrip("/"); KEY=os.environ.get("SUPABASE_KEY","")
 H={"apikey":KEY,"Authorization":f"Bearer {KEY}","Content-Type":"application/json"}
 LOOKBACK_H=int(os.environ.get("LOOKBACK_H",24))
+MAX_PER_EMAIL=int(os.environ.get("MAX_PER_EMAIL",20))
+SITE=os.environ.get("SITE_URL","https://starlit-tulumba-bd46fb.netlify.app")
 RESEND_KEY=os.environ.get("RESEND_API_KEY")
 FROM=os.environ.get("ALERT_FROM","BalticRadar <onboarding@resend.dev>")
 
@@ -32,12 +34,14 @@ def matches(car, sub):
     if sub.get("year_min") and (car.get("year") or 0)<sub["year_min"]: return False
     return True
 
-def send_email(sub, cars):
+def send_email(sub, cars, extra=0):
     subject=f"{len(cars)} jauni auto pēc taviem kritērijiem | BalticRadar"
     lines="\n".join(f"- {c.get('make')} {c.get('model')} {c.get('year') or ''}, "
                     f"{c.get('last_price')} EUR  {c.get('source_url') or ''}" for c in cars)
+    more=f"\n\n...un vēl {extra} sludinājumi vietnē: {SITE}" if extra>0 else ""
     body=(f"Sveiki{(' '+sub['name']) if sub.get('name') else ''},\n\n"
-          f"BalticRadar atrada jaunus sludinājumus, kas atbilst taviem kritērijiem:\n\n{lines}\n\n"
+          f"BalticRadar atrada jaunākos sludinājumus, kas atbilst taviem kritērijiem:\n\n{lines}{more}\n\n"
+          f"Skatīt visus: {SITE}\n\n"
           f"— BalticRadar\n(Lai atrakstītos, atbildi uz šo e-pastu.)")
     if not RESEND_KEY:
         print(f"\n[NO EMAIL PROVIDER] would email {sub['email']}:\nSUBJECT: {subject}\n{body}\n")
@@ -57,7 +61,11 @@ def main():
         already={n["car_id"] for n in get(f"notifications?select=car_id&subscription_id=eq.{sub['id']}")}
         hits=[c for c in cars if c["car_id"] not in already and matches(c,sub)]
         if not hits: continue
-        if send_email(sub,hits):
+        # newest first; email only the newest MAX, but mark ALL as notified so the
+        # older backlog isn't emailed later (subscribers only get the latest additions)
+        hits.sort(key=lambda c:(c.get("posted") or c.get("first_seen") or ""),reverse=True)
+        shown=hits[:MAX_PER_EMAIL]; extra=len(hits)-len(shown)
+        if send_email(sub,shown,extra):
             post("notifications",[{"subscription_id":sub["id"],"car_id":c["car_id"]} for c in hits])
 
 if __name__=="__main__":
