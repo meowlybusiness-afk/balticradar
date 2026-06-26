@@ -30,9 +30,9 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SCRAPER_KEY: ${{ secrets.SCRAPER_KEY }}   # required: routes LT/EE through residential proxies
           SS_PAGES: "0"         # skip ss.lv here (handled by the 5-min workflow)
-          AP_PAGES: "3"         # pages of autoplius list per run
-          A24_PAGES: "3"        # pages of auto24 list per run
-          DETAIL_CAP: "40"      # max proxied detail fetches per run -> protects credits
-          BACKFILL: "30"        # also date this many undated LT/EE cars per run
+          AP_PAGES: "5"         # pages of autoplius list per run
+          A24_PAGES: "5"        # pages of auto24 list per run
+          DETAIL_CAP: "70"      # max proxied detail fetches per run (still within free trial credits)
+          BACKFILL: "40"        # also date/describe this many undated LT/EE cars per run
           BACKFILL_ALL: "1"     # enable LT/EE date backfill (uses the proxy)
         run: python run_all.py
