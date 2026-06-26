@@ -362,16 +362,26 @@ if USE_SB:
             print(f"deactivate: {len(stale)} ads hidden (VIN kept)")
         except Exception as e: print("deactivate err",repr(e))
     def backfill_posted(limit=120):
-        # fill `posted` for ss.lv cars only (fast plain requests). autoplius/auto24
-        # date-backfill needs the browser + a non-blocked IP, handled separately.
-        try: rows=_get("cars",{"posted":"is.null","source":"eq.ss.lv","select":"car_id,source_url","limit":str(limit)})
+        # Detail-backfill for ss.lv: the full-catalogue sweep saves only list-level data
+        # (1 thumbnail). Here we fetch each undetailed car's page once and fill ALL the
+        # gallery photos + mileage + description + posted date. Targets cars with no
+        # description yet (= swept cars), so each is fetched once and then excluded.
+        try: rows=_get("cars",{"description":"is.null","source":"eq.ss.lv","select":"car_id,source_url","limit":str(limit)})
         except Exception as e: print("backfill query err",repr(e)); return
-        if not rows: print("backfill posted: no ss.lv left"); return
+        if not rows: print("backfill: no undetailed ss.lv left"); return
         n=0
         for r in rows:
             try:
-                po=ss_detail_posted(_ss.get(r["source_url"],timeout=20).text)
-                if po: _patch("cars",{"car_id":f"eq.{r['car_id']}"},{"posted":po}); n+=1
+                d=_ss.get(r["source_url"],timeout=20).text; patch={}
+                ph=ss_detail_photos(d)
+                if ph: patch["photos"]=ph
+                ml=ss_detail_mileage(d)
+                if ml is not None: patch["mileage_km"]=ml
+                de=ss_detail_desc(d)
+                patch["description"]=de or "-"   # mark detailed even if empty, so it's not re-fetched
+                po=ss_detail_posted(d)
+                if po: patch["posted"]=po
+                _patch("cars",{"car_id":f"eq.{r['car_id']}"},patch); n+=1
             except Exception: pass
         # On a residential IP (your PC) set BACKFILL_ALL=1 to also date autoplius/auto24 via browser
         if os.environ.get("BACKFILL_ALL")=="1":
