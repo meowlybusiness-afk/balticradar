@@ -27,10 +27,11 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SS_PAGES: "10"        # ss.lv "today" scan (with details) for new listings
-          SS_FULL: "1"          # also sweep the full ss.lv catalogue brand-by-brand (list-level, fast)
-          SS_BRANDS_PER_RUN: "8"
-          SS_BRAND_PAGES: "6"
+          SS_FULL: "1"          # also sweep the full ss.lv catalogue brand-by-brand
+          SS_BRANDS_PER_RUN: "4"   # smaller sweep so new cars never outpace the detail-fetch
+          SS_BRAND_PAGES: "4"
+          SS_SWEEP_DET: "300"   # detail-fetch (full photo gallery) every new swept car -> no 1-photo cars
           SKIP_LTEE: "1"        # autoplius/auto24 handled by the separate proxied workflow
-          BACKFILL: "180"       # ss.lv detail backfill: fill full photos/mileage/desc for swept cars
+          BACKFILL: "250"       # drain the remaining 1-photo backlog faster
         run: python run_all.py
       # Alert emails are sent by the separate notify.yml workflow (twice a day digest).
