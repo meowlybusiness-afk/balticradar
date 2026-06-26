@@ -46,6 +46,33 @@ def _kw(kw, label):
     if not kw: return None
     m=re.search(rf'{re.escape(label)}\s+(.*?)(?:,\s*[A-ZĀČĒĢĪĶĻŅŠŪŽ][a-zāčēģīķļņšūž]+\s|$|,\s*[A-Z][a-z])', kw)
     return m.group(1).strip().rstrip(",").strip() if m else None
+def strip_tags(s):
+    if not s: return None
+    s=re.sub(r'(?is)<(script|style)[^>]*>.*?</\1>',' ',s)
+    s=re.sub(r'(?i)<br\s*/?>','\n',s)
+    s=re.sub(r'(?i)</(p|div|li)>','\n',s)
+    s=re.sub(r'<[^>]+>',' ',s)
+    s=(s.replace('&nbsp;',' ').replace('&amp;','&').replace('&quot;','"')
+        .replace('&#039;',"'").replace('&lt;','<').replace('&gt;','>'))
+    s=re.sub(r'[ \t]+',' ',s); s=re.sub(r'\n[ \t]*','\n',s); s=re.sub(r'\n{3,}','\n\n',s)
+    return s.strip()
+def ap_desc(html):
+    if not html: return None
+    m=re.search(r'announcement-description[^>]*>(.*)$',html,re.S)
+    if not m: return None
+    chunk=m.group(1)[:5000]
+    for mark in ['js-similar','similar-announcements','class="similar','announcement-actions','id="footer','class="footer','Susiję','Līdzīgi']:
+        i=chunk.find(mark)
+        if i>30: chunk=chunk[:i]; break
+    t=strip_tags(chunk)
+    return t[:2500] if t and len(t)>15 else None
+def a24_desc(html):
+    if not html: return None
+    m=re.search(r'(?is)<(div|td|p|section)[^>]*class="[^"]*(?:vehicle-?desc|comment|lisainfo|adInfo|freetext|description)[^"]*"[^>]*>(.*?)</\1>',html)
+    if m:
+        t=strip_tags(m.group(2))
+        if t and len(t)>15: return t[:2500]
+    return None
 def ap_detail(html, source_url=None):
     kw=meta(html,"keywords"); title=meta(html,"og:title","property") or meta(html,"title")
     m=re.search(r"\bA(\d{6,})\b", title or kw or "")
@@ -76,7 +103,7 @@ def ap_detail(html, source_url=None):
         "body":_kw(kw,AP_LABELS["body"]),"drivetrain":_kw(kw,AP_LABELS["drivetrain"]),
         "owner_code":_kw(kw,AP_LABELS["owner_code"]),"vin_prefix":vin,"price_eur":price,
         "mileage_km":_digits(_kw(kw,AP_LABELS["mileage"])),"color":_kw(kw,AP_LABELS["color"]),
-        "photos":photos,"location":location,"country":country,"posted":rel_posted(html)}
+        "photos":photos,"location":location,"country":country,"posted":rel_posted(html),"description":ap_desc(html)}
 
 # ============================================================ autoplius listing
 AP_AD=re.compile(r'https://[a-z]{2}\.autoplius\.lt/(?:sludinajumi|skelbimai|ads|objavlenija)/[^\s"\')]+?-(\d+)\.html')
@@ -131,7 +158,7 @@ def a24_detail(html, source_url=None):
     return {"ad_id":ad_id,"source_url":ogurl or source_url,"make":make,"model":model,"year":year,
         "engine_cc":engine_cc,"fuel":fuel,"gearbox":gear,"body":body,"drivetrain":None,
         "owner_code":None,"vin_prefix":vin,"price_eur":price,"mileage_km":mileage,
-        "engine_l":engine_l,"power_kw":power,"photos":photos,"location":"Estonia","country":"EE","posted":rel_posted(html)}
+        "engine_l":engine_l,"power_kw":power,"photos":photos,"location":"Estonia","country":"EE","posted":rel_posted(html),"description":a24_desc(html)}
 
 # ============================================================ ss.lv
 def ss_fuel(tok):
@@ -206,8 +233,27 @@ def browser_session(headless=True):
         page=ctx.new_page()
         try: yield page
         finally: b.close()
+SCRAPER_KEY=os.environ.get("SCRAPER_KEY","").strip()
+def scraper_get(url):
+    # Credit-saving: try a cheap (no-JS) proxied request first; only escalate to the
+    # expensive render=true (which beats Cloudflare's JS challenge) if we get blocked.
+    import urllib.parse
+    def call(render):
+        api="http://api.scraperapi.com/?"+urllib.parse.urlencode(
+            {"api_key":SCRAPER_KEY,"url":url,"render":"true" if render else "false","country_code":"eu"})
+        return requests.get(api,timeout=80)
+    r=call(False); h=r.text
+    blocked=(r.status_code>=403 or "Just a moment" in h or "challenge-platform" in h
+             or "Checking your browser" in h or "cf-browser-verification" in h or len(h)<800)
+    if blocked: h=call(True).text
+    return h
 def make_fetch(page, wait_ms=4000):
     def fetch(url):
+        # On datacenter IPs (GitHub) Cloudflare blocks autoplius/auto24. If a ScraperAPI
+        # key is set, route through residential proxies instead of the local browser.
+        if SCRAPER_KEY:
+            try: return scraper_get(url)
+            except Exception as e: print("  scraperapi ERR",repr(e))
         page.goto(url,wait_until="domcontentloaded",timeout=45000)
         page.wait_for_timeout(wait_ms)
         html=page.content()
@@ -324,14 +370,19 @@ if USE_SB:
         # On a residential IP (your PC) set BACKFILL_ALL=1 to also date autoplius/auto24 via browser
         if os.environ.get("BACKFILL_ALL")=="1":
             try:
-                br=_get("cars",{"posted":"is.null","source":"in.(autoplius,auto24)","select":"car_id,source_url","limit":str(limit)})
+                br=_get("cars",{"source":"in.(autoplius,auto24)","or":"(posted.is.null,description.is.null)",
+                    "select":"car_id,source_url,source","limit":str(limit)})
                 if br:
                     with browser_session() as page:
                         fetch=make_fetch(page)
                         for r in br:
                             try:
-                                po=rel_posted(fetch(r["source_url"]))
-                                if po: _patch("cars",{"car_id":f"eq.{r['car_id']}"},{"posted":po}); n+=1
+                                h=fetch(r["source_url"]); patch={}
+                                po=rel_posted(h)
+                                if po: patch["posted"]=po
+                                d=ap_desc(h) if r.get("source")=="autoplius" else a24_desc(h)
+                                if d: patch["description"]=d
+                                if patch: _patch("cars",{"car_id":f"eq.{r['car_id']}"},patch); n+=1
                             except Exception: pass
             except Exception as e: print("backfill_all err",repr(e))
         print(f"backfill posted: dated {n}/{len(rows)} (+browser if BACKFILL_ALL)")
@@ -396,13 +447,16 @@ def run():
         time.sleep(PAUSE)
     details=0
     try:
+        if os.environ.get("SKIP_LTEE")=="1": raise RuntimeError("skip-ltee")
         with browser_session() as page:
             fetch=make_fetch(page)
             def crawl(name, base, pages, plist, pdetail, country, paginate, cursor_key=None):
                 nonlocal new,seen,details
                 start=get_cursor(cursor_key) if cursor_key else 1
                 empty=False
-                for n in range(start, start+pages):
+                # always re-scan the newest pages (catch new listings fast) + cursor window (backfill)
+                scan = [1,2] + [p for p in range(start,start+pages) if p>2] if cursor_key else list(range(start,start+pages))
+                for n in scan:
                     url=paginate(base,n) if paginate else base
                     try: txt=fetch(url)
                     except Exception as e: print(name,"page",n,"fetch ERR",repr(e)); break
@@ -430,7 +484,8 @@ def run():
             crawl("autoplius",AP_BASE,AP_PAGES,lambda t:ap_list(t,"lv"),ap_detail,None,page_url,"autoplius")
             crawl("auto24",A24_BASE,A24_PAGES,a24_list,a24_detail,"EE",None)
     except Exception as e:
-        print("browser phase error:",repr(e))
+        if str(e)=="skip-ltee": print("SKIP_LTEE=1 -> autoplius/auto24 skipped this run")
+        else: print("browser phase error:",repr(e))
     bump_seen(seen_ids)
     bf=int(os.environ.get("BACKFILL",0))
     if bf>0: backfill_posted(bf)
