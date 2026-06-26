@@ -608,10 +608,33 @@ function repaint(){
   if(curPage>totalPages)curPage=totalPages; if(curPage<1)curPage=1;
   const slice=filtered.slice((curPage-1)*PAGE_SIZE,curPage*PAGE_SIZE);
   render(slice);
+  loadPagePhotos(slice);
   const pg=renderPager(totalPages);
   document.getElementById("pagerTop").innerHTML=pg;
   document.getElementById("pagerBot").innerHTML=pg;
   setCount(filtered.length);
+}
+// photos are fetched only for the cars currently visible (saves Supabase egress)
+async function loadPagePhotos(cars){
+  const need=cars.filter(c=>!c.photos||!c.photos.length).map(c=>c.car_id);
+  if(!need.length)return;
+  try{
+    const inList=need.map(encodeURIComponent).join(",");
+    const r=await fetch(`${SB_URL}/rest/v1/v_listings?car_id=in.(${inList})&select=car_id,photos`,{headers:SBH});
+    const d=await r.json(); if(!Array.isArray(d))return;
+    const map={}; d.forEach(x=>map[x.car_id]=x.photos);
+    cars.forEach(c=>{const p=map[c.car_id]; if(p&&p.length){c.photos=p; updateCardPhotos(c);}});
+  }catch(e){}
+}
+function updateCardPhotos(c){
+  const el=rendered.get(c.car_id); if(!el)return;
+  const ph=el.querySelector(".ph"); if(!ph)return;
+  const pics=(c.photos||[]).map(hq);
+  const badge=ph.querySelector(".badge"), flag=ph.querySelector(".flag");
+  const imgs=pics.map((u,k)=>`<img loading="lazy" referrerpolicy="no-referrer" class="${k===0?'show':''}" src="${u}">`).join("")
+    +`<div class="dots">${pics.map((_,k)=>`<span class="${k===0?'a':''}"></span>`).join("")}</div>`;
+  ph.innerHTML=(badge?badge.outerHTML:"")+(flag?flag.outerHTML:"")+imgs;
+  wireHoverEl(el);
 }
 function heroGo(){const v=document.getElementById("heroq").value;F.q=v;const qi=document.getElementById("q");if(qi)qi.value=v;
   localStorage.setItem("br_filters",JSON.stringify(F));curPage=1;repaint();
@@ -646,7 +669,7 @@ function refreshControls(){
   fillSelect("bodyf",[...new Set(allCars.map(c=>norm("body",c.body)).filter(Boolean))].sort(),F.bodyf);
   fillSelect("drive",[...new Set(allCars.map(c=>norm("drive",c.drivetrain)).filter(Boolean))].sort(),F.drive);}
 
-const LIST_COLS="car_id,source,country,make,model,year,engine_l,fuel,gearbox,body,drivetrain,last_mileage,last_price,photos,location,posted,first_seen,source_url";
+const LIST_COLS="car_id,source,country,make,model,year,engine_l,fuel,gearbox,body,drivetrain,last_mileage,last_price,location,posted,first_seen,source_url";
 async function fetchAll(){
   // Supabase caps each response at 1000 rows; page through with Range to get the whole
   // catalogue. Description is excluded here (biggest field) and loaded on modal open -> less egress.
@@ -882,7 +905,7 @@ function renderContent(){
 }
 applyI18n();
 
-tick(); setInterval(tick,REFRESH_MS);
+tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 </script>
 </body>
 </html>
