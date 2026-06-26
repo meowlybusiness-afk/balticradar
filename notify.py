@@ -73,7 +73,13 @@ def send_email(sub, cars, extra=0):
 def main():
     since=(datetime.datetime.utcnow()-datetime.timedelta(hours=LOOKBACK_H)).isoformat()+"Z"
     cars=get(f"cars?select=*&first_seen=gte.{since}&active=eq.true&limit=3000")
-    subs=get("subscriptions?select=*")
+    subs=get("subscriptions?select=*&order=created.asc") or get("subscriptions?select=*")
+    # de-dup by email: a person who re-registers/updates their profile keeps only their latest
+    _seen={}
+    for s in subs:
+        e=(s.get("email") or "").lower().strip()
+        if e: _seen[e]=s
+    subs=list(_seen.values())
     print(f"{len(cars)} recent cars, {len(subs)} subscriptions, lookback {LOOKBACK_H}h")
     for sub in subs:
         already={n["car_id"] for n in get(f"notifications?select=car_id&subscription_id=eq.{sub['id']}")}
