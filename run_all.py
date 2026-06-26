@@ -171,16 +171,18 @@ def ss_row(ad_id,url,title,cells,photo=None):
     mmm=re.search(r"/cars/([^/]+)/([^/]+)/",url or "")
     make=(FIX.get(mmm.group(1).lower(),mmm.group(1).replace("-"," ").title())) if mmm else None
     model=mmm.group(2).replace("-"," ").title() if mmm else None
-    year=engine=price=None
+    year=engine=price=mileage=None
     for c in cells:
         c=c.strip()
         if not year and re.fullmatch(r"(19|20)\d{2}",c): year=int(c)
         elif not engine and (re.fullmatch(r"\d\.\d[A-Za-z]?",c) or c.upper()=="E"): engine=c
         elif "€" in c: price=int(re.sub(r"[^\d]","",c) or 0) or None
+        elif mileage is None and "tūkst" in c.lower():
+            m=re.search(r"([\d ]+)",c); mileage=(int(re.sub(r"\D","",m.group(1)) or 0)*1000) or None
     el=re.match(r"(\d\.\d)",engine or ""); engine_l=el.group(1) if el else None
     return {"ad_id":ad_id,"source_url":url,"country":"LV","make":make,"model":model,"year":year,
         "engine_l":engine_l,"fuel":ss_fuel(engine),"gearbox":None,"body":None,"engine_cc":None,
-        "drivetrain":None,"owner_code":None,"vin_prefix":None,"price_eur":price,"mileage_km":None,
+        "drivetrain":None,"owner_code":None,"vin_prefix":None,"price_eur":price,"mileage_km":mileage,
         "photos":[photo] if photo else [],"title":title}
 def ss_list(html):
     soup=BeautifulSoup(html,"html.parser"); ads=[]
@@ -421,6 +423,18 @@ SS_BASE="https://www.ss.lv/lv/transport/cars/today/"
 SS_H={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36","Accept-Language":"lv,en;q=0.9"}
 _ss=requests.Session(); _ss.headers.update(SS_H)
 def ss_page(n): return SS_BASE if n==1 else f"{SS_BASE}page{n}.html"
+SS_ALL="https://www.ss.lv/lv/transport/cars/"
+def ss_brand_slugs():
+    try:
+        html=_ss.get(SS_ALL,timeout=25).text
+        bad={"new","search","today","sell","buy","change","hand","mans","my","retro-cars","sport-cars","electric-cars"}
+        out=[]
+        for s in re.findall(r'/lv/transport/cars/([a-z0-9-]+)/"',html):
+            if s not in bad and s not in out: out.append(s)
+        return out
+    except Exception as e:
+        print("brand list err",repr(e)); return []
+def ss_brand_page(slug,n): return f"{SS_ALL}{slug}/" if n==1 else f"{SS_ALL}{slug}/page{n}.html"
 
 def run():
     new=seen=0; seen_ids=set()
@@ -449,6 +463,29 @@ def run():
             try: save(f); new+=1
             except Exception as e: print("  skip",f["ad_id"],repr(e))
         time.sleep(PAUSE)
+    # full-catalogue sweep across all brands (list-level only, fast, no detail fetch)
+    if os.environ.get("SS_FULL")=="1":
+        brands=ss_brand_slugs()
+        if brands:
+            per=int(os.environ.get("SS_BRANDS_PER_RUN",8)); bp=int(os.environ.get("SS_BRAND_PAGES",6))
+            start=get_cursor("ss_brand")
+            if not isinstance(start,int) or start>=len(brands): start=0
+            for slug in brands[start:start+per]:
+                for n in range(1,bp+1):
+                    try: html=_ss.get(ss_brand_page(slug,n),timeout=25).text
+                    except Exception: break
+                    rows=ss_list(html)["ads"]
+                    if not rows: break
+                    for f in rows:
+                        seen+=1; seen_ids.add(f["ad_id"])
+                        if has_ad(f["ad_id"]): continue
+                        f["source"]="ss.lv"
+                        try: save(f); new+=1
+                        except Exception: pass
+                    time.sleep(0.25)
+            nxt=start+per
+            set_cursor("ss_brand", 0 if nxt>=len(brands) else nxt)
+            print(f"ss.lv full sweep: brands {start}..{start+per}/{len(brands)}, new total {new}")
     details=0
     try:
         if os.environ.get("SKIP_LTEE")=="1": raise RuntimeError("skip-ltee")
