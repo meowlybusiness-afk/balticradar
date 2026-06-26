@@ -190,6 +190,10 @@ def ss_list(html):
         if not link: continue
         href=link.get("href"); url=("https://www.ss.lv"+href) if href and href.startswith("/") else href
         cells=[c.get_text(strip=True) for c in row.select("td")]
+        # ss.lv mixes sellers and buyers; the deal column shows "pērku" for wanted-to-buy ads.
+        # Keep only sale/exchange ads (price with €), skip buy-wanted ones.
+        dealcell=(cells[-1].lower() if cells else "")
+        if ("pērk" in dealcell or "perk" in dealcell or "куп" in dealcell) and "€" not in dealcell: continue
         img=row.select_one("img"); photo=None
         if img:
             photo=img.get("src") or img.get("data-original")
