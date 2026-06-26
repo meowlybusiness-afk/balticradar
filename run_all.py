@@ -455,7 +455,8 @@ def run():
         with browser_session() as page:
             fetch=make_fetch(page)
             def crawl(name, base, pages, plist, pdetail, country, paginate, cursor_key=None):
-                nonlocal new,seen,details
+                nonlocal new,seen
+                dcount=0  # per-source detail budget so auto24 isn't starved by autoplius
                 start=get_cursor(cursor_key) if cursor_key else 1
                 empty=False
                 # always re-scan the newest pages (catch new listings fast) + cursor window (backfill)
@@ -473,17 +474,17 @@ def run():
                     for ad in ads:
                         seen+=1; seen_ids.add(ad["ad_id"])
                         if has_ad(ad["ad_id"]): continue
-                        if details>=DETAIL_CAP:
+                        if dcount>=DETAIL_CAP:
                             print(name,"hit DETAIL_CAP")
                             if cursor_key: set_cursor(cursor_key,n)
                             return
-                        details+=1
+                        dcount+=1
                         try:
                             f=pdetail(fetch(ad["url"]),source_url=ad["url"]); f["ad_id"]=ad["ad_id"]; f["source"]=name
                             if country: f.setdefault("country",country)
                             save(f); new+=1
                         except Exception as e: print("  skip",ad["ad_id"],repr(e))
-                    print(f"{name} page {n} (cursor): new total {new}, details {details}"); time.sleep(PAUSE)
+                    print(f"{name} page {n} (cursor): new total {new}, details {dcount}"); time.sleep(PAUSE)
                 if cursor_key: set_cursor(cursor_key, 1 if empty else start+pages)
             crawl("autoplius",AP_BASE,AP_PAGES,lambda t:ap_list(t,"lv"),ap_detail,None,page_url,"autoplius")
             crawl("auto24",A24_BASE,A24_PAGES,a24_list,a24_detail,"EE",None)
