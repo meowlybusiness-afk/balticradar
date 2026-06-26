@@ -30,12 +30,4 @@ jobs:
           SKIP_LTEE: "1"        # autoplius/auto24 handled by the separate proxied workflow
           BACKFILL: "100"       # ss.lv date backfill (free)
         run: python run_all.py
-
-      - name: Send alert emails (skips sending if RESEND_API_KEY not set)
-        continue-on-error: true
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          LOOKBACK_H: "2"
-        run: python notify.py
+      # Alert emails are sent by the separate notify.yml workflow (twice a day digest).

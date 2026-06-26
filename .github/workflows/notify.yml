@@ -1,0 +1,30 @@
+name: BalticRadar alerts (2x daily digest)
+
+# Sends subscriber alert emails twice a day (digest of the newest matching cars).
+# Kept separate from the 5-min collector so subscribers get at most 2 emails/day
+# and we stay inside Resend's free 100 emails/day limit.
+on:
+  schedule:
+    - cron: "0 7,17 * * *"   # 07:00 and 17:00 UTC (~10:00 and 20:00 Latvia)
+  workflow_dispatch: {}        # also runnable manually to test
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install deps
+        run: pip install requests
+      - name: Send alert digest
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          LOOKBACK_H: "13"          # covers the ~12h gap between digests (dedup avoids repeats)
+          MAX_PER_EMAIL: "40"       # newest N per email; older matches shown only on the site
+          SITE_URL: "https://starlit-tulumba-bd46fb.netlify.app"
+        run: python notify.py
