@@ -357,9 +357,16 @@ if USE_SB:
             if not stale: print("deactivate: none"); return
             _patch("ads",{"active":"eq.true","last_seen":f"lt.{cut}"},{"active":False})
             cids=list({s["car_id"] for s in stale if s.get("car_id")})
+            # only hide a car if NONE of its ads is still active (so a re-listed car stays live)
+            still=set()
             for i in range(0,len(cids),50):
-                _patch("cars",{"car_id":f"in.({','.join(cids[i:i+50])})"},{"active":False})
-            print(f"deactivate: {len(stale)} ads hidden (VIN kept)")
+                chunk=cids[i:i+50]
+                rows=_get("ads",{"active":"eq.true","car_id":f"in.({','.join(chunk)})","select":"car_id","limit":"5000"})
+                for r in (rows or []): still.add(r.get("car_id"))
+            hide=[c for c in cids if c not in still]
+            for i in range(0,len(hide),50):
+                _patch("cars",{"car_id":f"in.({','.join(hide[i:i+50])})"},{"active":False})
+            print(f"deactivate: {len(stale)} ads stale, {len(hide)} cars hidden (VIN + history kept)")
         except Exception as e: print("deactivate err",repr(e))
     def backfill_posted(limit=120):
         # Detail-backfill for ss.lv: the full-catalogue sweep saves only list-level data
