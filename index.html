@@ -6,11 +6,15 @@
 <title>BalticRadar</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script>try{var _t=localStorage.getItem("br_theme")||"auto";var _e=_t==="auto"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):_t;document.documentElement.setAttribute("data-theme",_e);}catch(_){}</script>
 <style>
   :root{--bg:#0d1117;--card:#161b22;--card2:#1c232d;--ink:#e6edf3;--mut:#9aa6b2;--line:#262c36;
     --accent:#ff4605;--accent2:#ff6a32;--gold:#ff7a3c;--orange:#ff4605;--up:#ff6b6b;--down:#3fb950;
     --dark:#0a0e14;--dark2:#11161e;
     --lv:#c0314f;--lt:#f5b301;--ee:#2b9fe6;--shadow:0 8px 28px rgba(0,0,0,.45);}
+  html[data-theme="light"]{--bg:#f2f5f9;--card:#ffffff;--card2:#eef2f7;--ink:#18202c;--mut:#5a6573;
+    --line:#e1e7ee;--dark:#e7ecf3;--dark2:#dde4ee;--shadow:0 10px 30px rgba(30,55,95,.10);}
+  html{transition:background .2s,color .2s}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
     font:15px/1.65 "Mulish",Arial,Helvetica,sans-serif;-webkit-font-smoothing:antialiased}
@@ -238,6 +242,9 @@
     </nav>
     <div class="topright">
       <button id="notifyBtn" class="notify" onclick="openSub()">Paziņojumi</button>
+      <select id="theme" class="langsel" title="Tēma" style="margin-right:6px">
+        <option value="auto">Auto</option><option value="light">Gaišs</option><option value="dark">Tumšs</option>
+      </select>
       <select id="lang" class="langsel">
         <option value="lv">LV</option><option value="en">EN</option>
         <option value="ru">RU</option><option value="lt">LT</option><option value="et">ET</option>
@@ -279,6 +286,7 @@
     <div class="row2"><input id="pmin" type="number" placeholder="Cena no"><input id="pmax" type="number" placeholder="Cena līdz"></div>
     <div class="row2"><input id="ymin" type="number" placeholder="Gads no"><input id="ymax" type="number" placeholder="Gads līdz"></div>
     <div class="row2"><input id="mmin" type="number" placeholder="Nobrauk. no"><input id="mmax" type="number" placeholder="Nobrauk. līdz"></div>
+    <div class="row2"><input id="emin" type="number" step="0.1" placeholder="Tilpums no (L)"><input id="emax" type="number" step="0.1" placeholder="Tilpums līdz (L)"></div>
     <select id="sort">
       <option value="new">Jaunākie</option><option value="pa">Cena ↑</option>
       <option value="pd">Cena ↓</option><option value="yd">Gads ↓</option>
@@ -318,7 +326,7 @@ const RATEL={
  ru:{vg:"Отличная цена",g:"Хорошая цена",f:"Справедливая цена",h:"Высокая цена",op:"Завышенная цена"},
  lt:{vg:"Puiki kaina",g:"Gera kaina",f:"Teisinga kaina",h:"Didesnė kaina",op:"Per brangu"},
  et:{vg:"Väga hea hind",g:"Hea hind",f:"Õiglane hind",h:"Kõrgem hind",op:"Ülehinnatud"}};
-const F={q:"",make:"",model:"",fuel:"",gear:"",bodyf:"",drive:"",pmin:"",pmax:"",ymin:"",ymax:"",mmin:"",mmax:"",sort:"new",
+const F={q:"",make:"",model:"",fuel:"",gear:"",bodyf:"",drive:"",pmin:"",pmax:"",ymin:"",ymax:"",mmin:"",mmax:"",emin:"",emax:"",sort:"new",
   ...JSON.parse(localStorage.getItem("br_filters")||"{}")};
 let lang=localStorage.getItem("br_lang")||"lv";
 const LANG={
@@ -581,6 +589,8 @@ function applyFilters(cars){
   if(F.pmax)r=r.filter(c=>(c.last_price||0)<=+F.pmax);
   if(F.ymin)r=r.filter(c=>(c.year||0)>=+F.ymin);
   if(F.ymax)r=r.filter(c=>(c.year||9999)<=+F.ymax);
+  if(F.emin)r=r.filter(c=>(parseFloat(c.engine_l)||0)>=+F.emin);
+  if(F.emax)r=r.filter(c=>(parseFloat(c.engine_l)||1e9)<=+F.emax);
   const s=F.sort;
   r.sort((a,b)=>s==="pa"?(a.last_price||1e15)-(b.last_price||1e15):s==="pd"?(b.last_price||0)-(a.last_price||0)
     :s==="yd"?(b.year||0)-(a.year||0):(b.first_seen||"").localeCompare(a.first_seen||""));
@@ -812,10 +822,22 @@ document.getElementById("pills").onclick=e=>{const b=e.target.closest("button");
 function bind(id,key){const el=document.getElementById(id);el.value=F[key]||"";
   el.addEventListener("input",()=>{F[key]=el.value;if(id==="make"){F.model="";refreshControls();}
     localStorage.setItem("br_filters",JSON.stringify(F));curPage=1;repaint();});}
-["q","pmin","pmax","ymin","ymax","mmin","mmax","make","model","fuel","gear","bodyf","drive","sort"].forEach(id=>bind(id,id));
+["q","pmin","pmax","ymin","ymax","mmin","mmax","emin","emax","make","model","fuel","gear","bodyf","drive","sort"].forEach(id=>bind(id,id));
 const langSel=document.getElementById("lang");langSel.value=lang;
 langSel.addEventListener("change",()=>{lang=langSel.value;localStorage.setItem("br_lang",lang);
-  applyI18n();lastSig="";rendered.forEach(el=>el.remove());rendered.clear();repaint();});
+  applyI18n();themeLabels();lastSig="";rendered.forEach(el=>el.remove());rendered.clear();repaint();});
+
+// ---- theme switch (auto / light / dark) ----
+const THEME_L={lv:["Auto","Gaišs","Tumšs"],en:["Auto","Light","Dark"],ru:["Авто","Светлая","Тёмная"],lt:["Auto","Šviesi","Tamsi"],et:["Auto","Hele","Tume"]};
+function themeLabels(){const a=THEME_L[lang]||THEME_L.en;const s=document.getElementById("theme");if(s)[...s.options].forEach((o,i)=>{if(a[i])o.textContent=a[i];});}
+function applyTheme(){let t=localStorage.getItem("br_theme")||"auto";
+  let eff=t==="auto"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):t;
+  document.documentElement.setAttribute("data-theme",eff);
+  const s=document.getElementById("theme");if(s)s.value=t;themeLabels();}
+(function(){const ts=document.getElementById("theme");
+  if(ts)ts.addEventListener("change",()=>{localStorage.setItem("br_theme",ts.value);applyTheme();});
+  try{matchMedia("(prefers-color-scheme: light)").addEventListener("change",()=>{if((localStorage.getItem("br_theme")||"auto")==="auto")applyTheme();});}catch(_){}
+  applyTheme();})();
 
 const CONTENT={
  lv:{nav:["Sludinājumi","Kā tas strādā","BUJ"],cta:["Skatīt sludinājumus","Saņemt paziņojumus"],
