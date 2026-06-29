@@ -234,7 +234,7 @@
 <body>
 <header>
   <div class="bar">
-    <div class="logo" onclick="scrollTop()" title="BalticRadar"><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M3 17l5-5 4 3 7-8" stroke="#ff4605" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19" cy="7" r="2" fill="#fff"/></svg>Baltic<b>Radar</b></div>
+    <div class="logo" onclick="goHome()" title="BalticRadar"><svg class="ic" viewBox="0 0 24 24" fill="none"><path d="M3 17l5-5 4 3 7-8" stroke="#ff4605" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="19" cy="7" r="2" fill="#fff"/></svg>Baltic<b>Radar</b></div>
     <nav class="nav">
       <a onclick="scrollToEl('grid')" id="navList">Sludinājumi</a>
       <a onclick="scrollToEl('s-how')" id="navHow">Kā tas strādā</a>
@@ -660,6 +660,7 @@ function setFeatured(cars){
 }
 function scrollToEl(id){const el=document.getElementById(id);if(el){const y=el.getBoundingClientRect().top+window.pageYOffset-58;window.scrollTo({top:y,behavior:"smooth"});}}
 function scrollTop(){window.scrollTo({top:0,behavior:"smooth"});}
+function goHome(){location.href=location.origin+location.pathname;}
 let _revObs=null;
 function observeReveals(){
   if(!("IntersectionObserver"in window)){document.querySelectorAll(".reveal").forEach(e=>e.classList.add("in"));return;}
@@ -838,7 +839,7 @@ function openModal(c){
       <div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 2px">
         <div style="flex:1;min-width:130px;background:var(--card2);border-radius:12px;padding:10px 14px">
           <div style="font-size:12px;color:var(--mut)">${ML().created}</div>
-          <div style="font-weight:800;font-size:15px">${c.posted?relAge(c.posted):"—"}</div></div>
+          <div style="font-weight:800;font-size:15px">${relAge(c.posted||c.first_seen)}</div></div>
         <div id="pchgcard" style="flex:1;min-width:130px;background:var(--card2);border-radius:12px;padding:10px 14px">
           <div style="font-size:12px;color:var(--mut)">${ML().chg}</div>
           <div style="font-weight:800;font-size:15px;color:var(--mut)">${ML().nochg}</div></div>
