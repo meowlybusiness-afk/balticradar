@@ -701,6 +701,7 @@ async function tick(){
   const wasFirst=firstLoad;
   allCars=cars||[];refreshControls();setFeatured(allCars);repaint();
   if(wasFirst&&typeof renderContent==="function")renderContent();
+  if(wasFirst){const _cid=new URLSearchParams(location.search).get("car");if(_cid){const _cc=allCars.find(x=>x.car_id===_cid);if(_cc)setTimeout(()=>openModal(_cc),80);}}
   firstLoad=false;
 }
 
@@ -714,15 +715,18 @@ function sparkline(pts){
   if(pts.length<2)return"";
   const w=640,h=230,padL=64,padR=16,padT=16,padB=34;
   const ps=pts.map(p=>p.price).filter(x=>x!=null);
-  const mn=Math.min(...ps),mx=Math.max(...ps),rg=(mx-mn)||1;
+  const mn=Math.min(...ps),mx=Math.max(...ps),flat=mx===mn,rg=(mx-mn)||1;
   const X=i=>padL+(w-padL-padR)*i/(pts.length-1);
-  const Y=v=>padT+(h-padT-padB)*(1-(v-mn)/rg);
+  const Y=v=>padT+(h-padT-padB)*(flat?0.5:(1-(v-mn)/rg));
   const line=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p.price).toFixed(1)}`).join(" ");
   const area=`M${X(0).toFixed(1)},${(h-padB).toFixed(1)} `+pts.map((p,i)=>`L${X(i).toFixed(1)},${Y(p.price).toFixed(1)}`).join(" ")+` L${X(pts.length-1).toFixed(1)},${(h-padB).toFixed(1)} Z`;
-  const ny=4,grid=[],ylab=[];
-  for(let g=0;g<=ny;g++){const v=mn+rg*g/ny,y=Y(v).toFixed(1);
+  const grid=[],ylab=[];
+  if(flat){const y=Y(mn).toFixed(1);
     grid.push(`<line x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`);
-    ylab.push(`<text x="${padL-8}" y="${(+y+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--mut)">${eur(Math.round(v))}</text>`);}
+    ylab.push(`<text x="${padL-8}" y="${(+y+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--mut)">${eur(mn)}</text>`);}
+  else{const ny=4;for(let g=0;g<=ny;g++){const v=mn+rg*g/ny,y=Y(v).toFixed(1);
+    grid.push(`<line x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`);
+    ylab.push(`<text x="${padL-8}" y="${(+y+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--mut)">${eur(Math.round(v))}</text>`);}}
   const xlab=`<text x="${X(0).toFixed(1)}" y="${h-12}" text-anchor="start" font-size="11" fill="var(--mut)">${dt(pts[0].ts)}</text><text x="${X(pts.length-1).toFixed(1)}" y="${h-12}" text-anchor="end" font-size="11" fill="var(--mut)">${dt(pts[pts.length-1].ts)}</text>`;
   const dots=pts.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.price).toFixed(1)}" r="3.8" fill="var(--accent)" stroke="var(--card)" stroke-width="1.5"><title>${dt(p.ts)} · ${eur(p.price)}</title></circle>`).join("");
   return `<svg class="spark" viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;margin:8px 0 4px;overflow:visible">
@@ -735,16 +739,17 @@ async function loadHistory(carId){
   try{
     const r=await fetch(`${SB_URL}/rest/v1/price_history?car_id=eq.${encodeURIComponent(carId)}&select=ts,price,mileage&order=ts.asc`,{headers:SBH});
     const pts=(await r.json()).filter(p=>p.price!=null);
-    if(pts.length<2){box.innerHTML=`<h3>${T().priceHist}</h3><div class="muted">${T().histOne}</div>`;return;}
+    if(!pts.length){box.innerHTML=`<h3>${T().priceHist}</h3><div class="muted">${T().histOne}</div>`;return;}
     const first=pts[0],last=pts[pts.length-1];
     const dp=last.price-first.price,dpct=first.price?Math.round(dp/first.price*100):0;
-    const peak=Math.max(...pts.map(p=>p.price)),drop=last.price-peak,dpc=peak?Math.round(drop/peak*100):0;
-    const pdc=document.getElementById("pdropcard");
-    if(pdc&&drop<0){pdc.style.display="";pdc.style.background="rgba(63,185,80,.13)";
-      pdc.innerHTML=`<div style="font-size:12px;color:var(--mut)">${ML().drop}</div><div style="font-weight:800;font-size:15px;color:var(--down)">${eur(drop)} (${dpc}%)</div>`;}
+    const pchg=document.getElementById("pchgcard");
+    if(pchg){const lbl=pchg.lastElementChild;if(lbl){
+      if(dp===0){lbl.textContent=ML().nochg;lbl.style.color="var(--mut)";}
+      else{lbl.textContent=`${dp>0?'+':''}${eur(dp)} (${dp>0?'+':''}${dpct}%)`;lbl.style.color=dp<0?"var(--down)":"var(--up)";}}}
+    const gpts=pts.length<2?[pts[0],Object.assign({},pts[0])]:pts;
     const dm=(last.mileage!=null&&first.mileage!=null)?last.mileage-first.mileage:null;
     const pcl=dp<0?"dn":dp>0?"up":"";
-    const summary=`<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:2px 0 12px;font-size:13.5px;color:var(--mut)">
+    const summary=pts.length<2?"":`<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:2px 0 12px;font-size:13.5px;color:var(--mut)">
       <span>Kopš ${dt(first.ts)}:</span>
       <span class="chg ${pcl}" style="font-weight:800">Cena ${dp>0?'+':''}${eur(dp)} (${dp>0?'+':''}${dpct}%)</span>
       ${dm!=null?`<span style="font-weight:800;color:var(--ink)">Nobraukums ${dm>0?'+':''}${km(dm)}</span>`:''}</div>`;
@@ -754,7 +759,7 @@ async function loadHistory(carId){
       const mp=prev&&p.mileage!=null&&prev.mileage!=null?p.mileage-prev.mileage:null;
       const mtxt=p.mileage!=null?km(p.mileage)+(mp?` (${mp>0?'+':''}${km(mp)})`:""):"";
       return `<tr><td>${dt(p.ts)}</td><td><b>${eur(p.price)}</b></td><td class="chg ${cl}">${ch!=null?sign+eur(ch):""}</td><td>${mtxt}</td></tr>`;}).join("");
-    box.innerHTML=`<h3>Cenu un nobraukuma vēsture</h3>${summary}${sparkline(pts)}<table class="htable">${rows}</table>`;
+    box.innerHTML=`<h3>Cenu un nobraukuma vēsture</h3>${summary}${sparkline(gpts)}<table class="htable">${rows}</table>`;
   }catch(e){box.innerHTML="";}
 }
 const TXC=JSON.parse(localStorage.getItem("br_tx")||"{}");
@@ -795,11 +800,21 @@ async function translateDesc(c){
 function txNote(c){ const n=document.getElementById("txnote"); if(!n)return; const L=TXLABEL[lang]||TXLABEL.en;
   n.innerHTML=`<span class="muted" style="font-size:12px">${L.auto} · <a style="cursor:pointer;color:var(--accent)" onclick="showOrig('${c.car_id}')">${L.orig}</a></span>`; }
 function showOrig(id){ const c=allCars.find(x=>x.car_id===id), box=document.getElementById("mdesc"); if(box&&c)box.textContent=c.description; const n=document.getElementById("txnote"); if(n)n.innerHTML=""; }
-const ML_T={lv:{created:"Izveidots",drop:"Cenas kritums no augstākās",cv:"Pārbaudīt auto vēsturi",cvsub:"carVertical · ievadi VIN un saņem atlaidi"},en:{created:"Created",drop:"Price drop from peak",cv:"Check vehicle history",cvsub:"carVertical · enter VIN for a discount"},ru:{created:"Создано",drop:"Падение цены от пика",cv:"Проверить историю авто",cvsub:"carVertical · введите VIN и получите скидку"},lt:{created:"Sukurta",drop:"Kainos kritimas nuo piko",cv:"Patikrinti automobilio istoriją",cvsub:"carVertical · įveskite VIN ir gaukite nuolaidą"},et:{created:"Loodud",drop:"Hinnalangus tipust",cv:"Kontrolli sõiduki ajalugu",cvsub:"carVertical · sisesta VIN ja saa allahindlus"}};
+const ML_T={
+ lv:{created:"Izveidots",chg:"Cenas izmaiņas",nochg:"Nav",cv:"Pārbaudīt auto vēsturi",cvsub:"carVertical · ievadi VIN un saņem atlaidi",alerts:"Saņemt paziņojumus",share:"Dalīties ar saiti",openad:"Atvērt sludinājumu",similar:"Līdzīgi sludinājumi",copied:"Saite nokopēta!"},
+ en:{created:"Created",chg:"Price change",nochg:"None",cv:"Check vehicle history",cvsub:"carVertical · enter VIN for a discount",alerts:"Get alerts",share:"Share link",openad:"Open listing",similar:"Similar listings",copied:"Link copied!"},
+ ru:{created:"Создано",chg:"Изменение цены",nochg:"Нет",cv:"Проверить историю авто",cvsub:"carVertical · введите VIN и получите скидку",alerts:"Уведомления",share:"Поделиться",openad:"Открыть объявление",similar:"Похожие объявления",copied:"Ссылка скопирована!"},
+ lt:{created:"Sukurta",chg:"Kainos pokytis",nochg:"Nėra",cv:"Patikrinti istoriją",cvsub:"carVertical · įveskite VIN ir gaukite nuolaidą",alerts:"Gauti pranešimus",share:"Dalintis nuoroda",openad:"Atidaryti skelbimą",similar:"Panašūs skelbimai",copied:"Nuoroda nukopijuota!"},
+ et:{created:"Loodud",chg:"Hinnamuutus",nochg:"Pole",cv:"Kontrolli ajalugu",cvsub:"carVertical · sisesta VIN ja saa allahindlus",alerts:"Saa teavitusi",share:"Jaga linki",openad:"Ava kuulutus",similar:"Sarnased kuulutused",copied:"Link kopeeritud!"}};
 function ML(){return ML_T[lang]||ML_T.en;}
 function relAge(ts){if(!ts)return"—";const d=Math.floor((Date.now()-new Date(ts))/864e5);
   const M={lv:["Šodien","Vakar"," dienas atpakaļ"],en:["Today","Yesterday"," days ago"],ru:["Сегодня","Вчера"," дн. назад"],lt:["Šiandien","Vakar"," d. atgal"],et:["Täna","Eile"," p tagasi"]}[lang]||["Today","Yesterday"," days ago"];
   if(d<=0)return M[0];if(d===1)return M[1];return d+M[2];}
+function toast(msg){let el=document.getElementById("__toast");if(!el){el=document.createElement("div");el.id="__toast";el.style.cssText="position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:11px 20px;border-radius:10px;z-index:99999;font-weight:700;box-shadow:var(--shadow);transition:opacity .3s";document.body.appendChild(el);}el.textContent=msg;el.style.opacity="1";clearTimeout(el._h);el._h=setTimeout(()=>{el.style.opacity="0";},1900);}
+function shareCar(id){const url=location.origin+location.pathname+"?car="+encodeURIComponent(id);
+  if(navigator.share){navigator.share({title:"BalticRadar",url:url}).catch(()=>{});}
+  else if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>toast(ML().copied)).catch(()=>toast(url));}
+  else toast(url);}
 function openModal(c){
   galIdx=0;const t=T();
   const ph=((c.photos&&c.photos.length)?c.photos:[]).map(hq);
@@ -808,6 +823,10 @@ function openModal(c){
     ? ph.map((u,k)=>`<img class="${k===0?'show':''}" referrerpolicy="no-referrer" src="${u}">`).join("")
       +(ph.length>1?`<button class="nav prev" onclick="gal(-1)">‹</button><button class="nav next" onclick="gal(1)">›</button><span class="cnt" id="gcnt">1 / ${ph.length}</span>`:"")
     : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9aa7b8">Bez foto</div>';
+  const sim=(window.allCars||allCars).filter(x=>x.car_id!==c.car_id&&x.make===c.make&&x.model===c.model&&x.last_price!=null).slice(0,6);
+  const simHtml=sim.length?`<div style="margin-top:20px"><h3 style="margin:0 0 10px">${ML().similar}</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px">`+sim.map(s=>`<div onclick="openModalById('${s.car_id}')" style="display:flex;gap:10px;align-items:center;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;cursor:pointer">
+      <img src="${s.photos&&s.photos[0]?hq(s.photos[0]):''}" referrerpolicy="no-referrer" style="width:56px;height:44px;object-fit:cover;border-radius:8px;background:var(--line);flex:none" onerror="this.style.visibility='hidden'">
+      <div style="min-width:0"><div style="font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.make)} ${esc(s.model)} ${s.year||""}</div><div style="font-weight:800;color:var(--accent);font-size:14px">${eur(s.last_price)}</div></div></div>`).join("")+`</div></div>`:"";
   document.getElementById("modal").innerHTML=`
     <button class="mclose" onclick="closeModal()">×</button>
     <div class="mgal">${gallery}</div>
@@ -820,7 +839,14 @@ function openModal(c){
         <div style="flex:1;min-width:130px;background:var(--card2);border-radius:12px;padding:10px 14px">
           <div style="font-size:12px;color:var(--mut)">${ML().created}</div>
           <div style="font-weight:800;font-size:15px">${c.posted?relAge(c.posted):"—"}</div></div>
-        <div id="pdropcard" style="display:none;flex:1;min-width:160px;border-radius:12px;padding:10px 14px"></div>
+        <div id="pchgcard" style="flex:1;min-width:130px;background:var(--card2);border-radius:12px;padding:10px 14px">
+          <div style="font-size:12px;color:var(--mut)">${ML().chg}</div>
+          <div style="font-weight:800;font-size:15px;color:var(--mut)">${ML().nochg}</div></div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px">
+        <button onclick="openSub()" style="flex:1;min-width:150px;background:var(--accent);color:#fff;border:none;border-radius:11px;padding:12px;font-weight:800;cursor:pointer;font-family:inherit;font-size:14px">${ML().alerts}</button>
+        <button onclick="shareCar('${c.car_id}')" style="flex:1;min-width:120px;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:11px;padding:12px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px">${ML().share}</button>
+        ${c.source_url&&c.source_url!=="#"?`<a href="${c.source_url}" target="_blank" rel="noopener" style="flex:1;min-width:120px;text-align:center;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:11px;padding:12px;font-weight:700;text-decoration:none;font-size:14px">${ML().openad}</a>`:""}
       </div>
       <div class="mspecs">
         ${spec(t.fuel,c.fuel)}${spec(t.gear,c.gearbox)}${spec(t.vol,c.engine_l?c.engine_l+" l":"")}
@@ -834,7 +860,7 @@ function openModal(c){
         <span style="background:var(--accent);color:#fff;font-weight:800;padding:8px 15px;border-radius:10px;white-space:nowrap">carVertical →</span>
       </a>
       <div class="mdesc" id="mdesc" style="display:none"></div><div id="txnote" style="margin-top:6px"></div>
-      ${c.source_url&&c.source_url!=="#"?`<a class="mlink" href="${c.source_url}" target="_blank" rel="noopener">${t.openOrig}</a>`:""}
+      ${simHtml}
     </div>`;
   document.getElementById("ov").classList.add("show");
   loadHistory(c.car_id);
