@@ -738,6 +738,10 @@ async function loadHistory(carId){
     if(pts.length<2){box.innerHTML=`<h3>${T().priceHist}</h3><div class="muted">${T().histOne}</div>`;return;}
     const first=pts[0],last=pts[pts.length-1];
     const dp=last.price-first.price,dpct=first.price?Math.round(dp/first.price*100):0;
+    const peak=Math.max(...pts.map(p=>p.price)),drop=last.price-peak,dpc=peak?Math.round(drop/peak*100):0;
+    const pdc=document.getElementById("pdropcard");
+    if(pdc&&drop<0){pdc.style.display="";pdc.style.background="rgba(63,185,80,.13)";
+      pdc.innerHTML=`<div style="font-size:12px;color:var(--mut)">${ML().drop}</div><div style="font-weight:800;font-size:15px;color:var(--down)">${eur(drop)} (${dpc}%)</div>`;}
     const dm=(last.mileage!=null&&first.mileage!=null)?last.mileage-first.mileage:null;
     const pcl=dp<0?"dn":dp>0?"up":"";
     const summary=`<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:2px 0 12px;font-size:13.5px;color:var(--mut)">
@@ -791,6 +795,11 @@ async function translateDesc(c){
 function txNote(c){ const n=document.getElementById("txnote"); if(!n)return; const L=TXLABEL[lang]||TXLABEL.en;
   n.innerHTML=`<span class="muted" style="font-size:12px">${L.auto} · <a style="cursor:pointer;color:var(--accent)" onclick="showOrig('${c.car_id}')">${L.orig}</a></span>`; }
 function showOrig(id){ const c=allCars.find(x=>x.car_id===id), box=document.getElementById("mdesc"); if(box&&c)box.textContent=c.description; const n=document.getElementById("txnote"); if(n)n.innerHTML=""; }
+const ML_T={lv:{created:"Izveidots",drop:"Cenas kritums no augstākās",cv:"Pārbaudīt auto vēsturi",cvsub:"carVertical · ievadi VIN un saņem atlaidi"},en:{created:"Created",drop:"Price drop from peak",cv:"Check vehicle history",cvsub:"carVertical · enter VIN for a discount"},ru:{created:"Создано",drop:"Падение цены от пика",cv:"Проверить историю авто",cvsub:"carVertical · введите VIN и получите скидку"},lt:{created:"Sukurta",drop:"Kainos kritimas nuo piko",cv:"Patikrinti automobilio istoriją",cvsub:"carVertical · įveskite VIN ir gaukite nuolaidą"},et:{created:"Loodud",drop:"Hinnalangus tipust",cv:"Kontrolli sõiduki ajalugu",cvsub:"carVertical · sisesta VIN ja saa allahindlus"}};
+function ML(){return ML_T[lang]||ML_T.en;}
+function relAge(ts){if(!ts)return"—";const d=Math.floor((Date.now()-new Date(ts))/864e5);
+  const M={lv:["Šodien","Vakar"," dienas atpakaļ"],en:["Today","Yesterday"," days ago"],ru:["Сегодня","Вчера"," дн. назад"],lt:["Šiandien","Vakar"," d. atgal"],et:["Täna","Eile"," p tagasi"]}[lang]||["Today","Yesterday"," days ago"];
+  if(d<=0)return M[0];if(d===1)return M[1];return d+M[2];}
 function openModal(c){
   galIdx=0;const t=T();
   const ph=((c.photos&&c.photos.length)?c.photos:[]).map(hq);
@@ -807,6 +816,12 @@ function openModal(c){
         <div class="mtitle">${esc(c.make)} ${esc(c.model)} <span>· ${c.year||""}</span></div>
         <div class="mprice"><div class="v">${eur(c.last_price)}</div>${ratePill(c)}</div>
       </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin:12px 0 2px">
+        <div style="flex:1;min-width:130px;background:var(--card2);border-radius:12px;padding:10px 14px">
+          <div style="font-size:12px;color:var(--mut)">${ML().created}</div>
+          <div style="font-weight:800;font-size:15px">${c.posted?relAge(c.posted):"—"}</div></div>
+        <div id="pdropcard" style="display:none;flex:1;min-width:160px;border-radius:12px;padding:10px 14px"></div>
+      </div>
       <div class="mspecs">
         ${spec(t.fuel,c.fuel)}${spec(t.gear,c.gearbox)}${spec(t.vol,c.engine_l?c.engine_l+" l":"")}
         ${spec(t.mil,c.last_mileage?km(c.last_mileage):"")}${spec(t.body,c.body)}${spec(t.drive,c.drivetrain)}
@@ -814,6 +829,10 @@ function openModal(c){
         ${spec({lv:"Ievietots",en:"Posted",ru:"Размещено",lt:"Įdėta",et:"Postitatud"}[lang]||"Posted", c.posted?new Date(c.posted).toLocaleString("lv-LV",{timeZone:"Europe/Riga"}):"")}
       </div>
       <div class="hist" id="hist"><h3>${t.priceHist}</h3><div class="muted">${t.loading}</div></div>
+      <a class="cvbanner" href="${CARV}" target="_blank" rel="noopener nofollow sponsored" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:13px 18px;text-decoration:none;color:var(--ink)">
+        <div><div style="font-weight:800">${ML().cv}</div><div style="font-size:12.5px;color:var(--mut)">${ML().cvsub}</div></div>
+        <span style="background:var(--accent);color:#fff;font-weight:800;padding:8px 15px;border-radius:10px;white-space:nowrap">carVertical →</span>
+      </a>
       <div class="mdesc" id="mdesc" style="display:none"></div><div id="txnote" style="margin-top:6px"></div>
       ${c.source_url&&c.source_url!=="#"?`<a class="mlink" href="${c.source_url}" target="_blank" rel="noopener">${t.openOrig}</a>`:""}
     </div>`;
