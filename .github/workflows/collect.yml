@@ -9,7 +9,7 @@ on:
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -28,11 +28,11 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SS_PAGES: "10"        # ss.lv "today" scan (with details) for new listings
           SS_FULL: "1"          # also sweep the full ss.lv catalogue brand-by-brand
-          SS_BRANDS_PER_RUN: "16"  # MAX: sweep many brands per run to cover the whole catalogue fast
-          SS_BRAND_PAGES: "10"     # MAX: go deep into each brand
-          SS_SWEEP_DET: "800"   # detail-fetch (full photo gallery) every new swept car -> no 1-photo cars
+          SS_BRANDS_PER_RUN: "8"   # sized so the run finishes well under the 30-min timeout (cursor advances every run)
+          SS_BRAND_PAGES: "6"
+          SS_SWEEP_DET: "400"   # detail-fetch (full photo gallery) every new swept car -> no 1-photo cars
           SKIP_LTEE: "1"        # autoplius/auto24 handled by the separate proxied workflow
-          BACKFILL: "500"       # drain the remaining 1-photo backlog faster
+          BACKFILL: "250"       # drain the remaining 1-photo backlog
           DEACTIVATE: "1"       # hide listings no longer seen (removed/sold) - keeps row + VIN + history
           DEACTIVATE_DAYS: "3"  # grace period before hiding an unseen listing
         run: python run_all.py
