@@ -712,15 +712,23 @@ function gal(d){const im=document.querySelectorAll("#modal .mgal img");if(im.len
 function closeModal(){document.getElementById("ov").classList.remove("show");}
 function sparkline(pts){
   if(pts.length<2)return"";
-  const w=600,h=150,pad=22,ps=pts.map(p=>p.price).filter(x=>x!=null);
+  const w=640,h=230,padL=64,padR=16,padT=16,padB=34;
+  const ps=pts.map(p=>p.price).filter(x=>x!=null);
   const mn=Math.min(...ps),mx=Math.max(...ps),rg=(mx-mn)||1;
-  const X=i=>pad+(w-2*pad)*i/(pts.length-1),Y=v=>h-pad-(h-2*pad)*((v-mn)/rg);
+  const X=i=>padL+(w-padL-padR)*i/(pts.length-1);
+  const Y=v=>padT+(h-padT-padB)*(1-(v-mn)/rg);
   const line=pts.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)},${Y(p.price).toFixed(1)}`).join(" ");
-  const area=`M${X(0)},${h-pad} `+pts.map((p,i)=>`L${X(i).toFixed(1)},${Y(p.price).toFixed(1)}`).join(" ")+` L${X(pts.length-1)},${h-pad} Z`;
-  return `<svg class="spark" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-    <defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#1f6feb" stop-opacity=".18"/><stop offset="1" stop-color="#1f6feb" stop-opacity="0"/></linearGradient></defs>
-    <path d="${area}" fill="url(#g)"/><path d="${line}" fill="none" stroke="#1f6feb" stroke-width="2.5"/>
-    ${pts.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.price).toFixed(1)}" r="3.2" fill="#1f6feb"/>`).join("")}</svg>`;
+  const area=`M${X(0).toFixed(1)},${(h-padB).toFixed(1)} `+pts.map((p,i)=>`L${X(i).toFixed(1)},${Y(p.price).toFixed(1)}`).join(" ")+` L${X(pts.length-1).toFixed(1)},${(h-padB).toFixed(1)} Z`;
+  const ny=4,grid=[],ylab=[];
+  for(let g=0;g<=ny;g++){const v=mn+rg*g/ny,y=Y(v).toFixed(1);
+    grid.push(`<line x1="${padL}" y1="${y}" x2="${w-padR}" y2="${y}" stroke="var(--line)" stroke-width="1"/>`);
+    ylab.push(`<text x="${padL-8}" y="${(+y+4).toFixed(1)}" text-anchor="end" font-size="11" fill="var(--mut)">${eur(Math.round(v))}</text>`);}
+  const xlab=`<text x="${X(0).toFixed(1)}" y="${h-12}" text-anchor="start" font-size="11" fill="var(--mut)">${dt(pts[0].ts)}</text><text x="${X(pts.length-1).toFixed(1)}" y="${h-12}" text-anchor="end" font-size="11" fill="var(--mut)">${dt(pts[pts.length-1].ts)}</text>`;
+  const dots=pts.map((p,i)=>`<circle cx="${X(i).toFixed(1)}" cy="${Y(p.price).toFixed(1)}" r="3.8" fill="var(--accent)" stroke="var(--card)" stroke-width="1.5"><title>${dt(p.ts)} · ${eur(p.price)}</title></circle>`).join("");
+  return `<svg class="spark" viewBox="0 0 ${w} ${h}" style="width:100%;height:auto;margin:8px 0 4px;overflow:visible">
+    <defs><linearGradient id="g" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="var(--accent)" stop-opacity=".22"/><stop offset="1" stop-color="var(--accent)" stop-opacity="0"/></linearGradient></defs>
+    ${grid.join("")}<path d="${area}" fill="url(#g)"/><path d="${line}" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>
+    ${dots}${ylab.join("")}${xlab}</svg>`;
 }
 async function loadHistory(carId){
   const box=document.getElementById("hist");if(!box)return;
