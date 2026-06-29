@@ -479,6 +479,7 @@ function rateprice(c){
   const k = dev<=-0.18?"vg":dev<=-0.07?"g":dev<0.07?"f":dev<0.18?"h":"op";
   return {k,label:(RATEL[lang]||RATEL.en)[k]};
 }
+function esc(s){return s==null?"":String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
 function ratePill(c){
   const r=rateprice(c); if(!r)return"";
   const lvl={vg:4,g:3,f:2,h:1,op:1}[r.k];
@@ -491,15 +492,15 @@ function innerCard(c,fresh){
     ? ph.map((u,k)=>`<img loading="lazy" referrerpolicy="no-referrer" class="${k===0?'show':''}" src="${u}">`).join("")
       +`<div class="dots">${ph.map((_,k)=>`<span class="${k===0?'a':''}"></span>`).join("")}</div>`
     : `<div class="noimg">${T().noPhoto}</div>`;
-  const specs=[c.last_mileage!=null?km(c.last_mileage):null,norm("fuel",c.fuel),norm("gear",c.gearbox),c.engine_l?c.engine_l+" l":null,norm("body",c.body)].filter(Boolean).join(" · ");
+  const specs=[c.last_mileage!=null?km(c.last_mileage):null,esc(norm("fuel",c.fuel)),esc(norm("gear",c.gearbox)),c.engine_l?esc(c.engine_l)+" l":null,esc(norm("body",c.body))].filter(Boolean).join(" · ");
   return `<div class="ph">${fresh?'<span class="badge">JAUNS</span>':''}
-    <span class="flag"><span class="fdot ${c.country}"></span>${c.country||""}</span>${imgs}</div>
+    <span class="flag"><span class="fdot ${esc(c.country)}"></span>${esc(c.country)}</span>${imgs}</div>
     <div class="body">
-      <div class="name">${c.make||""} ${c.model||""}<span class="yr">${c.year||""}</span></div>
+      <div class="name">${esc(c.make)} ${esc(c.model)}<span class="yr">${c.year||""}</span></div>
       <div class="specrow">${specs||"&nbsp;"}</div>
       <div class="cardfoot">
         <div><span class="bigprice">${eur(c.last_price)}</span>${ratePill(c)}</div>
-        <span class="loc">${c.location||c.country||""}<br>${postedTxt(c)}</span></div>
+        <span class="loc">${esc(c.location||c.country||"")}<br>${postedTxt(c)}</span></div>
     </div>`;
 }
 function wireHoverEl(card){
@@ -597,7 +598,7 @@ function applyFilters(cars){
   return r;
 }
 function fillSelect(id,vals,cur){const el=document.getElementById(id);const keep=el.firstElementChild.outerHTML;
-  el.innerHTML=keep+vals.map(v=>`<option ${v===cur?"selected":""}>${v}</option>`).join("");}
+  el.innerHTML=keep+vals.map(v=>`<option ${v===cur?"selected":""}>${esc(v)}</option>`).join("");}
 function renderPager(totalPages){
   if(totalPages<=1)return"";
   const cur=curPage;
@@ -655,7 +656,7 @@ function setFeatured(cars){
   const feat=cars.find(c=>c.photos&&c.photos.length&&c.last_price);
   if(feat&&feat.car_id!==_featId){_featId=feat.car_id;
     const fe=document.getElementById("herofeat");
-    if(fe)fe.innerHTML=`<a onclick='openModalById("${feat.car_id}")'>${feat.make||""} ${feat.model||""} ${feat.year||""} · ${eur(feat.last_price)}</a>`;}
+    if(fe)fe.innerHTML=`<a onclick='openModalById("${feat.car_id}")'>${esc(feat.make)} ${esc(feat.model)} ${feat.year||""} · ${eur(feat.last_price)}</a>`;}
 }
 function scrollToEl(id){const el=document.getElementById(id);if(el){const y=el.getBoundingClientRect().top+window.pageYOffset-58;window.scrollTo({top:y,behavior:"smooth"});}}
 function scrollTop(){window.scrollTo({top:0,behavior:"smooth"});}
@@ -785,7 +786,7 @@ function showOrig(id){ const c=allCars.find(x=>x.car_id===id), box=document.getE
 function openModal(c){
   galIdx=0;const t=T();
   const ph=((c.photos&&c.photos.length)?c.photos:[]).map(hq);
-  const spec=(l,v)=>v?`<div class="mspec"><b>${l}</b>${v}</div>`:"";
+  const spec=(l,v)=>v?`<div class="mspec"><b>${l}</b>${esc(v)}</div>`:"";
   const gallery=ph.length
     ? ph.map((u,k)=>`<img class="${k===0?'show':''}" referrerpolicy="no-referrer" src="${u}">`).join("")
       +(ph.length>1?`<button class="nav prev" onclick="gal(-1)">‹</button><button class="nav next" onclick="gal(1)">›</button><span class="cnt" id="gcnt">1 / ${ph.length}</span>`:"")
@@ -795,7 +796,7 @@ function openModal(c){
     <div class="mgal">${gallery}</div>
     <div class="mbody">
       <div class="mtop">
-        <div class="mtitle">${c.make||""} ${c.model||""} <span>· ${c.year||""}</span></div>
+        <div class="mtitle">${esc(c.make)} ${esc(c.model)} <span>· ${c.year||""}</span></div>
         <div class="mprice"><div class="v">${eur(c.last_price)}</div>${ratePill(c)}</div>
       </div>
       <div class="mspecs">
