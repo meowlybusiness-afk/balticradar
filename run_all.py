@@ -74,14 +74,32 @@ def a24_desc(html):
         t=strip_tags(m.group(2))
         if t and len(t)>15: return t[:2500]
     return None
+import html as _html
+CANON={"lynk & co":"Lynk & Co","alfa romeo":"Alfa Romeo","aston martin":"Aston Martin",
+  "great wall":"Great Wall","land rover":"Land Rover","mercedes-benz":"Mercedes-Benz",
+  "rolls-royce":"Rolls-Royce","ds automobiles":"DS Automobiles"}
+def _deent(s):
+    try: return _html.unescape(s) if s else s
+    except Exception: return s
+def split_mm(title):
+    if not title: return None,None
+    t=_deent(str(title)).strip(); low=t.lower()
+    for mk in CANON:
+        if low.startswith(mk):
+            rest=t[len(mk):].strip(" ,-")
+            model=rest.split(",")[0].split()[0] if rest else None
+            return CANON[mk], (model or None)
+    p=t.replace(","," ").split()
+    make=p[0] if p else None; model=p[1] if len(p)>1 else None
+    if make and (re.fullmatch(r"\d+(\.\d+)?",make) or re.fullmatch(r"\d+\s*kW",make,re.I)): make=None
+    if model and (re.fullmatch(r"\d+\.\d+",model) or re.fullmatch(r"\d+\s*kW",model,re.I)): model=None
+    return make,model
 def ap_detail(html, source_url=None):
     kw=meta(html,"keywords"); title=meta(html,"og:title","property") or meta(html,"title")
     m=re.search(r"\bA(\d{6,})\b", title or kw or "")
     ad_id=("A"+m.group(1)) if m else None
     mm=((kw or title or "").split(",")[0]).strip() or None
-    make=model=None
-    if mm:
-        p=mm.split(" ",1); make=p[0]; model=p[1] if len(p)>1 else None
+    make,model=split_mm(mm) if mm else (None,None)
     reg=_kw(kw,AP_LABELS["reg_date"]); year=int(reg[:4]) if reg and reg[:4].isdigit() else None
     er=_kw(kw,AP_LABELS["engine"]); em=re.search(r"(\d{3,5})",er) if er else None
     engine_cc=int(em.group(1)) if em else None
@@ -133,7 +151,7 @@ def a24_detail(html, source_url=None):
     ogurl=meta(html,"og:url","property") or source_url or ""
     img=meta(html,"og:image","property")
     am=re.search(r"/vehicles/(\d+)",ogurl); ad_id=("EE"+am.group(1)) if am else None
-    toks=ogt.split(); make=toks[0] if toks else None; model=toks[1] if len(toks)>1 else None
+    make,model=split_mm(ogt)
     ym=re.search(r"\b((?:19|20)\d{2})\b",ogd) or re.search(r"\b((?:19|20)\d{2})\b",desc)
     year=int(ym.group(1)) if ym else None
     fm=re.search(r"\b(petrol|diesel|electric|hybrid|gas)\b",ogd,re.I); fuel=fm.group(1).lower() if fm else None
@@ -436,7 +454,7 @@ SS_PAGES=int(os.environ.get("SS_PAGES",5)); AP_PAGES=int(os.environ.get("AP_PAGE
 A24_PAGES=int(os.environ.get("A24_PAGES",1)); DETAIL_CAP=int(os.environ.get("DETAIL_CAP",200))
 SS_DETAIL=int(os.environ.get("SS_DETAIL",1)); PAUSE=0.5
 AP_BASE="https://lv.autoplius.lt/sludinajumi/lietotas-automasinas?order_by=1&order_direction=DESC"
-A24_BASE="https://eng.auto24.ee/kasutatud/nimekiri.php?ad=7"
+A24_BASE="https://eng.auto24.ee/kasutatud/nimekiri.php"   # full used list (~22k); ad=7 was a narrow ~2k subset
 SS_BASE="https://www.ss.lv/lv/transport/cars/today/"
 SS_H={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36","Accept-Language":"lv,en;q=0.9"}
 _ss=requests.Session(); _ss.headers.update(SS_H)
@@ -560,17 +578,9 @@ def run():
                     print(f"{name} page {n} (cursor): new total {new}, details {dcount}"); time.sleep(PAUSE)
                 if cursor_key: set_cursor(cursor_key, 1 if empty else start+pages)
             crawl("autoplius",AP_BASE,AP_PAGES,lambda t:ap_list(t,"lv"),ap_detail,None,page_url,"autoplius")
-            # auto24 paginates via ?ad=7&ssid=<session>&ak=<offset of 50>; grab ssid from page 1, then walk deep with the cursor
-            a24_ssid=[None]
-            try:
-                _h0=fetch(A24_BASE); _m=re.search(r'ssid=(\d+)',_h0 or ""); a24_ssid[0]=_m.group(1) if _m else None
-                print("auto24 ssid:",a24_ssid[0])
-            except Exception as e: print("auto24 ssid prime ERR",repr(e))
+            # auto24 full used-vehicle list (~22k). Pages via ?ak=<offset of 50>; cursor walks deep across cycles.
             def a24_paginate(base,n):
-                u=base
-                if a24_ssid[0]: u+=f"&ssid={a24_ssid[0]}"
-                if n>1: u+=f"&ak={(n-1)*50}"
-                return u
+                return base if n<=1 else base+("&" if "?" in base else "?")+f"ak={(n-1)*50}"
             crawl("auto24",A24_BASE,A24_PAGES,a24_list,a24_detail,"EE",a24_paginate,"auto24")
     except Exception as e:
         if str(e)=="skip-ltee": print("SKIP_LTEE=1 -> autoplius/auto24 skipped this run")

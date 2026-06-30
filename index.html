@@ -392,7 +392,7 @@ const ST=()=>SUBT[lang]||SUBT.en;
 function openSub(){
   const s=ST();
   const p=JSON.parse(localStorage.getItem("br_profile")||"null")||{};
-  const makes=[...new Set(allCars.map(c=>c.make).filter(Boolean))].sort();
+  const makes=[...new Set(allCars.map(c=>c.make).filter(v=>v&&!junkVal(v)))].sort();
   const makeOpts=`<option value="">${s.make}</option>`+makes.map(m=>`<option ${p.make===m?'selected':''}>${m}</option>`).join("");
   const cOpts=`<option value="">${s.anyC}</option>`+['LV','LT','EE'].map(x=>`<option ${p.country===x?'selected':''}>${x}</option>`).join("");
   const val=k=>p[k]!=null?String(p[k]).replace(/"/g,'&quot;'):"";
@@ -483,7 +483,16 @@ function rateprice(c){
   const k = dev<=-0.18?"vg":dev<=-0.07?"g":dev<0.07?"f":dev<0.18?"h":"op";
   return {k,label:(RATEL[lang]||RATEL.en)[k]};
 }
-function esc(s){return s==null?"":String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
+function deent(s){return s==null?"":String(s).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#0?39;/g,"'").replace(/&nbsp;/g,' ').replace(/&amp;/g,'&');}
+function esc(s){if(s==null)return"";return deent(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
+// True for junk make/model values that should not appear in dropdowns:
+// empty, "-", anything starting with "&" (Lynk & Co split), "-kita-" (LT "other"),
+// power values (11kW/18kW), and decimal engine volumes (2.0/1.5). Real numeric models (100, 911) are kept.
+function junkVal(s){if(s==null)return true;s=String(deent(s)).trim();
+  if(!s||s==="-"||/^&/.test(s)||/^-.*-$/.test(s))return true;
+  if(/^\d+(\.\d+)?\s*kw$/i.test(s))return true;
+  if(/^\d+\.\d+$/.test(s))return true;
+  return false;}
 function ratePill(c){
   const r=rateprice(c); if(!r)return"";
   const lvl={vg:4,g:3,f:2,h:1,op:1}[r.k];
@@ -675,10 +684,10 @@ function observeReveals(){
 function pickMake(m){F.make=m;const el=document.getElementById("make");if(el)el.value=m;localStorage.setItem("br_filters",JSON.stringify(F));curPage=1;repaint();scrollToEl("grid");}
 function openModalById(id){const c=allCars.find(x=>x.car_id===id);if(c)openModal(c);}
 function refreshControls(){
-  fillSelect("make",[...new Set(allCars.map(c=>c.make).filter(Boolean))].sort(),F.make);
+  fillSelect("make",[...new Set(allCars.map(c=>c.make).filter(v=>v&&!junkVal(v)))].sort(),F.make);
   const cm=F.make?allCars.filter(c=>c.make===F.make):allCars;
-  const models=[...new Set(cm.map(c=>c.model).filter(Boolean))];
-  const series=[...new Set(cm.map(c=>modelSeries(c.make,c.model)).filter(Boolean))].filter(s=>!models.includes(s));
+  const models=[...new Set(cm.map(c=>c.model).filter(v=>v&&!junkVal(v)))];
+  const series=[...new Set(cm.map(c=>modelSeries(c.make,c.model)).filter(v=>v&&!junkVal(v)))].filter(s=>!models.includes(s));
   fillSelect("model",[...series,...models].sort(),F.model);
   fillSelect("fuel",[...new Set(allCars.map(c=>norm("fuel",c.fuel)).filter(Boolean))].sort(),F.fuel);
   fillSelect("gear",[...new Set(allCars.map(c=>norm("gear",c.gearbox)).filter(Boolean))].sort(),F.gear);
