@@ -455,7 +455,7 @@ SS_PAGES=int(os.environ.get("SS_PAGES",5)); AP_PAGES=int(os.environ.get("AP_PAGE
 A24_PAGES=int(os.environ.get("A24_PAGES",1)); DETAIL_CAP=int(os.environ.get("DETAIL_CAP",200))
 SS_DETAIL=int(os.environ.get("SS_DETAIL",1)); PAUSE=0.5
 AP_BASE="https://lv.autoplius.lt/sludinajumi/lietotas-automasinas?order_by=1&order_direction=DESC"
-A24_BASE="https://eng.auto24.ee/kasutatud/nimekiri.php"   # full used list (~22k); ad=7 was a narrow ~2k subset
+A24_BASE="https://eng.auto24.ee/kasutatud/nimekiri.php?a=101102"   # cars+SUV ONLY (~14.7k); a=100 is ALL types incl. motos/trailers/trucks/machinery
 SS_BASE="https://www.ss.lv/lv/transport/cars/today/"
 SS_H={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36","Accept-Language":"lv,en;q=0.9"}
 _ss=requests.Session(); _ss.headers.update(SS_H)

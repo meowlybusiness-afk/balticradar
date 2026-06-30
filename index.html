@@ -321,11 +321,11 @@ const CARV="https://www.carvertical.com/lv";
 let countryFilter="all", firstLoad=true, allCars=[];
 const PAGE_SIZE=30; let curPage=1;
 const RATEL={
- lv:{vg:"Lieliska cena",g:"Laba cena",f:"Taisnīga cena",h:"Augstāka cena",op:"Pārāk dārga"},
- en:{vg:"Very good price",g:"Good price",f:"Fair price",h:"High price",op:"Overpriced"},
- ru:{vg:"Отличная цена",g:"Хорошая цена",f:"Справедливая цена",h:"Высокая цена",op:"Завышенная цена"},
- lt:{vg:"Puiki kaina",g:"Gera kaina",f:"Teisinga kaina",h:"Didesnė kaina",op:"Per brangu"},
- et:{vg:"Väga hea hind",g:"Hea hind",f:"Õiglane hind",h:"Kõrgem hind",op:"Ülehinnatud"}};
+ lv:{vg:"Lieliska cena",g:"Taisnīga cena",f:"Vidēja cena",h:"Augstāka cena",op:"Pārāk dārga"},
+ en:{vg:"Excellent price",g:"Fair price",f:"Average price",h:"Higher price",op:"Overpriced"},
+ ru:{vg:"Отличная цена",g:"Справедливая цена",f:"Средняя цена",h:"Выше средней",op:"Завышенная цена"},
+ lt:{vg:"Puiki kaina",g:"Teisinga kaina",f:"Vidutinė kaina",h:"Aukštesnė kaina",op:"Per brangu"},
+ et:{vg:"Väga hea hind",g:"Õiglane hind",f:"Keskmine hind",h:"Kõrgem hind",op:"Ülehinnatud"}};
 const F={q:"",make:"",model:"",fuel:"",gear:"",bodyf:"",drive:"",pmin:"",pmax:"",ymin:"",ymax:"",mmin:"",mmax:"",emin:"",emax:"",sort:"new",
   ...JSON.parse(localStorage.getItem("br_filters")||"{}")};
 // Drop stale/junk saved filters (e.g. a "&amp;" model saved before dropdowns were cleaned) so they can't hide the catalogue.
@@ -496,10 +496,21 @@ function junkVal(s){if(s==null)return true;s=String(deent(s)).trim();
   if(/^\d+(\.\d+)?\s*kw$/i.test(s))return true;
   if(/^\d+\.\d+$/.test(s))return true;
   return false;}
+// Non-car listings to exclude entirely (motorcycles, trailers, trucks, machinery, boats, vans, buses).
+const NONCAR_BODY=new Set(["mototechnics","truck","commercial vehicle","water vehicle","construction machinery","agricultural machinery","forest machinery","communal machinery","bus","caravan","autocaravan","racing vehicle","trailer","special technics","komercials","komerciāls"]);
+const NONCAR_MAKE=new Set(["neptun","brentex","brentex-trailer","respo","agados","tiki","tiki treiler","anssems","boro","niewiadow","temared","pongratz","humbaur","faro","sorelpol","knott","new holland","caterpillar","jcb","shantui","kubota","claas","massey ferguson","john deere","bobcat","manitou","merlo","wm meyer","saris","brenderup","niewiadów"]);
+// Junk body values that sit on real cars (drivetrain/feature text mis-parsed as body) — keep the car, hide from body dropdown.
+const BODYJUNK=new Set(["fwd","awd","rwd","4wd","enhanced autopilot","open","/","-"]);
+function isCar(c){
+  const b=String(deent(c.body||"")).toLowerCase().trim();
+  if(b&&NONCAR_BODY.has(b))return false;
+  const mk=String(deent(c.make||"")).toLowerCase().trim();
+  if(mk&&NONCAR_MAKE.has(mk))return false;
+  return true;}
 function ratePill(c){
   const r=rateprice(c); if(!r)return"";
-  const lvl={vg:4,g:3,f:2,h:1,op:1}[r.k];
-  const bars=[0,1,2,3].map(i=>`<i class="${i<lvl?'on':''}"></i>`).join("");
+  const lvl={vg:1,g:2,f:3,h:4,op:5}[r.k];
+  const bars=[0,1,2,3,4].map(i=>`<i class="${i<lvl?'on':''}"></i>`).join("");
   return `<div class="prate ${r.k}"><span class="pbar">${bars}</span>${r.label}</div>`;
 }
 function innerCard(c,fresh){
@@ -694,7 +705,7 @@ function refreshControls(){
   fillSelect("model",[...series,...models].sort(),F.model);
   fillSelect("fuel",[...new Set(allCars.map(c=>norm("fuel",c.fuel)).filter(Boolean))].sort(),F.fuel);
   fillSelect("gear",[...new Set(allCars.map(c=>norm("gear",c.gearbox)).filter(Boolean))].sort(),F.gear);
-  fillSelect("bodyf",[...new Set(allCars.map(c=>norm("body",c.body)).filter(Boolean))].sort(),F.bodyf);
+  fillSelect("bodyf",[...new Set(allCars.filter(c=>c.body&&!BODYJUNK.has(String(deent(c.body)).toLowerCase().trim())).map(c=>norm("body",c.body)).filter(Boolean))].sort(),F.bodyf);
   fillSelect("drive",[...new Set(allCars.map(c=>norm("drive",c.drivetrain)).filter(Boolean))].sort(),F.drive);}
 
 const LIST_COLS="car_id,source,country,make,model,year,engine_l,fuel,gearbox,body,drivetrain,last_mileage,last_price,location,posted,first_seen,source_url";
@@ -716,7 +727,7 @@ async function tick(){
   try{cars=await fetchAll();live=true;}
   catch(e){cars=EMBEDDED.cars;}
   const wasFirst=firstLoad;
-  allCars=cars||[];refreshControls();setFeatured(allCars);repaint();
+  allCars=(cars||[]).filter(isCar);refreshControls();setFeatured(allCars);repaint();
   if(wasFirst&&typeof renderContent==="function")renderContent();
   if(wasFirst){const _cid=new URLSearchParams(location.search).get("car");if(_cid){const _cc=allCars.find(x=>x.car_id===_cid);if(_cc)setTimeout(()=>openModal(_cc),80);}}
   firstLoad=false;
