@@ -830,7 +830,7 @@ function openModal(c){
     : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9aa7b8">Bez foto</div>';
   const sim=(window.allCars||allCars).filter(x=>x.car_id!==c.car_id&&x.make===c.make&&x.model===c.model&&x.last_price!=null).slice(0,6);
   const simHtml=sim.length?`<div style="margin-top:20px"><h3 style="margin:0 0 10px">${ML().similar}</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px">`+sim.map(s=>`<div onclick="openModalById('${s.car_id}')" style="display:flex;gap:10px;align-items:center;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;cursor:pointer">
-      <img src="${s.photos&&s.photos[0]?hq(s.photos[0]):''}" referrerpolicy="no-referrer" style="width:56px;height:44px;object-fit:cover;border-radius:8px;background:var(--line);flex:none" onerror="this.style.visibility='hidden'">
+      <img id="simimg_${s.car_id}" src="${(s.photos&&s.photos.length)?hq(uniqPhotos(s.photos)[0]):''}" referrerpolicy="no-referrer" style="width:56px;height:44px;object-fit:cover;border-radius:8px;background:var(--line);flex:none" onerror="this.style.visibility='hidden'">
       <div style="min-width:0"><div style="font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.make)} ${esc(s.model)} ${s.year||""}</div><div style="font-weight:800;color:var(--accent);font-size:14px">${eur(s.last_price)}</div></div></div>`).join("")+`</div></div>`:"";
   document.getElementById("modal").innerHTML=`
     <button class="mclose" onclick="closeModal()">×</button>
@@ -870,6 +870,20 @@ function openModal(c){
   document.getElementById("ov").classList.add("show");
   loadHistory(c.car_id);
   loadDesc(c);
+  loadModalPhotos(c,sim);
+}
+async function loadModalPhotos(c,sim){
+  try{
+    const ids=[c.car_id].concat((sim||[]).map(s=>s.car_id)).filter(Boolean).map(encodeURIComponent);
+    if(!ids.length)return;
+    const r=await fetch(`${SB_URL}/rest/v1/v_listings?car_id=in.(${ids.join(",")})&select=car_id,photos`,{headers:SBH});
+    const map={};(await r.json()).forEach(x=>map[x.car_id]=x.photos);
+    if((!c.photos||!c.photos.length)&&map[c.car_id]&&map[c.car_id].length){
+      c.photos=map[c.car_id];const ph=uniqPhotos(c.photos).map(hq);const gal=document.querySelector("#modal .mgal");
+      if(gal){galIdx=0;gal.innerHTML=ph.map((u,k)=>`<img class="${k===0?'show':''}" referrerpolicy="no-referrer" src="${u}">`).join("")+(ph.length>1?`<button class="nav prev" onclick="gal(-1)">‹</button><button class="nav next" onclick="gal(1)">›</button><span class="cnt" id="gcnt">1 / ${ph.length}</span>`:"");}
+    }
+    (sim||[]).forEach(s=>{const p=map[s.car_id];if(p&&p.length){const im=document.getElementById("simimg_"+s.car_id);if(im){im.src=hq(uniqPhotos(p)[0]);im.style.visibility="";}}});
+  }catch(e){}
 }
 document.getElementById("ov").addEventListener("click",e=>{if(e.target.id==="ov")closeModal();});
 document.getElementById("subov").addEventListener("click",e=>{if(e.target.id==="subov")closeSub();});
