@@ -854,8 +854,8 @@ function openModal(c){
         ${c.source_url&&c.source_url!=="#"?`<a href="${c.source_url}" target="_blank" rel="noopener" style="flex:1;min-width:120px;text-align:center;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:11px;padding:12px;font-weight:700;text-decoration:none;font-size:14px">${ML().openad}</a>`:""}
       </div>
       <div class="mspecs">
-        ${spec(t.fuel,c.fuel)}${spec(t.gear,c.gearbox)}${spec(t.vol,c.engine_l?c.engine_l+" l":"")}
-        ${spec(t.mil,c.last_mileage?km(c.last_mileage):"")}${spec(t.body,c.body)}${spec(t.drive,c.drivetrain)}
+        ${spec(t.fuel,norm("fuel",c.fuel))}${spec(t.gear,norm("gear",c.gearbox))}${spec(t.vol,c.engine_l?c.engine_l+" l":"")}
+        ${spec(t.mil,c.last_mileage?km(c.last_mileage):"")}${spec(t.body,norm("body",c.body))}${spec(t.drive,norm("drive",c.drivetrain))}
         ${spec(t.loc,c.location||c.country)}${spec(t.vin,c.vin_prefix)}${spec(t.source,c.source)}
         ${spec({lv:"Ievietots",en:"Posted",ru:"Размещено",lt:"Įdėta",et:"Postitatud"}[lang]||"Posted", c.posted?new Date(c.posted).toLocaleString("lv-LV",{timeZone:"Europe/Riga"}):"")}
       </div>
