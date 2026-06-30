@@ -5,7 +5,8 @@ Everything is inline (no local imports) so files can never get scrambled on uplo
 Storage: if SUPABASE_URL + SUPABASE_KEY env are set -> Supabase; else -> listings.json preview.
 Env knobs: SS_PAGES, AP_PAGES, A24_PAGES, DETAIL_CAP, LOOP_MINUTES, SS_DETAIL.
 """
-import os, re, time, json, hashlib, datetime, requests
+import os, re, time, json, hashlib, datetime, requests, warnings
+warnings.filterwarnings("ignore")   # keep the log clean (hide harmless deprecation notices)
 from bs4 import BeautifulSoup
 
 # ============================================================ identity
@@ -454,6 +455,11 @@ def ss_brand_slugs():
 def ss_brand_page(slug,n): return f"{SS_ALL}{slug}/" if n==1 else f"{SS_ALL}{slug}/page{n}.html"
 
 def run():
+    if USE_SB and os.environ.get("REACTIVATE")=="1":
+        try:
+            _patch("cars",{"active":"eq.false"},{"active":True}); _patch("ads",{"active":"eq.false"},{"active":True})
+            print("REACTIVATE: falsely-hidden cars set back to active")
+        except Exception as e: print("reactivate err",repr(e))
     new=seen=0; seen_ids=set()
     for n in range(1,SS_PAGES+1):
         try: r=_ss.get(ss_page(n),timeout=25); html=r.text
@@ -554,7 +560,18 @@ def run():
                     print(f"{name} page {n} (cursor): new total {new}, details {dcount}"); time.sleep(PAUSE)
                 if cursor_key: set_cursor(cursor_key, 1 if empty else start+pages)
             crawl("autoplius",AP_BASE,AP_PAGES,lambda t:ap_list(t,"lv"),ap_detail,None,page_url,"autoplius")
-            crawl("auto24",A24_BASE,A24_PAGES,a24_list,a24_detail,"EE",None)
+            # auto24 paginates via ?ad=7&ssid=<session>&ak=<offset of 50>; grab ssid from page 1, then walk deep with the cursor
+            a24_ssid=[None]
+            try:
+                _h0=fetch(A24_BASE); _m=re.search(r'ssid=(\d+)',_h0 or ""); a24_ssid[0]=_m.group(1) if _m else None
+                print("auto24 ssid:",a24_ssid[0])
+            except Exception as e: print("auto24 ssid prime ERR",repr(e))
+            def a24_paginate(base,n):
+                u=base
+                if a24_ssid[0]: u+=f"&ssid={a24_ssid[0]}"
+                if n>1: u+=f"&ak={(n-1)*50}"
+                return u
+            crawl("auto24",A24_BASE,A24_PAGES,a24_list,a24_detail,"EE",a24_paginate,"auto24")
     except Exception as e:
         if str(e)=="skip-ltee": print("SKIP_LTEE=1 -> autoplius/auto24 skipped this run")
         else: print("browser phase error:",repr(e))
