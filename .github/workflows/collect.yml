@@ -28,9 +28,9 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SS_PAGES: "10"        # ss.lv "today" scan (with details) for new listings
           SS_FULL: "1"          # also sweep the full ss.lv catalogue brand-by-brand
-          SS_BRANDS_PER_RUN: "8"   # sized so the run finishes well under the 30-min timeout (cursor advances every run)
-          SS_BRAND_PAGES: "6"
-          SS_SWEEP_DET: "400"   # detail-fetch (full photo gallery) every new swept car -> no 1-photo cars
+          SS_BRANDS_PER_RUN: "10"  # cursor advances every run; finishes well under 30-min timeout
+          SS_BRAND_PAGES: "7"
+          SS_SWEEP_DET: "800"   # detail-fetch up to 800 new swept cars/run (ss.lv is fast/direct -> still ~15-18 min)
           SKIP_LTEE: "1"        # autoplius/auto24 handled by the separate proxied workflow
           BACKFILL: "250"       # drain the remaining 1-photo backlog
           DEACTIVATE: "0"       # OFF during bulk load: the slow cloud cron can't re-visit every car in 3 days, so it was falsely hiding still-for-sale cars. Re-enable once the catalogue is fully loaded.
