@@ -327,7 +327,7 @@ if USE_SB:
     def has_ad(ad_id): return bool(_get("ads",{"ad_id":f"eq.{ad_id}","select":"ad_id","limit":"1"}))
     def _cands(f):
         # lean select: only fields matching needs. NEVER fetch photos/description (huge egress).
-        p={"active":"eq.true","select":"car_id,make,model,year,engine_cc,fuel,gearbox,body,drivetrain,vin_prefix,owner_code,photo_hash,last_price,last_mileage","limit":"25"}
+        p={"active":"eq.true","select":"car_id,make,model,year,engine_cc,fuel,gearbox,body,drivetrain,vin_prefix,owner_code,last_price,last_mileage","limit":"25"}
         for k in ("make","model","year","engine_cc"):
             if f.get(k) not in (None,""): p[k]=f"eq.{f[k]}"
         return _get("cars",p)
