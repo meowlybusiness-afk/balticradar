@@ -328,6 +328,9 @@ const RATEL={
  et:{vg:"Väga hea hind",g:"Hea hind",f:"Õiglane hind",h:"Kõrgem hind",op:"Ülehinnatud"}};
 const F={q:"",make:"",model:"",fuel:"",gear:"",bodyf:"",drive:"",pmin:"",pmax:"",ymin:"",ymax:"",mmin:"",mmax:"",emin:"",emax:"",sort:"new",
   ...JSON.parse(localStorage.getItem("br_filters")||"{}")};
+// Drop stale/junk saved filters (e.g. a "&amp;" model saved before dropdowns were cleaned) so they can't hide the catalogue.
+["make","model"].forEach(k=>{if(F[k]&&junkVal(F[k]))F[k]="";});
+try{localStorage.setItem("br_filters",JSON.stringify(F));}catch(e){}
 let lang=localStorage.getItem("br_lang")||"lv";
 const LANG={
  lv:{search:"Meklēt marku vai modeli…",allMakes:"Visas markas",allFuels:"Visas degvielas",pFrom:"Cena no",pTo:"Cena līdz",yFrom:"Gads no",yTo:"Gads līdz",sNew:"Jaunākie",sPa:"Cena ↑",sPd:"Cena ↓",sYd:"Gads ↓",all:"Visi",results:"sludinājumi",noPhoto:"Bez foto",noResults:"Nav rezultātu.",min:"pirms %s min",hour:"pirms %s h",day:"pirms %s d",fuel:"Degviela",gear:"Ātrumkārba",vol:"Tilpums",mil:"Nobraukums",body:"Virsbūve",drive:"Piedziņa",loc:"Atrašanās",vin:"VIN",source:"Avots",priceHist:"Cenu vēsture",histOne:"Pagaidām viens cenas ieraksts. Vēsture parādīsies, kad cena mainīsies (mēs to sekojam automātiski).",openOrig:"Atvērt oriģinālo sludinājumu ↗",loading:"Ielādē…"},
