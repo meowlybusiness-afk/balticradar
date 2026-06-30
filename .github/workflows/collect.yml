@@ -33,7 +33,8 @@ jobs:
           SS_SWEEP_DET: "400"   # detail-fetch (full photo gallery) every new swept car -> no 1-photo cars
           SKIP_LTEE: "1"        # autoplius/auto24 handled by the separate proxied workflow
           BACKFILL: "250"       # drain the remaining 1-photo backlog
-          DEACTIVATE: "1"       # hide listings no longer seen (removed/sold) - keeps row + VIN + history
-          DEACTIVATE_DAYS: "3"  # grace period before hiding an unseen listing
+          DEACTIVATE: "0"       # OFF during bulk load: the slow cloud cron can't re-visit every car in 3 days, so it was falsely hiding still-for-sale cars. Re-enable once the catalogue is fully loaded.
+          DEACTIVATE_DAYS: "3"
+          REACTIVATE: "1"       # one-shot: set falsely-hidden cars back to active
         run: python run_all.py
       # Alert emails are sent by the separate notify.yml workflow (twice a day digest).
