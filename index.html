@@ -501,12 +501,20 @@ const NONCAR_BODY=new Set(["mototechnics","truck","commercial vehicle","water ve
 const NONCAR_MAKE=new Set(["neptun","brentex","brentex-trailer","respo","agados","tiki","tiki treiler","anssems","boro","niewiadow","temared","pongratz","humbaur","faro","sorelpol","knott","new holland","caterpillar","jcb","shantui","kubota","claas","massey ferguson","john deere","bobcat","manitou","merlo","wm meyer","saris","brenderup","niewiadów"]);
 // Junk body values that sit on real cars (drivetrain/feature text mis-parsed as body) — keep the car, hide from body dropdown.
 const BODYJUNK=new Set(["fwd","awd","rwd","4wd","enhanced autopilot","open","/","-"]);
+// Recognised passenger-car body types (raw English from auto24 + Latvian from ss.lv/autoplius).
+const CARBODY=new Set(["sedan","hatchback","touring","estate","wagon","minivan","mpv","coupe","cabriolet","convertible","roadster","pickup","limousine","suv","crossover","liftback","fastback","van","sedans","hečbeks","hecbeks","universālis","universalis","kupeja","kabriolets","pikaps","limuzīns","limuzins","apvidus","apvidus / suv","mikroautobuss / minivens","minivens","komerciāls","komercials"]);
+// Known passenger-car makes. A listing with NO car body is kept only if its make is here
+// (so real cars with a missing body survive, but pit-bikes/mopeds/trailers/machinery with odd makes are dropped).
+const CARMAKES=new Set(["abarth","acura","aiways","alfa romeo","alfa","alpina","alpine","aston martin","audi","austin","bentley","bmw","brilliance","bugatti","buick","byd","cadillac","chery","chevrolet","chrysler","citroen","citroën","cupra","dacia","daewoo","daihatsu","datsun","dodge","dongfeng","ds","ds automobiles","ferrari","fiat","fisker","ford","geely","genesis","gmc","great wall","haval","honda","hongqi","hummer","hyundai","infiniti","isuzu","jac","jaguar","jeep","kia","koenigsegg","lada","lamborghini","lancia","land rover","land","landrover","leapmotor","lexus","lincoln","lotus","lucid","lynk & co","lynk","maserati","maxus","maybach","mazda","mclaren","mercedes-benz","mercedes-amg","mercedes","mg","mini","mitsubishi","moskvich","nio","nissan","opel","peugeot","plymouth","polestar","pontiac","porsche","proton","ram","renault","rolls-royce","rover","saab","seat","scion","skoda","škoda","smart","ssangyong","subaru","suzuki","tesla","toyota","trabant","vauxhall","volkswagen","volvo","vw","wuling","xpeng","zaz","zeekr","mahindra","tata"]);
 function isCar(c){
   const b=String(deent(c.body||"")).toLowerCase().trim();
-  if(b&&NONCAR_BODY.has(b))return false;
+  if(b&&NONCAR_BODY.has(b))return false;            // explicit non-car body
   const mk=String(deent(c.make||"")).toLowerCase().trim();
-  if(mk&&NONCAR_MAKE.has(mk))return false;
-  return true;}
+  if(!mk)return false;                              // no make = junk
+  if(NONCAR_MAKE.has(mk))return false;              // explicit non-car make
+  if(b&&CARBODY.has(b))return true;                 // has a real car body -> car
+  return CARMAKES.has(mk);                          // no car body -> require a known car make
+}
 function ratePill(c){
   const r=rateprice(c); if(!r)return"";
   const lvl={vg:1,g:2,f:3,h:4,op:5}[r.k];
