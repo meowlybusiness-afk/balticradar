@@ -718,16 +718,32 @@ function refreshControls(){
 
 const LIST_COLS="car_id,source,country,make,model,year,engine_l,fuel,gearbox,body,drivetrain,last_mileage,last_price,location,posted,first_seen,source_url";
 async function fetchAll(){
-  // Supabase caps each response at 1000 rows; page through with Range to get the whole
-  // catalogue. Description is excluded here (biggest field) and loaded on modal open -> less egress.
-  let out=[],from=0,step=1000;
-  for(let i=0;i<25;i++){
-    const r=await fetch(`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&order=first_seen.desc`,
-      {headers:{...SBH,Range:`${from}-${from+step-1}`},cache:"no-store"});
-    if(!r.ok)throw 0;
-    const d=await r.json(); if(!Array.isArray(d)||!d.length)break;
-    out=out.concat(d); if(d.length<step)break; from+=step;
+  // Supabase caps each response at 1000 rows; page through with Range to get the WHOLE
+  // catalogue (no 25k cap). Description excluded here (biggest field) -> loaded on modal open.
+  const step=1000;
+  // 1) how many rows are there? (count is exact even beyond the row cap)
+  let total=0;
+  try{
+    const rc=await fetch(`${SB_URL}/rest/v1/v_listings?select=car_id`,
+      {headers:{...SBH,Prefer:"count=exact",Range:"0-0"},cache:"no-store"});
+    total=parseInt((rc.headers.get("content-range")||"").split("/")[1]||"0",10);
+  }catch(e){}
+  const pages=Math.min(300,Math.max(1,Math.ceil((total||60000)/step)));  // safety bound 300k
+  // 2) fetch every page in parallel (browser pools ~6/host); much faster than sequential
+  const reqs=[];
+  for(let i=0;i<pages;i++){
+    const from=i*step;
+    reqs.push(
+      fetch(`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&order=first_seen.desc`,
+        {headers:{...SBH,Range:`${from}-${from+step-1}`},cache:"no-store"})
+      .then(r=>r.ok?r.json():[]).then(d=>Array.isArray(d)?d:[]).catch(()=>[])
+    );
   }
+  const chunks=await Promise.all(reqs);
+  // 3) flatten + dedupe by car_id (rows can shift while the live DB is being written to)
+  const seen=new Set(),out=[];
+  for(const d of chunks) for(const c of d){ if(!seen.has(c.car_id)){seen.add(c.car_id);out.push(c);} }
+  if(!out.length)throw 0;
   return out;
 }
 async function tick(){
