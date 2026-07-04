@@ -790,7 +790,13 @@ async function loadHistory(carId){
   const box=document.getElementById("hist");if(!box)return;
   try{
     const r=await fetch(`${SB_URL}/rest/v1/price_history?car_id=eq.${encodeURIComponent(carId)}&select=ts,price,mileage&order=ts.asc`,{headers:SBH});
-    const pts=(await r.json()).filter(p=>p.price!=null);
+    let pts=(await r.json()).filter(p=>p.price!=null);
+    // anchor the line to the ad's ORIGINAL posting date on the source site: extend the earliest
+    // known price back to when the ad was placed (we can't know prices from before we first saw it).
+    const _car=(window.allCars||[]).find(c=>c.car_id===carId);
+    if(_car&&_car.posted&&pts.length&&new Date(_car.posted)<new Date(pts[0].ts)){
+      pts=[{ts:_car.posted,price:pts[0].price,mileage:pts[0].mileage},...pts];
+    }
     if(!pts.length){box.innerHTML=`<h3>${T().priceHist}</h3><div class="muted">${T().histOne}</div>`;return;}
     const first=pts[0],last=pts[pts.length-1];
     const dp=last.price-first.price,dpct=first.price?Math.round(dp/first.price*100):0;
