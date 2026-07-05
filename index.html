@@ -723,15 +723,31 @@ const LIST_COLS="car_id,source,country,make,model,year,engine_l,fuel,gearbox,bod
 const PAGE_FETCH=2500;
 async function tick(){
   const wasFirst=firstLoad;
+  const paint=(list)=>{allCars=(list||[]).filter(isCar);refreshControls();setFeatured(allCars);repaint();};
+  let painted=false;
   try{
+    // 1) INSTANT paint: newest PAGE_FETCH cars in one request (offset 0 is fast on the view).
     const r=await fetch(`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&order=first_seen.desc`,
       {headers:{...SBH,Range:`0-${PAGE_FETCH-1}`},cache:"no-store"});
-    if(!r.ok)throw 0;
-    const d=await r.json();
-    if(!Array.isArray(d)||!d.length)throw 0;
-    allCars=d.filter(isCar);
-    refreshControls();setFeatured(allCars);repaint();
-  }catch(e){ if(firstLoad){allCars=(EMBEDDED.cars||[]).filter(isCar);refreshControls();setFeatured(allCars);repaint();} }
+    if(r.ok){const d=await r.json(); if(Array.isArray(d)&&d.length){paint(d);painted=true;}}
+    // 2) FULL catalogue via KEYSET on the base cars table. Deep OFFSET on the v_listings view
+    //    times out (500) past ~60k rows; paging by the indexed primary key (car_id>last) never does.
+    const all=[],seen=new Set(); let after=null;
+    for(let i=0;i<250;i++){
+      let d=[];
+      try{
+        const q=after?`&car_id=gt.${encodeURIComponent(after)}`:"";
+        const rr=await fetch(`${SB_URL}/rest/v1/cars?select=${LIST_COLS}&active=eq.true&order=car_id.asc&limit=1000${q}`,
+          {headers:SBH,cache:"no-store"});
+        if(rr.ok)d=await rr.json();
+      }catch(e){}
+      if(!Array.isArray(d)||!d.length)break;
+      for(const c of d)if(c&&!seen.has(c.car_id)){seen.add(c.car_id);all.push(c);}
+      after=d[d.length-1].car_id;
+      if(d.length<1000)break;
+    }
+    if(all.length)paint(all);
+  }catch(e){ if(!painted){allCars=(EMBEDDED.cars||[]).filter(isCar);refreshControls();setFeatured(allCars);repaint();} }
   if(wasFirst&&typeof renderContent==="function")renderContent();
   if(wasFirst){const _cid=new URLSearchParams(location.search).get("car");if(_cid){const _cc=allCars.find(x=>x.car_id===_cid);if(_cc)setTimeout(()=>openModal(_cc),80);}}
   firstLoad=false;
