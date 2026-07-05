@@ -312,13 +312,13 @@
 <div class="ov" id="subov"><div class="modal" id="submodal" style="max-width:460px"></div></div>
 
 <script>
-const REFRESH_MS=60000; const I="https://autoplius-img.dgn.lt/";
+const REFRESH_MS=300000; const I="https://autoplius-img.dgn.lt/";
 const SB_URL="https://wrilvoukvyubgpomuoyn.supabase.co";
 const SB_KEY="sb_publishable_bcbzDTxRyE21hrM2fHntYA_fd5zCl8v";
 const SBH={apikey:SB_KEY,Authorization:"Bearer "+SB_KEY};
 // REPLACE with your carVertical affiliate link after signing up (free) at carvertical.com/affiliate-program
 const CARV="https://www.carvertical.com/lv";
-let countryFilter="all", firstLoad=true, allCars=[];
+let countryFilter="all", firstLoad=true, allCars=[], catalogTotal=null;
 const PAGE_SIZE=30; let curPage=1;
 const RATEL={
  lv:{vg:"Lieliska cena",g:"Taisnīga cena",f:"Vidēja cena",h:"Augstāka cena",op:"Pārāk dārga"},
@@ -372,7 +372,11 @@ function applyI18n(){
   if(typeof initCookie==="function")initCookie();
   if(typeof updateNotifyBtn==="function")updateNotifyBtn();
 }
-function setCount(n){const el=document.getElementById("count");if(el)el.textContent=(n!=null?n:applyFilters(allCars).length)+" "+T().results;}
+function setCount(n){const el=document.getElementById("count");if(!el)return;
+  let v=(n!=null?n:applyFilters(allCars).length);
+  // nothing filtered out + catalogue still streaming in -> show the true total, never the partial batch
+  if(catalogTotal!=null && v===allCars.length && catalogTotal>allCars.length) v=catalogTotal;
+  el.textContent=v+" "+T().results;}
 const SUBT={
  lv:{nb:"Paziņojumi",st:"Saņem paziņojumus par jauniem auto",name:"Vārds",email:"E-pasts",phone:"Telefons",anyC:"Valsts (jebkura)",make:"Marka (jebkura)",pmax:"Maks. cena €",ymin:"Gads no",consent:"Piekrītu datu glabāšanai paziņojumu sūtīšanai.",submit:"Pieteikties",ok:"Paldies! Sūtīsim jaunos auto uz tavu e-pastu.",need:"Ievadi e-pastu un piekrīti."},
  en:{nb:"Alerts",st:"Get alerts for new cars",name:"Name",email:"Email",phone:"Phone",anyC:"Country (any)",make:"Make (any)",pmax:"Max price €",ymin:"Year from",consent:"I agree my data is stored to send alerts.",submit:"Subscribe",ok:"Thanks! We'll email you new matches.",need:"Enter email and accept."},
@@ -726,12 +730,21 @@ async function tick(){
   const paint=(list)=>{allCars=(list||[]).filter(isCar);refreshControls();setFeatured(allCars);repaint();};
   let painted=false;
   try{
-    // 1) INSTANT paint: newest PAGE_FETCH cars in one request (offset 0 is fast on the view).
-    const r=await fetch(`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&order=first_seen.desc`,
-      {headers:{...SBH,Range:`0-${PAGE_FETCH-1}`},cache:"no-store"});
-    if(r.ok){const d=await r.json(); if(Array.isArray(d)&&d.length){paint(d);painted=true;}}
-    // 2) FULL catalogue via KEYSET on the base cars table. Deep OFFSET on the v_listings view
-    //    times out (500) past ~60k rows; paging by the indexed primary key (car_id>last) never does.
+    if(wasFirst){
+      // Show the TRUE total in the count immediately (so it never flashes a small number),
+      // then paint a fast grid of the newest cars while the full set streams in behind.
+      try{
+        const rc=await fetch(`${SB_URL}/rest/v1/cars?select=car_id&active=eq.true`,
+          {headers:{...SBH,Prefer:"count=exact",Range:"0-0"},cache:"no-store"});
+        const t=parseInt((rc.headers.get("content-range")||"").split("/")[1]||"0",10); if(t>0){catalogTotal=t;setCount();}
+      }catch(e){}
+      const r=await fetch(`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&order=first_seen.desc`,
+        {headers:{...SBH,Range:`0-${PAGE_FETCH-1}`},cache:"no-store"});
+      if(r.ok){const d=await r.json(); if(Array.isArray(d)&&d.length){paint(d);painted=true;}}
+    }
+    // FULL catalogue via KEYSET on the indexed primary key (deep OFFSET on the view times out past
+    // ~60k). Built in the background; on a REFRESH the old full set stays put until this single swap,
+    // so the count never drops -> no flicker.
     const all=[],seen=new Set(); let after=null;
     for(let i=0;i<250;i++){
       let d=[];
@@ -746,8 +759,8 @@ async function tick(){
       after=d[d.length-1].car_id;
       if(d.length<1000)break;
     }
-    if(all.length)paint(all);
-  }catch(e){ if(!painted){allCars=(EMBEDDED.cars||[]).filter(isCar);refreshControls();setFeatured(allCars);repaint();} }
+    if(all.length){paint(all);catalogTotal=allCars.length;}
+  }catch(e){ if(!painted&&wasFirst){allCars=(EMBEDDED.cars||[]).filter(isCar);refreshControls();setFeatured(allCars);repaint();} }
   if(wasFirst&&typeof renderContent==="function")renderContent();
   if(wasFirst){const _cid=new URLSearchParams(location.search).get("car");if(_cid){const _cc=allCars.find(x=>x.car_id===_cid);if(_cc)setTimeout(()=>openModal(_cc),80);}}
   firstLoad=false;
