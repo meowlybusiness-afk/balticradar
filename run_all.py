@@ -429,22 +429,23 @@ if USE_SB:
                 if det.get("description"): patch["description"]=det["description"]
                 if patch: _patch("cars",{"car_id":f"eq.{r['car_id']}"},patch); return True
                 return False
-            need_proxy=[]
+            skipped=0
             for r in (br or []):
+                src=r.get("source"); host=HOST.get(src,"~~"); h=None
                 try:
                     hh=_ss.get(r["source_url"],timeout=20).text
-                    if HOST.get(r.get("source"),"~~") in hh:
-                        if _apply(r,hh): n+=1
-                    else:
-                        need_proxy.append(r)   # blocked/JS-shell from this IP -> use proxy
-                except Exception:
-                    need_proxy.append(r)
-            if need_proxy and SCRAPER_KEY:
-                for r in need_proxy:
+                    if host in hh: h=hh                      # direct worked (free)
+                except Exception: pass
+                if h is None and SCRAPER_KEY:
                     try:
-                        if _apply(r,scraper_get(r["source_url"])): n+=1
+                        ph=scraper_get(r["source_url"])
+                        if host in ph: h=ph                  # proxy returned a REAL car page
                     except Exception: pass
-            print(f"backfill LT/EE: {n} patched, {len(need_proxy)} needed proxy")
+                # Only patch from a genuine car page (image host present). This hard-guards against
+                # writing proxy error pages (e.g. "exhausted API credits") or Cloudflare challenges.
+                if h is None: skipped+=1; continue
+                if _apply(r,h): n+=1
+            print(f"backfill LT/EE: {n} patched, {skipped} skipped (blocked / no credits)")
         print(f"backfill posted: dated {n}/{len(rows)} (+LT/EE photos if BACKFILL_ALL)")
     print("STORAGE: Supabase")
 else:
