@@ -731,13 +731,9 @@ async function tick(){
   let painted=false;
   try{
     if(wasFirst){
-      // Show the TRUE total in the count immediately (so it never flashes a small number),
-      // then paint a fast grid of the newest cars while the full set streams in behind.
-      try{
-        const rc=await fetch(`${SB_URL}/rest/v1/cars?select=car_id&active=eq.true`,
-          {headers:{...SBH,Prefer:"count=exact",Range:"0-0"},cache:"no-store"});
-        const t=parseInt((rc.headers.get("content-range")||"").split("/")[1]||"0",10); if(t>0){catalogTotal=t;setCount();}
-      }catch(e){}
+      // Instant big number from the last visit's cache (count=exact is ~3s -> too slow to block on).
+      const cached=parseInt(localStorage.getItem("br_total")||"0",10); if(cached>0){catalogTotal=cached;setCount();}
+      // Fast grid: newest cars (the count already shows the total from cache).
       const r=await fetch(`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&order=first_seen.desc`,
         {headers:{...SBH,Range:`0-${PAGE_FETCH-1}`},cache:"no-store"});
       if(r.ok){const d=await r.json(); if(Array.isArray(d)&&d.length){paint(d);painted=true;}}
@@ -759,7 +755,7 @@ async function tick(){
       after=d[d.length-1].car_id;
       if(d.length<1000)break;
     }
-    if(all.length){paint(all);catalogTotal=allCars.length;}
+    if(all.length){paint(all);catalogTotal=allCars.length;try{localStorage.setItem("br_total",String(catalogTotal));}catch(e){}}
   }catch(e){ if(!painted&&wasFirst){allCars=(EMBEDDED.cars||[]).filter(isCar);refreshControls();setFeatured(allCars);repaint();} }
   if(wasFirst&&typeof renderContent==="function")renderContent();
   if(wasFirst){const _cid=new URLSearchParams(location.search).get("car");if(_cid){const _cc=allCars.find(x=>x.car_id===_cid);if(_cc)setTimeout(()=>openModal(_cc),80);}}
