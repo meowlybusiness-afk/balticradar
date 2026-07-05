@@ -410,25 +410,42 @@ if USE_SB:
                 if po: patch["posted"]=po
                 _patch("cars",{"car_id":f"eq.{r['car_id']}"},patch); n+=1
             except Exception: pass
-        # On a residential IP (your PC) set BACKFILL_ALL=1 to also date autoplius/auto24 via browser
+        # LT/EE backfill: fill gallery PHOTOS (+ date + description). autoplius & auto24 detail pages
+        # are server-rendered, so we try a FREE direct requests fetch first and only fall back to the
+        # paid ScraperAPI proxy for pages that come back blocked (no image URLs). This fills photos that
+        # the old code never did, and keeps proxy-credit use as low as possible.
         if os.environ.get("BACKFILL_ALL")=="1":
             try:
                 br=_get("cars",{"source":"in.(autoplius,auto24)","or":"(posted.is.null,description.is.null)",
                     "select":"car_id,source_url,source","limit":str(limit)})
-                if br:
-                    with browser_session() as page:
-                        fetch=make_fetch(page)
-                        for r in br:
-                            try:
-                                h=fetch(r["source_url"]); patch={}
-                                po=rel_posted(h)
-                                if po: patch["posted"]=po
-                                d=ap_desc(h) if r.get("source")=="autoplius" else a24_desc(h)
-                                if d: patch["description"]=d
-                                if patch: _patch("cars",{"car_id":f"eq.{r['car_id']}"},patch); n+=1
-                            except Exception: pass
-            except Exception as e: print("backfill_all err",repr(e))
-        print(f"backfill posted: dated {n}/{len(rows)} (+browser if BACKFILL_ALL)")
+            except Exception as e: print("backfill_all query err",repr(e)); br=[]
+            HOST={"autoplius":"autoplius-img.dgn.lt","auto24":"img-bcg.eu"}
+            def _apply(r,h):
+                src=r.get("source")
+                det=ap_detail(h,r["source_url"]) if src=="autoplius" else a24_detail(h,r["source_url"])
+                patch={}
+                if det.get("photos"): patch["photos"]=det["photos"]
+                if det.get("posted"): patch["posted"]=det["posted"]
+                if det.get("description"): patch["description"]=det["description"]
+                if patch: _patch("cars",{"car_id":f"eq.{r['car_id']}"},patch); return True
+                return False
+            need_proxy=[]
+            for r in (br or []):
+                try:
+                    hh=_ss.get(r["source_url"],timeout=20).text
+                    if HOST.get(r.get("source"),"~~") in hh:
+                        if _apply(r,hh): n+=1
+                    else:
+                        need_proxy.append(r)   # blocked/JS-shell from this IP -> use proxy
+                except Exception:
+                    need_proxy.append(r)
+            if need_proxy and SCRAPER_KEY:
+                for r in need_proxy:
+                    try:
+                        if _apply(r,scraper_get(r["source_url"])): n+=1
+                    except Exception: pass
+            print(f"backfill LT/EE: {n} patched, {len(need_proxy)} needed proxy")
+        print(f"backfill posted: dated {n}/{len(rows)} (+LT/EE photos if BACKFILL_ALL)")
     print("STORAGE: Supabase")
 else:
     _MEM={"ads":{}}; _CARS={}
