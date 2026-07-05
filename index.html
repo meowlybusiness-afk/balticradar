@@ -389,6 +389,11 @@ Object.assign(SUBT.en,{title:"Create your profile",sub:"Choose which cars to sen
 Object.assign(SUBT.ru,{title:"Создайте профиль",sub:"Выберите, какие авто присылать — получите только их.",step1:"1. Что искать?",step2:"2. Ваши контакты",model:"Модель (любая)",update:"Сохранить профиль",profile:"Мой профиль"});
 Object.assign(SUBT.lt,{title:"Sukurkite profilį",sub:"Pasirinkite, kokius auto siųsti — gausite tik juos.",step1:"1. Ko ieškoti?",step2:"2. Jūsų kontaktai",model:"Modelis (bet kuris)",update:"Išsaugoti profilį",profile:"Mano profilis"});
 Object.assign(SUBT.et,{title:"Loo oma profiil",sub:"Vali, milliseid autosid saata — saad ainult need.",step1:"1. Mida otsida?",step2:"2. Sinu kontaktid",model:"Mudel (kõik)",update:"Salvesta profiil",profile:"Minu profiil"});
+Object.assign(SUBT.lv,{pmin:"Cena no €",ymax:"Gads līdz",milmin:"Nobraukums no (km)",milmax:"Nobraukums līdz (km)",engmin:"Tilpums no (L)",engmax:"Tilpums līdz (L)",anyBody:"Virsbūve (jebkura)",anyFuel:"Degviela (jebkura)",anyGear:"Ātrumkārba (jebkura)",consent:"Es apliecinu un piekrītu, ka BalticRadar glabā un apstrādā manus datus (e-pastu un izvēles) paziņojumu sūtīšanai. Bez piekrišanas pieteikšanās nav iespējama."});
+Object.assign(SUBT.en,{pmin:"Price from €",ymax:"Year to",milmin:"Mileage from (km)",milmax:"Mileage to (km)",engmin:"Engine from (L)",engmax:"Engine to (L)",anyBody:"Body (any)",anyFuel:"Fuel (any)",anyGear:"Gearbox (any)",consent:"I hereby confirm and agree that BalticRadar stores and processes my data (email and preferences) to send me alerts. You cannot subscribe without agreeing."});
+Object.assign(SUBT.ru,{pmin:"Цена от €",ymax:"Год до",milmin:"Пробег от (km)",milmax:"Пробег до (km)",engmin:"Объём от (L)",engmax:"Объём до (L)",anyBody:"Кузов (любой)",anyFuel:"Топливо (любое)",anyGear:"КПП (любая)",consent:"Я подтверждаю и соглашаюсь, что BalticRadar хранит и обрабатывает мои данные (e-mail и предпочтения) для отправки уведомлений. Без согласия подписка невозможна."});
+Object.assign(SUBT.lt,{pmin:"Kaina nuo €",ymax:"Metai iki",milmin:"Rida nuo (km)",milmax:"Rida iki (km)",engmin:"Tūris nuo (L)",engmax:"Tūris iki (L)",anyBody:"Kėbulas (bet koks)",anyFuel:"Kuras (bet koks)",anyGear:"Pavarų dėžė (bet kokia)",consent:"Patvirtinu ir sutinku, kad BalticRadar saugo ir tvarko mano duomenis (el. paštą ir nustatymus) pranešimams siųsti. Be sutikimo prenumerata negalima."});
+Object.assign(SUBT.et,{pmin:"Hind alates €",ymax:"Aasta kuni",milmin:"Läbisõit alates (km)",milmax:"Läbisõit kuni (km)",engmin:"Maht alates (L)",engmax:"Maht kuni (L)",anyBody:"Kere (kõik)",anyFuel:"Kütus (kõik)",anyGear:"Käigukast (kõik)",consent:"Kinnitan ja nõustun, et BalticRadar salvestab ja töötleb minu andmeid (e-post ja eelistused) teadete saatmiseks. Ilma nõusolekuta ei saa tellida."});
 const COOKIE={
  lv:{txt:"Mēs izmantojam sīkdatnes, lai uzlabotu lapas darbību. Turpinot lietot lapu, Tu piekrīti sīkdatnēm.",acc:"Pieņemt",dec:"Tikai nepieciešamās"},
  en:{txt:"We use cookies to improve the site. By continuing you accept cookies.",acc:"Accept",dec:"Essential only"},
@@ -399,8 +404,12 @@ const ST=()=>SUBT[lang]||SUBT.en;
 function openSub(){
   const s=ST();
   const p=JSON.parse(localStorage.getItem("br_profile")||"null")||{};
+  const opt=(any,vals,cur)=>`<option value="">${any}</option>`+vals.map(v=>`<option ${cur===v?'selected':''}>${esc(v)}</option>`).join("");
   const makes=[...new Set(allCars.map(c=>c.make).filter(v=>v&&!junkVal(v)))].sort();
-  const makeOpts=`<option value="">${s.make}</option>`+makes.map(m=>`<option ${p.make===m?'selected':''}>${m}</option>`).join("");
+  const bodies=[...new Set(allCars.map(c=>norm("body",c.body)).filter(Boolean))].sort();
+  const fuels=[...new Set(allCars.map(c=>norm("fuel",c.fuel)).filter(Boolean))].sort();
+  const gears=[...new Set(allCars.map(c=>norm("gear",c.gearbox)).filter(Boolean))].sort();
+  const makeOpts=opt(s.make,makes,p.make), bodyOpts=opt(s.anyBody,bodies,p.body), fuelOpts=opt(s.anyFuel,fuels,p.fuel), gearOpts=opt(s.anyGear,gears,p.gearbox);
   const cOpts=`<option value="">${s.anyC}</option>`+['LV','LT','EE'].map(x=>`<option ${p.country===x?'selected':''}>${x}</option>`).join("");
   const val=k=>p[k]!=null?String(p[k]).replace(/"/g,'&quot;'):"";
   document.getElementById("submodal").innerHTML=`
@@ -413,12 +422,18 @@ function openSub(){
         <select id="s_country">${cOpts}</select>
         <select id="s_make">${makeOpts}</select>
         <input id="s_model" placeholder="${s.model}" value="${val('model')}">
-        <div style="display:flex;gap:11px"><input id="s_pmax" type="number" placeholder="${s.pmax}" style="flex:1" value="${val('price_max')}"><input id="s_ymin" type="number" placeholder="${s.ymin}" style="flex:1" value="${val('year_min')}"></div>
+        <select id="s_body">${bodyOpts}</select>
+        <select id="s_fuel">${fuelOpts}</select>
+        <select id="s_gear">${gearOpts}</select>
+        <div style="display:flex;gap:11px"><input id="s_pmin" type="number" placeholder="${s.pmin}" style="flex:1" value="${val('price_min')}"><input id="s_pmax" type="number" placeholder="${s.pmax}" style="flex:1" value="${val('price_max')}"></div>
+        <div style="display:flex;gap:11px"><input id="s_ymin" type="number" placeholder="${s.ymin}" style="flex:1" value="${val('year_min')}"><input id="s_ymax" type="number" placeholder="${s.ymax}" style="flex:1" value="${val('year_max')}"></div>
+        <div style="display:flex;gap:11px"><input id="s_milmin" type="number" placeholder="${s.milmin}" style="flex:1" value="${val('mileage_min')}"><input id="s_milmax" type="number" placeholder="${s.milmax}" style="flex:1" value="${val('mileage_max')}"></div>
+        <div style="display:flex;gap:11px"><input id="s_engmin" type="number" step="0.1" placeholder="${s.engmin}" style="flex:1" value="${val('engine_min')}"><input id="s_engmax" type="number" step="0.1" placeholder="${s.engmax}" style="flex:1" value="${val('engine_max')}"></div>
         <div style="font-weight:800;font-size:13px;margin-top:6px">${s.step2}</div>
         <input id="s_name" placeholder="${s.name}" value="${val('name')}">
         <input id="s_email" type="email" placeholder="${s.email} *" value="${val('email')}">
         <input id="s_phone" placeholder="${s.phone}" value="${val('phone')}">
-        <label style="display:flex;gap:9px;font-size:13px;color:var(--mut);align-items:flex-start"><input id="s_consent" type="checkbox" style="margin-top:3px" ${p.email?'checked':''}>${s.consent}</label>
+        <label for="s_consent" style="display:flex;gap:10px;font-size:13px;color:var(--ink);align-items:flex-start;cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:11px"><input id="s_consent" type="checkbox" style="margin-top:2px;width:18px;height:18px;flex:0 0 auto;cursor:pointer"><span>${s.consent} <span style="color:var(--accent);font-weight:800">*</span></span></label>
         <button class="mlink" style="border:none;cursor:pointer;font-size:15px" onclick="submitSub()">${p.email?s.update:s.submit}</button>
       </div>
       <div id="subok" style="display:none;color:var(--down);font-weight:600;padding:10px 0">${s.ok}</div>
@@ -434,10 +449,15 @@ function initCookie(){const el=document.getElementById("cookie");if(!el)return;c
 async function submitSub(){
   const s=ST(),v=id=>document.getElementById(id).value.trim();
   const email=v("s_email"),consent=document.getElementById("s_consent").checked;
-  if(!email||!consent){alert(s.need);return;}
+  if(!email||!consent){alert(s.need);return;}   // consent is mandatory: no submit without the tick
+  const num=id=>{const x=v(id);return x!==""&&!isNaN(+x)?+x:null;};
   const row={name:v("s_name")||null,email,phone:v("s_phone")||null,
     country:v("s_country")||null,make:v("s_make")||null,model:v("s_model")||null,
-    price_max:v("s_pmax")?+v("s_pmax"):null,year_min:v("s_ymin")?+v("s_ymin"):null,consent:true};
+    body:v("s_body")||null,fuel:v("s_fuel")||null,gearbox:v("s_gear")||null,
+    price_min:num("s_pmin"),price_max:num("s_pmax"),year_min:num("s_ymin"),year_max:num("s_ymax"),
+    mileage_min:num("s_milmin"),mileage_max:num("s_milmax"),engine_min:num("s_engmin"),engine_max:num("s_engmax"),
+    consent:true};
+  row.prefs=Object.assign({consent_at:new Date().toISOString()},row);delete row.prefs.name;delete row.prefs.email;delete row.prefs.phone;delete row.prefs.prefs;
   try{
     const r=await fetch(`${SB_URL}/rest/v1/subscriptions`,{method:"POST",
       headers:{...SBH,"Content-Type":"application/json","Prefer":"return=minimal"},body:JSON.stringify(row)});
