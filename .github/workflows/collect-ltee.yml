@@ -5,8 +5,8 @@ name: BalticRadar collect (LT + EE via proxy)
 # to protect ScraperAPI credits. Needs the SCRAPER_KEY repo secret to be set.
 on:
   schedule:
-    - cron: "0 */3 * * *"    # every 3 hours (8 runs/day). Backfill now fetches direct-first (free) and
-                              # only proxies blocked pages, so this is far cheaper per run than before.
+    - cron: "0 6 * * *"      # ONCE A DAY. Free ScraperAPI credits are tiny, so we spend them only on
+                              # catching the newest LT/EE listings. Raise this ONLY after topping up credits.
   workflow_dispatch: {}        # run manually any time from the Actions tab
 
 jobs:
@@ -31,10 +31,9 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           SCRAPER_KEY: ${{ secrets.SCRAPER_KEY }}   # required: routes LT/EE through residential proxies
           SS_PAGES: "0"         # skip ss.lv here (handled by the 5-min workflow)
-          AP_PAGES: "7"         # pages of autoplius list per run
-          A24_PAGES: "7"        # pages of auto24 list per run
-          DETAIL_CAP: "120"     # max proxied detail fetches per run for NEW cars
-          BACKFILL: "400"       # photos+date+desc for this many LT/EE cars per run.
-                                # Fetches direct-first (free); only blocked pages hit the proxy.
-          BACKFILL_ALL: "1"     # enable LT/EE photo + date + description backfill
+          AP_PAGES: "2"         # just the newest autoplius list pages (conserve free proxy credits)
+          A24_PAGES: "2"        # just the newest auto24 list pages
+          DETAIL_CAP: "8"       # only a few new-car detail fetches per run
+          BACKFILL: "0"         # photo/date/desc backfill needs the paid proxy at scale -> OFF on free tier.
+          BACKFILL_ALL: "0"     # (re-enable + raise BACKFILL once you top up ScraperAPI credits)
         run: python run_all.py
