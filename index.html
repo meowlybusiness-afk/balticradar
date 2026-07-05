@@ -158,8 +158,9 @@
   .mgal{position:relative;aspect-ratio:16/9;background:#dfe5ee}
   .mgal img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none}
   .mgal img.show{display:block}
-  .mgal .nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.92);color:var(--ink);border:none;font-size:22px;width:44px;height:44px;border-radius:50%;cursor:pointer;box-shadow:var(--shadow)}
-  .mgal .prev{left:14px}.mgal .next{right:14px}
+  .mgal .gnav{position:absolute;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.95);color:var(--ink);border:none;font-size:34px;line-height:1;font-weight:700;width:60px;height:60px;border-radius:50%;cursor:pointer;box-shadow:0 6px 20px rgba(20,35,60,.35);z-index:3;transition:.15s}
+  .mgal .gnav:hover{background:#fff;transform:translateY(-50%) scale(1.08)}
+  .mgal .prev{left:16px}.mgal .next{right:16px}
   .mgal .cnt{position:absolute;bottom:12px;right:14px;background:rgba(20,30,48,.7);color:#fff;padding:4px 10px;border-radius:8px;font-size:13px}
   .mclose{position:absolute;top:14px;right:16px;background:rgba(255,255,255,.92);color:var(--ink);border:none;width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;z-index:3;box-shadow:var(--shadow)}
   .mbody{padding:22px 26px 28px}
@@ -904,7 +905,7 @@ function openModal(c){
   const spec=(l,v)=>v?`<div class="mspec"><b>${l}</b>${esc(v)}</div>`:"";
   const gallery=ph.length
     ? ph.map((u,k)=>`<img class="${k===0?'show':''}" referrerpolicy="no-referrer" src="${u}">`).join("")
-      +(ph.length>1?`<button class="nav prev" onclick="gal(-1)">‹</button><button class="nav next" onclick="gal(1)">›</button><span class="cnt" id="gcnt">1 / ${ph.length}</span>`:"")
+      +(ph.length>1?`<button class="gnav prev" onclick="gal(-1)">‹</button><button class="gnav next" onclick="gal(1)">›</button><span class="cnt" id="gcnt">1 / ${ph.length}</span>`:"")
     : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9aa7b8">Bez foto</div>';
   const sim=(window.allCars||allCars).filter(x=>x.car_id!==c.car_id&&x.make===c.make&&x.model===c.model&&x.last_price!=null).slice(0,6);
   const simHtml=sim.length?`<div style="margin-top:20px"><h3 style="margin:0 0 10px">${ML().similar}</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px">`+sim.map(s=>`<div onclick="openModalById('${s.car_id}')" style="display:flex;gap:10px;align-items:center;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;cursor:pointer">
@@ -958,7 +959,7 @@ async function loadModalPhotos(c,sim){
     const map={};(await r.json()).forEach(x=>map[x.car_id]=x.photos);
     if((!c.photos||!c.photos.length)&&map[c.car_id]&&map[c.car_id].length){
       c.photos=map[c.car_id];const ph=uniqPhotos(c.photos).map(hq);const gal=document.querySelector("#modal .mgal");
-      if(gal){galIdx=0;gal.innerHTML=ph.map((u,k)=>`<img class="${k===0?'show':''}" referrerpolicy="no-referrer" src="${u}">`).join("")+(ph.length>1?`<button class="nav prev" onclick="gal(-1)">‹</button><button class="nav next" onclick="gal(1)">›</button><span class="cnt" id="gcnt">1 / ${ph.length}</span>`:"");}
+      if(gal){galIdx=0;gal.innerHTML=ph.map((u,k)=>`<img class="${k===0?'show':''}" referrerpolicy="no-referrer" src="${u}">`).join("")+(ph.length>1?`<button class="gnav prev" onclick="gal(-1)">‹</button><button class="gnav next" onclick="gal(1)">›</button><span class="cnt" id="gcnt">1 / ${ph.length}</span>`:"");}
     }
     (sim||[]).forEach(s=>{const p=map[s.car_id];if(p&&p.length){const im=document.getElementById("simimg_"+s.car_id);if(im){im.src=hq(uniqPhotos(p)[0]);im.style.visibility="";}}});
   }catch(e){}
