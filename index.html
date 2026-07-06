@@ -406,10 +406,11 @@ function openSub(){
   const s=ST();
   const p=JSON.parse(localStorage.getItem("br_profile")||"null")||{};
   const opt=(any,vals,cur)=>`<option value="">${any}</option>`+vals.map(v=>`<option ${cur===v?'selected':''}>${esc(v)}</option>`).join("");
-  const makes=[...new Set(allCars.map(c=>c.make).filter(v=>v&&!junkVal(v)))].sort();
-  const bodies=[...new Set(allCars.map(c=>norm("body",c.body)).filter(Boolean))].sort();
-  const fuels=[...new Set(allCars.map(c=>norm("fuel",c.fuel)).filter(Boolean))].sort();
-  const gears=[...new Set(allCars.map(c=>norm("gear",c.gearbox)).filter(Boolean))].sort();
+  const A=AGG();
+  const makes=[...new Set(A.map(c=>c.make).filter(v=>v&&!junkVal(v)))].sort();
+  const bodies=[...new Set(A.map(c=>norm("body",c.body)).filter(Boolean))].sort();
+  const fuels=[...new Set(A.map(c=>norm("fuel",c.fuel)).filter(Boolean))].sort();
+  const gears=[...new Set(A.map(c=>norm("gear",c.gearbox)).filter(Boolean))].sort();
   const makeOpts=opt(s.make,makes,p.make), bodyOpts=opt(s.anyBody,bodies,p.body), fuelOpts=opt(s.anyFuel,fuels,p.fuel), gearOpts=opt(s.anyGear,gears,p.gearbox);
   const cOpts=`<option value="">${s.anyC}</option>`+['LV','LT','EE'].map(x=>`<option ${p.country===x?'selected':''}>${x}</option>`).join("");
   const val=k=>p[k]!=null?String(p[k]).replace(/"/g,'&quot;'):"";
@@ -492,7 +493,7 @@ function postedTxt(c){ const d=c.posted||c.first_seen; if(d){try{return new Date
 function median(a){const s=a.slice().sort((x,y)=>x-y);return s.length?s[Math.floor(s.length/2)]:null;}
 function rateprice(c){
   if(c.last_price==null||!c.make||!c.model)return null;
-  const same=allCars.filter(x=>x.make===c.make&&x.model===c.model&&x.last_price!=null);
+  const same=AGG().filter(x=>x.make===c.make&&x.model===c.model&&x.last_price!=null);
   let grp=same.filter(x=>Math.abs((x.year||0)-(c.year||0))<=2);
   if(grp.length<5)grp=same;
   if(grp.length<5)return null;
@@ -636,7 +637,7 @@ function applyFilters(cars){
   if(countryFilter!=="all")r=r.filter(c=>c.country===countryFilter);
   if(F.q){const q=F.q.toLowerCase();r=r.filter(c=>((c.make||"")+" "+(c.model||"")).toLowerCase().includes(q));}
   if(F.make)r=r.filter(c=>c.make===F.make);
-  if(F.model){const pool=F.make?allCars.filter(c=>c.make===F.make):allCars;
+  if(F.model){const pool=F.make?cars.filter(c=>c.make===F.make):cars;
     const exact=new Set(pool.map(c=>c.model));
     if(exact.has(F.model))r=r.filter(c=>c.model===F.model);
     else r=r.filter(c=>modelSeries(c.make,c.model)===F.model);}
@@ -673,18 +674,12 @@ function renderPager(totalPages){
   return `<div class="pager">${h}</div>`;
 }
 function goPage(p){curPage=p;repaint();const y=document.querySelector(".layout").offsetTop-58;window.scrollTo({top:y,behavior:"smooth"});}
-function repaint(){
-  const filtered=applyFilters(allCars);
-  const totalPages=Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));
-  if(curPage>totalPages)curPage=totalPages; if(curPage<1)curPage=1;
-  const slice=filtered.slice((curPage-1)*PAGE_SIZE,curPage*PAGE_SIZE);
-  render(slice);
-  loadPagePhotos(slice);
+function paintPager(totalPages){
   const pg=renderPager(totalPages);
   document.getElementById("pagerTop").innerHTML=pg;
   document.getElementById("pagerBot").innerHTML=pg;
-  setCount(filtered.length);
 }
+function repaint(){loadGrid();}     // server-side paginated loader (defined below)
 // photos are fetched only for the cars currently visible (saves Supabase egress)
 async function loadPagePhotos(cars){
   const need=cars.filter(c=>!c.photos||!c.photos.length).map(c=>c.car_id);
@@ -729,57 +724,95 @@ function observeReveals(){
   document.querySelectorAll(".reveal:not(.in)").forEach(e=>_revObs.observe(e));
 }
 function pickMake(m){F.make=m;const el=document.getElementById("make");if(el)el.value=m;localStorage.setItem("br_filters",JSON.stringify(F));curPage=1;repaint();scrollToEl("grid");}
-function openModalById(id){const c=allCars.find(x=>x.car_id===id);if(c)openModal(c);}
+function openModalById(id){openCarById(id);}
 function refreshControls(){
-  fillSelect("make",[...new Set(allCars.map(c=>c.make).filter(v=>v&&!junkVal(v)))].sort(),F.make);
-  const cm=F.make?allCars.filter(c=>c.make===F.make):allCars;
+  const A=AGG();
+  fillSelect("make",[...new Set(A.map(c=>c.make).filter(v=>v&&!junkVal(v)))].sort(),F.make);
+  const cm=F.make?A.filter(c=>c.make===F.make):A;
   const models=[...new Set(cm.map(c=>c.model).filter(v=>v&&!junkVal(v)))];
   const series=[...new Set(cm.map(c=>modelSeries(c.make,c.model)).filter(v=>v&&!junkVal(v)))].filter(s=>!models.includes(s));
   fillSelect("model",[...series,...models].sort(),F.model);
-  fillSelect("fuel",[...new Set(allCars.map(c=>norm("fuel",c.fuel)).filter(Boolean))].sort(),F.fuel);
-  fillSelect("gear",[...new Set(allCars.map(c=>norm("gear",c.gearbox)).filter(Boolean))].sort(),F.gear);
-  fillSelect("bodyf",[...new Set(allCars.filter(c=>c.body&&!BODYJUNK.has(String(deent(c.body)).toLowerCase().trim())).map(c=>norm("body",c.body)).filter(Boolean))].sort(),F.bodyf);
-  fillSelect("drive",[...new Set(allCars.map(c=>norm("drive",c.drivetrain)).filter(Boolean))].sort(),F.drive);}
+  fillSelect("fuel",[...new Set(A.map(c=>norm("fuel",c.fuel)).filter(Boolean))].sort(),F.fuel);
+  fillSelect("gear",[...new Set(A.map(c=>norm("gear",c.gearbox)).filter(Boolean))].sort(),F.gear);
+  fillSelect("bodyf",[...new Set(A.filter(c=>c.body&&!BODYJUNK.has(String(deent(c.body)).toLowerCase().trim())).map(c=>norm("body",c.body)).filter(Boolean))].sort(),F.bodyf);
+  fillSelect("drive",[...new Set(A.map(c=>norm("drive",c.drivetrain)).filter(Boolean))].sort(),F.drive);}
 
 const LIST_COLS="car_id,source,country,make,model,year,engine_l,fuel,gearbox,body,drivetrain,last_mileage,last_price,location,posted,first_seen,source_url";
-// Load the newest N cars in ONE request. No parallel 80-request storm, no count=exact
-// (which timed out -> the "993 / 12k / 81k" flicker), no 80k rows held in memory (which caused the lag).
-// The whole set is small enough to filter/sort instantly client-side; the grid shows 30 at a time.
-const PAGE_FETCH=2500;
+let sampleCars=[];
+function AGG(){return sampleCars.length?sampleCars:allCars;}   // large sample for dropdowns/ratings/similar
+// ---- SERVER-SIDE PAGINATION: one page at a time from Supabase; scales to the whole ~83k catalogue ----
+function serverFilterActive(){return !!(countryFilter!=="all"||F.make||F.pmin||F.pmax||F.ymin||F.ymax||F.mmin||F.mmax);}
+function clientOnlyActive(){return !!(F.fuel||F.gear||F.bodyf||F.drive||F.q||F.emin||F.emax||F.model);}
+function buildServerQ(){
+  const p=[];
+  if(countryFilter!=="all")p.push("country=eq."+encodeURIComponent(countryFilter));
+  if(F.make)p.push("make=eq."+encodeURIComponent(F.make));
+  if(F.ymin)p.push("year=gte."+(+F.ymin)); if(F.ymax)p.push("year=lte."+(+F.ymax));
+  if(F.pmin)p.push("last_price=gte."+(+F.pmin)); if(F.pmax)p.push("last_price=lte."+(+F.pmax));
+  if(F.mmin)p.push("last_mileage=gte."+(+F.mmin)); if(F.mmax)p.push("last_mileage=lte."+(+F.mmax));
+  const s=F.sort;
+  p.push("order="+(s==="pa"?"last_price.asc.nullslast":s==="pd"?"last_price.desc.nullslast":s==="yd"?"year.desc.nullslast":"first_seen.desc"));
+  return p.join("&");
+}
+function cleanRows(rows){return rows.filter(isCar).filter(c=>!(c.source==="ss.lv"&&(c.last_price==null||c.last_price===0)));}
+async function sbPage(from,to,wantCount){
+  const r=await fetch(`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&${buildServerQ()}`,
+    {headers:{...SBH,Range:`${from}-${to}`,Prefer:wantCount?"count=estimated":"count=none"},cache:"no-store"});
+  if(!r.ok)throw new Error("sb "+r.status);
+  const rows=await r.json();
+  const tot=parseInt((r.headers.get("content-range")||"").split("/")[1]);
+  return {rows:Array.isArray(rows)?rows:[], total:isNaN(tot)?null:tot};
+}
+let _grSeq=0;
+async function loadGrid(){
+  const my=++_grSeq;
+  try{
+    if(clientOnlyActive()){
+      const {rows}=await sbPage(0,999,false);              // bounded window matching server-safe filters
+      if(my!==_grSeq)return;
+      const refined=applyFilters(cleanRows(rows));         // full client filters + sort
+      allCars=refined;
+      const totalPages=Math.max(1,Math.ceil(refined.length/PAGE_SIZE));
+      if(curPage>totalPages)curPage=totalPages; if(curPage<1)curPage=1;
+      const slice=refined.slice((curPage-1)*PAGE_SIZE,curPage*PAGE_SIZE);
+      render(slice);loadPagePhotos(slice);
+      paintPager(totalPages);setCount(refined.length);
+    } else {
+      const from=(curPage-1)*PAGE_SIZE, to=from+PAGE_SIZE-1;
+      const {rows,total}=await sbPage(from,to,true);
+      if(my!==_grSeq)return;
+      const tot = serverFilterActive() ? (total!=null?total:rows.length)
+                                       : (catalogTotal!=null?catalogTotal:(total||rows.length));
+      const totalPages=Math.max(1,Math.ceil((tot||1)/PAGE_SIZE));
+      if(curPage>totalPages){curPage=totalPages;return loadGrid();}
+      allCars=cleanRows(rows);
+      render(allCars);loadPagePhotos(allCars);
+      paintPager(totalPages);setCount(tot);
+    }
+  }catch(e){ /* transient network/DB blip: keep the current grid in place */ }
+}
+async function openCarById(id){
+  let c=(allCars||[]).find(x=>x.car_id===id)||sampleCars.find(x=>x.car_id===id);
+  if(!c){try{const r=await fetch(`${SB_URL}/rest/v1/v_listings?car_id=eq.${encodeURIComponent(id)}&select=${LIST_COLS},photos`,{headers:SBH});const d=await r.json();c=Array.isArray(d)&&d[0];}catch(e){}}
+  if(c)openModal(c);
+}
 async function tick(){
   const wasFirst=firstLoad;
-  const paint=(list)=>{allCars=(list||[]).filter(isCar);refreshControls();setFeatured(allCars);repaint();};
-  let painted=false;
   try{
     if(wasFirst){
-      // Instant big number from the last visit's cache (count=exact is ~3s -> too slow to block on).
       const cached=parseInt(localStorage.getItem("br_total")||"0",10); if(cached>0){catalogTotal=cached;setCount();}
-      // Fast grid: newest cars (the count already shows the total from cache).
-      const r=await fetch(`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&order=first_seen.desc`,
-        {headers:{...SBH,Range:`0-${PAGE_FETCH-1}`},cache:"no-store"});
-      if(r.ok){const d=await r.json(); if(Array.isArray(d)&&d.length){paint(d);painted=true;}}
-    }
-    // FULL catalogue via KEYSET on the indexed primary key (deep OFFSET on the view times out past
-    // ~60k). Built in the background; on a REFRESH the old full set stays put until this single swap,
-    // so the count never drops -> no flicker.
-    const all=[],seen=new Set(); let after=null;
-    for(let i=0;i<250;i++){
-      let d=[];
-      try{
-        const q=after?`&car_id=gt.${encodeURIComponent(after)}`:"";
-        const rr=await fetch(`${SB_URL}/rest/v1/cars?select=${LIST_COLS}&active=eq.true&order=car_id.asc&limit=1000${q}`,
-          {headers:SBH,cache:"no-store"});
-        if(rr.ok)d=await rr.json();
-      }catch(e){}
-      if(!Array.isArray(d)||!d.length)break;
-      for(const c of d)if(c&&!seen.has(c.car_id)){seen.add(c.car_id);all.push(c);}
-      after=d[d.length-1].car_id;
-      if(d.length<1000)break;
-    }
-    if(all.length){paint(all);catalogTotal=allCars.length;try{localStorage.setItem("br_total",String(catalogTotal));}catch(e){}}
-  }catch(e){ if(!painted&&wasFirst){allCars=(EMBEDDED.cars||[]).filter(isCar);refreshControls();setFeatured(allCars);repaint();} }
+      try{const rs=await fetch(`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&order=first_seen.desc`,{headers:{...SBH,Range:"0-1499"},cache:"no-store"});
+        if(rs.ok){const d=await rs.json(); if(Array.isArray(d))sampleCars=cleanRows(d);}}catch(e){}
+      refreshControls();setFeatured(sampleCars);
+      await loadGrid();
+      try{const rc=await fetch(`${SB_URL}/rest/v1/v_listings?select=car_id`,{headers:{...SBH,Prefer:"count=exact",Range:"0-0"},cache:"no-store"});
+        const t=parseInt((rc.headers.get("content-range")||"").split("/")[1]);
+        if(!isNaN(t)){catalogTotal=t;try{localStorage.setItem("br_total",String(t));}catch(e){}
+          if(!clientOnlyActive()&&!serverFilterActive()){setCount(t);paintPager(Math.max(1,Math.ceil(t/PAGE_SIZE)));}}}catch(e){}
+    } else { await loadGrid(); }
+  }catch(e){ if(wasFirst){allCars=(EMBEDDED.cars||[]).filter(isCar);sampleCars=allCars;refreshControls();setFeatured(sampleCars);render(allCars.slice(0,PAGE_SIZE));setCount(allCars.length);} }
   if(wasFirst&&typeof renderContent==="function")renderContent();
-  if(wasFirst){const _cid=new URLSearchParams(location.search).get("car");if(_cid){const _cc=allCars.find(x=>x.car_id===_cid);if(_cc)setTimeout(()=>openModal(_cc),80);}}
+  if(wasFirst){const _cid=new URLSearchParams(location.search).get("car");if(_cid)openCarById(_cid);}
   firstLoad=false;
 }
 
@@ -907,7 +940,7 @@ function openModal(c){
     ? ph.map((u,k)=>`<img class="${k===0?'show':''}" referrerpolicy="no-referrer" src="${u}">`).join("")
       +(ph.length>1?`<button class="gnav prev" onclick="gal(-1)">‹</button><button class="gnav next" onclick="gal(1)">›</button><span class="cnt" id="gcnt">1 / ${ph.length}</span>`:"")
     : '<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#9aa7b8">Bez foto</div>';
-  const sim=(window.allCars||allCars).filter(x=>x.car_id!==c.car_id&&x.make===c.make&&x.model===c.model&&x.last_price!=null).slice(0,6);
+  const sim=AGG().filter(x=>x.car_id!==c.car_id&&x.make===c.make&&x.model===c.model&&x.last_price!=null).slice(0,6);
   const simHtml=sim.length?`<div style="margin-top:20px"><h3 style="margin:0 0 10px">${ML().similar}</h3><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px">`+sim.map(s=>`<div onclick="openModalById('${s.car_id}')" style="display:flex;gap:10px;align-items:center;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;cursor:pointer">
       <img id="simimg_${s.car_id}" src="${(s.photos&&s.photos.length)?hq(uniqPhotos(s.photos)[0]):''}" referrerpolicy="no-referrer" style="width:56px;height:44px;object-fit:cover;border-radius:8px;background:var(--line);flex:none" onerror="this.style.visibility='hidden'">
       <div style="min-width:0"><div style="font-weight:700;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(s.make)} ${esc(s.model)} ${s.year||""}</div><div style="font-weight:800;color:var(--accent);font-size:14px">${eur(s.last_price)}</div></div></div>`).join("")+`</div></div>`:"";
@@ -973,7 +1006,8 @@ document.getElementById("pills").onclick=e=>{const b=e.target.closest("button");
   countryFilter=b.dataset.c;[...document.querySelectorAll(".pills button")].forEach(x=>x.classList.toggle("on",x===b));curPage=1;repaint();};
 function bind(id,key){const el=document.getElementById(id);el.value=F[key]||"";
   el.addEventListener("input",()=>{F[key]=el.value;if(id==="make"){F.model="";refreshControls();}
-    localStorage.setItem("br_filters",JSON.stringify(F));curPage=1;repaint();});}
+    localStorage.setItem("br_filters",JSON.stringify(F));curPage=1;
+    clearTimeout(bind._t);bind._t=setTimeout(repaint,260);});}   // debounce -> one query, not per-keystroke
 ["q","pmin","pmax","ymin","ymax","mmin","mmax","emin","emax","make","model","fuel","gear","bodyf","drive","sort"].forEach(id=>bind(id,id));
 const langSel=document.getElementById("lang");langSel.value=lang;
 langSel.addEventListener("change",()=>{lang=langSel.value;localStorage.setItem("br_lang",lang);
@@ -1059,7 +1093,7 @@ function renderContent(){
   setT("navList",c.nav[0]);setT("navHow",c.nav[1]);setT("navFaq",c.nav[2]);
   setT("ctaBrowse",c.cta[0]);setT("ctaAlerts",c.cta[1]);
   setT("footAbout",c.footAbout);setT("footSrc",c.footSrc);
-  const counts={};allCars.forEach(x=>{if(x.make)counts[x.make]=(counts[x.make]||0)+1;});
+  const counts={};AGG().forEach(x=>{if(x.make)counts[x.make]=(counts[x.make]||0)+1;});
   const top=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).slice(0,16);
   const chips=top.map(m=>`<span class="chip" onclick='pickMake(${JSON.stringify(m)})'>${m} <b style="color:var(--mut);font-weight:600">${counts[m]}</b></span>`).join("");
   const pros=c.pros.map(x=>`<li>${x}</li>`).join("");
