@@ -185,15 +185,16 @@ def ap_detail(html, source_url=None):
     for cand in re.findall(r"\bVIN\b[^<]{0,40}", html, re.IGNORECASE):
         t=re.search(r"\b([A-HJ-NPR-Z0-9]{6,17})\b", cand)
         if t and re.search(r"[A-Z]",t.group(1)) and re.search(r"\d",t.group(1)): vin=t.group(1); break
-    # ONLY the main-listing gallery. Autoplius detail pages embed a "similar / recommended cars"
-    # carousel lower down whose thumbnails use the SAME autoplius-img.dgn.lt host (and even inherit
-    # this page's slug) but point at OTHER cars' image IDs -> cut the page at that section first so
-    # foreign photos never leak into this listing's gallery.
-    _gal=html
-    for _m in ('js-similar','similar-announcements','class="similar','data-similar','recommended','Susiję','Panašūs','Līdzīgi','Похожие','id="footer','class="footer'):
-        _i=_gal.find(_m)
-        if _i>800: _gal=_gal[:_i]; break
-    photos=sorted(set(re.findall(r"https://autoplius-img\.dgn\.lt/[^\s\"')]+\.jpg", _gal)))
+    # ONLY the main-listing gallery. Autoplius detail pages embed "promoted / partner ads" and
+    # "related announcements" blocks (class="promoted-announcement" data-type="partnerads", inside
+    # related-announcements-items-container / js-other-partner-anns) whose thumbnails share the
+    # autoplius-img.dgn.lt host but are OTHER cars -> cut the page at the first such block (always
+    # BELOW the listing gallery) so foreign photos never leak in.
+    _cut=len(html)
+    for _m in ('related-announcements','js-other-partner-anns','other-announcements','block-related','js-similar','similar-announcements'):
+        _i=html.find(_m)
+        if _i>2000: _cut=min(_cut,_i)
+    photos=sorted(set(re.findall(r"https://autoplius-img\.dgn\.lt/[^\s\"')]+\.jpg", html[:_cut])))
     og=meta(html,"og:image","property")
     if og and og not in photos: photos.insert(0,og)
     seg=html.split("Tapatība apstiprināta",1); src=seg[1][:300] if len(seg)>1 else html
