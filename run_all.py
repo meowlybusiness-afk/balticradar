@@ -109,7 +109,13 @@ def ap_detail(html, source_url=None):
     for cand in re.findall(r"\bVIN\b[^<]{0,40}", html, re.IGNORECASE):
         t=re.search(r"\b([A-HJ-NPR-Z0-9]{6,17})\b", cand)
         if t and re.search(r"[A-Z]",t.group(1)) and re.search(r"\d",t.group(1)): vin=t.group(1); break
-    photos=sorted(set(re.findall(r"https://autoplius-img\.dgn\.lt/[^\s\"')]+\.jpg", html)))
+    # ONLY the main-listing gallery (cut off the "similar / recommended cars" carousel, whose
+    # thumbnails share the autoplius-img.dgn.lt host and this page's slug but are OTHER cars).
+    _gal=html
+    for _m in ('js-similar','similar-announcements','class="similar','data-similar','recommended','Susiję','Panašūs','Līdzīgi','Похожие','id="footer','class="footer'):
+        _i=_gal.find(_m)
+        if _i>800: _gal=_gal[:_i]; break
+    photos=sorted(set(re.findall(r"https://autoplius-img\.dgn\.lt/[^\s\"')]+\.jpg", _gal)))
     og=meta(html,"og:image","property")
     if og and og not in photos: photos.insert(0,og)
     seg=html.split("Tapatība apstiprināta",1); src=seg[1][:300] if len(seg)>1 else html
