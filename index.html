@@ -763,6 +763,10 @@ async function sbPage(from,to,wantCount){
   const tot=parseInt((r.headers.get("content-range")||"").split("/")[1]);
   return {rows:Array.isArray(rows)?rows:[], total:isNaN(tot)?null:tot};
 }
+async function sbCount(){   // shallow, safe filtered count (Range 0-0) -> never times out on deep offsets
+  try{const r=await fetch(`${SB_URL}/rest/v1/v_listings?select=car_id&${buildServerQ()}`,{headers:{...SBH,Range:"0-0",Prefer:"count=estimated"},cache:"no-store"});
+    const t=parseInt((r.headers.get("content-range")||"").split("/")[1]); return isNaN(t)?null:t;}catch(e){return null;}
+}
 let _grSeq=0;
 async function loadGrid(){
   const my=++_grSeq;
@@ -779,12 +783,13 @@ async function loadGrid(){
       paintPager(totalPages);setCount(refined.length);
     } else {
       const from=(curPage-1)*PAGE_SIZE, to=from+PAGE_SIZE-1;
-      const {rows,total}=await sbPage(from,to,true);
+      const {rows}=await sbPage(from,to,false);   // no count on the page fetch -> deep offsets never time out
       if(my!==_grSeq)return;
-      const tot = serverFilterActive() ? (total!=null?total:rows.length)
-                                       : (catalogTotal!=null?catalogTotal:(total||rows.length));
+      let tot = serverFilterActive() ? await sbCount() : catalogTotal;
+      if(my!==_grSeq)return;
+      if(tot==null) tot=(from+rows.length)||1;
       const totalPages=Math.max(1,Math.ceil((tot||1)/PAGE_SIZE));
-      if(curPage>totalPages){curPage=totalPages;return loadGrid();}
+      if(curPage>totalPages&&curPage>1){curPage=totalPages;return loadGrid();}
       allCars=cleanRows(rows);
       render(allCars);loadPagePhotos(allCars);
       paintPager(totalPages);setCount(tot);
