@@ -374,9 +374,7 @@ function applyI18n(){
   if(typeof updateNotifyBtn==="function")updateNotifyBtn();
 }
 function setCount(n){const el=document.getElementById("count");if(!el)return;
-  let v=(n!=null?n:applyFilters(allCars).length);
-  // nothing filtered out + catalogue still streaming in -> show the true total, never the partial batch
-  if(catalogTotal!=null && v===allCars.length && catalogTotal>allCars.length) v=catalogTotal;
+  const v=(n!=null?n:applyFilters(allCars).length);
   el.textContent=v+" "+T().results;}
 const SUBT={
  lv:{nb:"Paziņojumi",st:"Saņem paziņojumus par jauniem auto",name:"Vārds",email:"E-pasts",phone:"Telefons",anyC:"Valsts (jebkura)",make:"Marka (jebkura)",pmax:"Maks. cena €",ymin:"Gads no",consent:"Piekrītu datu glabāšanai paziņojumu sūtīšanai.",submit:"Pieteikties",ok:"Paldies! Sūtīsim jaunos auto uz tavu e-pastu.",need:"Ievadi e-pastu un piekrīti."},
@@ -788,13 +786,15 @@ async function _pageRetry(off,flt){   // one 1000-row page (first_seen.desc, ind
 // Fetch EVERY row matching the server-safe filters, so client-side filters (model-series, gearbox,
 // body, fuel, engine, text search) find ALL matches across the whole brand, not just the newest 1000.
 async function fetchAllFiltered(cap, seq){
-  const flt=buildFilterPreds(); const out=[];
-  for(let off=0; off<(cap||25000); off+=1000){
+  const flt=buildFilterPreds();
+  const offs=[]; for(let off=0; off<(cap||25000); off+=1000) offs.push(off);
+  const out=[]; const CONC=6;
+  for(let i=0;i<offs.length;i+=CONC){
     if(seq!==undefined && seq!==_grSeq) return null;
-    const rows=await _pageRetry(off, flt);
-    if(rows===null) break;
-    for(const c of rows) out.push(c);
-    if(rows.length<1000) break;
+    const res=await Promise.all(offs.slice(i,i+CONC).map(o=>_pageRetry(o,flt)));
+    let anyFull=false;
+    for(const rows of res){ if(rows&&rows.length){ out.push(...rows); if(rows.length>=1000) anyFull=true; } }
+    if(!anyFull) break;   // reached the end of the result set
   }
   return out;
 }
