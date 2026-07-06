@@ -402,6 +402,19 @@ const COOKIE={
  lt:{txt:"Naudojame slapukus svetainei gerinti. Tęsdami sutinkate su slapukais.",acc:"Sutikti",dec:"Tik būtini"},
  et:{txt:"Kasutame küpsiseid saidi parandamiseks. Jätkates nõustud küpsistega.",acc:"Nõustu",dec:"Ainult vajalikud"}};
 const ST=()=>SUBT[lang]||SUBT.en;
+function subModelOpts(make,cur){
+  const s=ST(); let opts=[];
+  if(make){ const A=AGG().filter(c=>c.make===make);
+    const models=[...new Set(A.map(c=>c.model).filter(v=>v&&!junkVal(v)))];
+    const series=[...new Set(A.map(c=>modelSeries(c.make,c.model)).filter(v=>v&&!junkVal(v)))].filter(x=>!models.includes(x));
+    opts=[...series,...models].sort(); }
+  if(cur&&!opts.includes(cur)) opts.unshift(cur);
+  return `<option value="">${s.model}</option>`+opts.map(v=>`<option ${cur===v?'selected':''}>${esc(v)}</option>`).join("");
+}
+function subSyncModels(){
+  const mk=document.getElementById("s_make"), md=document.getElementById("s_model");
+  if(mk&&md) md.innerHTML=subModelOpts(mk.value,"");
+}
 function openSub(){
   const s=ST();
   const p=JSON.parse(localStorage.getItem("br_profile")||"null")||{};
@@ -422,8 +435,8 @@ function openSub(){
       <div id="subform" style="display:flex;flex-direction:column;gap:10px">
         <div style="font-weight:800;font-size:13px">${s.step1}</div>
         <select id="s_country">${cOpts}</select>
-        <select id="s_make">${makeOpts}</select>
-        <input id="s_model" placeholder="${s.model}" value="${val('model')}">
+        <select id="s_make" onchange="subSyncModels()">${makeOpts}</select>
+        <select id="s_model">${subModelOpts(p.make,p.model)}</select>
         <select id="s_body">${bodyOpts}</select>
         <select id="s_fuel">${fuelOpts}</select>
         <select id="s_gear">${gearOpts}</select>
