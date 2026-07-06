@@ -94,6 +94,30 @@ def split_mm(title):
     if make and (re.fullmatch(r"\d+(\.\d+)?",make) or re.fullmatch(r"\d+\s*kW",make,re.I)): make=None
     if model and (re.fullmatch(r"\d+\.\d+",model) or re.fullmatch(r"\d+\s*kW",model,re.I)): model=None
     return make,model
+def _ap_main_gallery(photos, gap=50000):
+    # Keep only the largest tight cluster of autoplius image IDs; partner-ad / related-listing
+    # thumbnails are OTHER cars with far-off IDs and fall outside the main cluster (data-level,
+    # robust to page-layout changes).
+    def _idof(u):
+        m = re.search(r"ann_\d+_(\d+)", u or "")
+        return int(m.group(1)) if m else None
+    ided = [(u, _idof(u)) for u in photos]
+    ided = [x for x in ided if x[1] is not None]
+    if len(ided) < 2:
+        return photos
+    ids = sorted({x[1] for x in ided})
+    clusters = [[ids[0]]]
+    for i in range(1, len(ids)):
+        if ids[i] - ids[i - 1] <= gap:
+            clusters[-1].append(ids[i])
+        else:
+            clusters.append([ids[i]])
+    clusters.sort(key=len, reverse=True)
+    main = set(clusters[0])
+    if (len(ids) - len(main)) >= len(main):   # safety: never drop a majority of distinct images
+        return photos
+    return [u for u in photos if (_idof(u) is None or _idof(u) in main)]
+
 def ap_detail(html, source_url=None):
     kw=meta(html,"keywords"); title=meta(html,"og:title","property") or meta(html,"title")
     m=re.search(r"\bA(\d{6,})\b", title or kw or "")
@@ -117,6 +141,7 @@ def ap_detail(html, source_url=None):
         _i=html.find(_m)
         if _i>2000: _cut=min(_cut,_i)
     photos=sorted(set(re.findall(r"https://autoplius-img\.dgn\.lt/[^\s\"')]+\.jpg", html[:_cut])))
+    photos=_ap_main_gallery(photos)   # drop any partner-ad / related-listing photos that still leaked in
     og=meta(html,"og:image","property")
     if og and og not in photos: photos.insert(0,og)
     seg=html.split("Tapatība apstiprināta",1); src=seg[1][:300] if len(seg)>1 else html
