@@ -767,6 +767,37 @@ function buildServerQ(){
   p.push("order="+(s==="pa"?"last_price.asc.nullslast":s==="pd"?"last_price.desc.nullslast":s==="yd"?"year.desc.nullslast":"first_seen.desc"));
   return p.join("&");
 }
+function buildFilterPreds(){   // server-safe filter predicates ONLY (no order) for the full-brand fetch
+  const p=[];
+  if(countryFilter!=="all")p.push("country=eq."+encodeURIComponent(countryFilter));
+  if(F.make)p.push("make=eq."+encodeURIComponent(F.make));
+  if(F.ymin)p.push("year=gte."+(+F.ymin)); if(F.ymax)p.push("year=lte."+(+F.ymax));
+  if(F.pmin)p.push("last_price=gte."+(+F.pmin)); if(F.pmax)p.push("last_price=lte."+(+F.pmax));
+  if(F.mmin)p.push("last_mileage=gte."+(+F.mmin)); if(F.mmax)p.push("last_mileage=lte."+(+F.mmax));
+  return p.join("&");
+}
+async function _pageRetry(off,flt){   // one 1000-row page (first_seen.desc, indexed) with retries on transient 500s
+  const url=`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&${flt?flt+"&":""}order=first_seen.desc`;
+  for(let a=0;a<4;a++){
+    try{const r=await fetch(url,{headers:{...SBH,Range:`${off}-${off+999}`},cache:"no-store"});
+      if(r.ok){const rows=await r.json(); if(Array.isArray(rows)) return rows;}}catch(e){}
+    await new Promise(r=>setTimeout(r,400));
+  }
+  return null;
+}
+// Fetch EVERY row matching the server-safe filters, so client-side filters (model-series, gearbox,
+// body, fuel, engine, text search) find ALL matches across the whole brand, not just the newest 1000.
+async function fetchAllFiltered(cap, seq){
+  const flt=buildFilterPreds(); const out=[];
+  for(let off=0; off<(cap||25000); off+=1000){
+    if(seq!==undefined && seq!==_grSeq) return null;
+    const rows=await _pageRetry(off, flt);
+    if(rows===null) break;
+    for(const c of rows) out.push(c);
+    if(rows.length<1000) break;
+  }
+  return out;
+}
 function cleanRows(rows){return rows.filter(isCar).filter(c=>!(c.source==="ss.lv"&&(c.last_price==null||c.last_price===0)));}
 async function sbPage(from,to,wantCount){
   const r=await fetch(`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&${buildServerQ()}`,
@@ -785,9 +816,9 @@ async function loadGrid(){
   const my=++_grSeq;
   try{
     if(clientOnlyActive()){
-      const {rows}=await sbPage(0,999,false);              // bounded window matching server-safe filters
-      if(my!==_grSeq)return;
-      const refined=applyFilters(cleanRows(rows));         // full client filters + sort
+      const all=await fetchAllFiltered(25000,my);          // fetch the WHOLE filtered set -> all matches found
+      if(all===null||my!==_grSeq)return;
+      const refined=applyFilters(cleanRows(all));          // full client filters + sort
       allCars=refined;
       const totalPages=Math.max(1,Math.ceil(refined.length/PAGE_SIZE));
       if(curPage>totalPages)curPage=totalPages; if(curPage<1)curPage=1;
