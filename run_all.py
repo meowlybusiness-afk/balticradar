@@ -268,6 +268,17 @@ def ss_detail_posted(html):
     m=re.search(r"Datums:\s*(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})",html)
     if not m: return None
     d,mo,y,H,Mi=m.groups(); return f"{y}-{mo}-{d}T{H}:{Mi}:00Z"
+_SS_BODY={"sedans":"Sedans","kupeja":"Kupeja","universālis":"Universālis","universals":"Universālis",
+  "universāls":"Universālis","hečbeks":"Hečbeks","hecbeks":"Hečbeks","kabriolets":"Kabriolets",
+  "apvidus":"Apvidus","minivens":"Minivens","pikaps":"Pikaps","kravas":"Kravas","limuzīns":"Limuzīns",
+  "kabriolets/rodsters":"Kabriolets"}
+def ss_detail_body(html):
+    # ss.lv shows body only on the detail page: "Virsbūves tips: Sedans/Kupeja/Universālis/..."
+    m=re.search(r"Virsb[ūu]ves\s*tips\s*:?\s*(?:<[^>]*>\s*)*([A-Za-zĀČĒĢĪĶĻŅŠŪŽāčēģīķļņšūž][^<\n]{1,24})",html)
+    if not m: return None
+    v=re.sub(r"\s+"," ",m.group(1)).strip().strip("/").strip()
+    if not v or len(v)<3: return None
+    return _SS_BODY.get(v.lower(), v[:24])
 def rel_posted(html):
     # autoplius "pirms 4 stundām / 5 dienām / 30 min" -> approx ISO timestamp
     m=re.search(r"[Pp]irms\s+(\d+)\s+(min\w*|stund\w*|dien\w*)",html) or re.search(r"[Pp]irms\s+(\d+)\s*([dh])\b",html)
@@ -425,7 +436,8 @@ if USE_SB:
         # (1 thumbnail). Here we fetch each undetailed car's page once and fill ALL the
         # gallery photos + mileage + description + posted date. Targets cars with no
         # description yet (= swept cars), so each is fetched once and then excluded.
-        try: rows=_get("cars",{"description":"is.null","source":"eq.ss.lv","select":"car_id,source_url","limit":str(limit)})
+        # target cars missing description OR body (ss.lv only shows body type on the detail page).
+        try: rows=_get("cars",{"or":"(description.is.null,body.is.null)","source":"eq.ss.lv","select":"car_id,source_url","limit":str(limit)})
         except Exception as e: print("backfill query err",repr(e)); return
         if not rows: print("backfill: no undetailed ss.lv left"); return
         n=0
@@ -438,6 +450,8 @@ if USE_SB:
                 if ml is not None: patch["mileage_km"]=ml
                 de=ss_detail_desc(d)
                 patch["description"]=de or "-"   # mark detailed even if empty, so it's not re-fetched
+                bd=ss_detail_body(d)
+                if bd: patch["body"]=bd           # "Virsbūves tips" -> body type (fixes body/coupe filters for ss.lv)
                 po=ss_detail_posted(d)
                 if po: patch["posted"]=po
                 _patch("cars",{"car_id":f"eq.{r['car_id']}"},patch); n+=1
