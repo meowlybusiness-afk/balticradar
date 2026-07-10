@@ -720,9 +720,61 @@ function updateCardPhotos(c){
   ph.innerHTML=(badge?badge.outerHTML:"")+(flag?flag.outerHTML:"")+imgs;
   wireHoverEl(el);
 }
-function heroGo(){const v=document.getElementById("heroq").value;F.q=v;const qi=document.getElementById("q");if(qi)qi.value=v;
-  localStorage.setItem("br_filters",JSON.stringify(F));curPage=1;repaint();
+function heroGo(){let v=(document.getElementById("heroq").value||"").trim();
+  const cc=CHASSIS[v.toLowerCase()];
+  if(cc){pickSuggestion({make:cc[0],model:cc[1]});return;}          // chassis code -> make+series
+  F.q=v;const qi=document.getElementById("q");if(qi)qi.value=v;
+  localStorage.setItem("br_filters",JSON.stringify(F));curPage=1;repaint();hideSugg();
   const y=document.querySelector(".layout").offsetTop-58;window.scrollTo({top:y,behavior:"smooth"});}
+// ---- SEARCH AUTOCOMPLETE: show real makes/models as you type (+ chassis codes like E90 -> BMW 3-series) ----
+const CHASSIS={
+ "e30":["BMW","3. sērija"],"e36":["BMW","3. sērija"],"e46":["BMW","3. sērija"],"e90":["BMW","3. sērija"],"e91":["BMW","3. sērija"],"e92":["BMW","3. sērija"],"e93":["BMW","3. sērija"],"f30":["BMW","3. sērija"],"f31":["BMW","3. sērija"],"g20":["BMW","3. sērija"],
+ "e34":["BMW","5. sērija"],"e39":["BMW","5. sērija"],"e60":["BMW","5. sērija"],"e61":["BMW","5. sērija"],"f10":["BMW","5. sērija"],"f11":["BMW","5. sērija"],"g30":["BMW","5. sērija"],
+ "e38":["BMW","7. sērija"],"e65":["BMW","7. sērija"],"f01":["BMW","7. sērija"],"g11":["BMW","7. sērija"],
+ "e87":["BMW","1. sērija"],"f20":["BMW","1. sērija"],"f21":["BMW","1. sērija"],
+ "e83":["BMW","X3"],"f25":["BMW","X3"],"e53":["BMW","X5"],"e70":["BMW","X5"],"f15":["BMW","X5"],
+ "w202":["Mercedes-Benz","C klase"],"w203":["Mercedes-Benz","C klase"],"w204":["Mercedes-Benz","C klase"],"w205":["Mercedes-Benz","C klase"],
+ "w210":["Mercedes-Benz","E klase"],"w211":["Mercedes-Benz","E klase"],"w212":["Mercedes-Benz","E klase"],"w213":["Mercedes-Benz","E klase"],
+ "w220":["Mercedes-Benz","S klase"],"w221":["Mercedes-Benz","S klase"],"w222":["Mercedes-Benz","S klase"],
+ "b6":["Audi","A4"],"b7":["Audi","A4"],"b8":["Audi","A4"],"b9":["Audi","A4"],"c5":["Audi","A6"],"c6":["Audi","A6"],"c7":["Audi","A6"],"c8":["Audi","A6"]};
+function suggFor(q){
+  q=(q||"").trim().toLowerCase(); if(!q)return [];
+  const out=[],seen=new Set();
+  const add=(mk,md,tag)=>{const k=mk+"|"+(md||""); if(seen.has(k))return; seen.add(k); out.push({make:mk,model:md||"",tag:tag});};
+  if(CHASSIS[q]){const c=CHASSIS[q]; add(c[0],c[1],q.toUpperCase());}
+  const MK=FACET_MAKES||[];
+  for(const mk of MK){if(mk.toLowerCase().startsWith(q))add(mk,"");}
+  for(const mk of MK){if(mk.toLowerCase().includes(q))add(mk,"");}
+  for(const mk in FACET_MODELS){const mkl=mk.toLowerCase();
+    for(const md of FACET_MODELS[mk]){if((mkl+" "+md.toLowerCase()).includes(q))add(mk,md); if(out.length>50)break;}
+    if(out.length>50)break;}
+  return out.slice(0,8);
+}
+let _suggBox=null;
+function _ensureSuggBox(){if(_suggBox)return _suggBox;
+  _suggBox=document.createElement("div"); _suggBox.id="suggBox";
+  _suggBox.style.cssText="position:absolute;z-index:9999;background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);display:none;max-height:320px;overflow-y:auto";
+  document.body.appendChild(_suggBox); return _suggBox;}
+function hideSugg(){if(_suggBox)_suggBox.style.display="none";}
+function showSugg(input){
+  const items=suggFor(input.value); const box=_ensureSuggBox();
+  if(!items.length){hideSugg();return;} box._items=items;
+  box.innerHTML=items.map((s,i)=>`<div class="sugg" data-i="${i}" style="padding:10px 14px;cursor:pointer;font-size:14px;color:var(--ink);display:flex;justify-content:space-between;gap:14px;border-bottom:1px solid var(--line)"><span><b>${esc(s.make)}</b>${s.model?" "+esc(s.model):""}</span>${s.tag?`<span style="color:var(--mut);font-size:12px">${esc(s.tag)}</span>`:""}</div>`).join("");
+  const r=input.getBoundingClientRect();
+  box.style.left=(r.left+window.scrollX)+"px"; box.style.top=(r.bottom+window.scrollY+4)+"px"; box.style.width=Math.max(220,r.width)+"px"; box.style.display="block";
+  [...box.querySelectorAll(".sugg")].forEach(el=>{el.onmousedown=e=>{e.preventDefault();pickSuggestion(box._items[+el.dataset.i]);};
+    el.onmouseenter=()=>{[...box.querySelectorAll(".sugg")].forEach(x=>x.style.background="");el.style.background="var(--card2)";};});
+}
+function pickSuggestion(s){
+  F.make=s.make; F.model=s.model||""; F.q="";
+  const q1=document.getElementById("q"); if(q1)q1.value=""; const hq=document.getElementById("heroq"); if(hq)hq.value="";
+  localStorage.setItem("br_filters",JSON.stringify(F));
+  refreshControls(); hideSugg(); doSearch(); scrollToEl("grid");
+}
+["heroq","q"].forEach(id=>{const el=document.getElementById(id); if(!el)return;
+  el.addEventListener("input",()=>{clearTimeout(showSugg._t);showSugg._t=setTimeout(()=>showSugg(el),110);});
+  el.addEventListener("focus",()=>{if(el.value)showSugg(el);});
+  el.addEventListener("blur",()=>setTimeout(hideSugg,160));});
 function toggleFilters(){document.querySelector(".sidebar").classList.toggle("open");}
 let _featId="";
 function setFeatured(cars){
