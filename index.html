@@ -821,25 +821,28 @@ try{const _c=JSON.parse(localStorage.getItem("br_facets")||"null");
 function _saveFacets(){try{localStorage.setItem("br_facets",JSON.stringify({t:Date.now(),m:FACET_MAKES,mm:FACET_MODELS}));}catch(e){}}
 async function scanFacets(){                      // one keyset pass over the whole catalogue; cached 24h
   if((FACET_MAKES&&FACET_MAKES.length)||_facetScan)return; _facetScan=true;
-  const makes=new Set(), models={}; let after="";
+  const cnt={}, models={}; let after="";
   try{
     for(let i=0;i<160;i++){
       const r=await fetch(`${SB_URL}/rest/v1/cars?select=car_id,make,model&active=eq.true&order=car_id.asc&limit=1000&car_id=gt.${encodeURIComponent(after)}`,{headers:SBH,cache:"no-store"});
       if(!r.ok)break; const rows=await r.json(); if(!Array.isArray(rows)||!rows.length)break;
-      for(const x of rows){ if(x.make&&!junkVal(x.make)){ makes.add(x.make);
+      for(const x of rows){ if(x.make&&!junkVal(x.make)){ cnt[x.make]=(cnt[x.make]||0)+1;
         (models[x.make]=models[x.make]||new Set()); if(x.model&&!junkVal(x.model))models[x.make].add(x.model); } }
       after=rows[rows.length-1].car_id; if(rows.length<1000)break;
     }
-    if(makes.size){FACET_MAKES=[...makes]; for(const k in models)FACET_MODELS[k]=[...models[k]]; _saveFacets(); refreshControls();}
+    const keep=Object.keys(cnt).filter(m=>cnt[m]>=4);   // drop one-off / mis-parsed "brands" (real brands have many cars)
+    if(keep.length){FACET_MAKES=keep; for(const k of keep)FACET_MODELS[k]=[...(models[k]||[])]; _saveFacets(); refreshControls();}
   }catch(e){} finally{_facetScan=false;}
 }
 // ---- SERVER-SIDE PAGINATION: one page at a time from Supabase; scales to the whole ~83k catalogue ----
-function serverFilterActive(){return !!(countryFilter!=="all"||F.make||F.pmin||F.pmax||F.ymin||F.ymax||F.mmin||F.mmax);}
-function clientOnlyActive(){return !!(F.fuel||F.gear||F.bodyf||F.drive||F.q||F.emin||F.emax||F.model);}
+function serverFilterActive(){return !!(countryFilter!=="all"||F.make||F.q||F.pmin||F.pmax||F.ymin||F.ymax||F.mmin||F.mmax);}
+function clientOnlyActive(){return !!(F.fuel||F.gear||F.bodyf||F.drive||F.emin||F.emax||F.model);}
+function qPred(){const qq=String(F.q||"").trim().replace(/[(),*]/g," ").trim(); return qq?`or=(make.ilike.*${encodeURIComponent(qq)}*,model.ilike.*${encodeURIComponent(qq)}*)`:"";}
 function buildServerQ(){
   const p=[];
   if(countryFilter!=="all")p.push("country=eq."+encodeURIComponent(countryFilter));
   if(F.make)p.push("make=eq."+encodeURIComponent(F.make));
+  {const qp=qPred(); if(qp)p.push(qp);}
   if(F.ymin)p.push("year=gte."+(+F.ymin)); if(F.ymax)p.push("year=lte."+(+F.ymax));
   if(F.pmin)p.push("last_price=gte."+(+F.pmin)); if(F.pmax)p.push("last_price=lte."+(+F.pmax));
   if(F.mmin)p.push("last_mileage=gte."+(+F.mmin)); if(F.mmax)p.push("last_mileage=lte."+(+F.mmax));
@@ -851,6 +854,7 @@ function buildFilterPreds(){   // server-safe filter predicates ONLY (no order) 
   const p=[];
   if(countryFilter!=="all")p.push("country=eq."+encodeURIComponent(countryFilter));
   if(F.make)p.push("make=eq."+encodeURIComponent(F.make));
+  {const qp=qPred(); if(qp)p.push(qp);}
   if(F.ymin)p.push("year=gte."+(+F.ymin)); if(F.ymax)p.push("year=lte."+(+F.ymax));
   if(F.pmin)p.push("last_price=gte."+(+F.pmin)); if(F.pmax)p.push("last_price=lte."+(+F.pmax));
   if(F.mmin)p.push("last_mileage=gte."+(+F.mmin)); if(F.mmax)p.push("last_mileage=lte."+(+F.mmax));
