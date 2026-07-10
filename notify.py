@@ -14,7 +14,7 @@ URL=os.environ.get("SUPABASE_URL","").rstrip("/"); KEY=os.environ.get("SUPABASE_
 H={"apikey":KEY,"Authorization":f"Bearer {KEY}","Content-Type":"application/json"}
 LOOKBACK_H=int(os.environ.get("LOOKBACK_H",24))
 MAX_PER_EMAIL=int(os.environ.get("MAX_PER_EMAIL",20))
-SITE=os.environ.get("SITE_URL","https://starlit-tulumba-bd46fb.netlify.app")
+SITE=os.environ.get("SITE_URL","https://balticradar.meowlybusiness.workers.dev")
 RESEND_KEY=os.environ.get("RESEND_API_KEY")
 FROM=os.environ.get("ALERT_FROM","BalticRadar <onboarding@resend.dev>")
 
@@ -26,12 +26,45 @@ def get(path):
         print("get error:",e); return []
 def post(path,rows): return requests.post(f"{URL}/rest/v1/{path}",headers=H,json=rows,timeout=30)
 
+def _nb(v):
+    s=(v or "").lower()
+    if "sedan" in s: return "sedans"
+    if "hatch" in s or "hečbek" in s or "hecbek" in s: return "hečbeks"
+    if "coupe" in s or "kupej" in s: return "kupeja"
+    if "cabrio" in s or "kabriolet" in s or "roadster" in s or "convertible" in s: return "kabriolets"
+    if "pickup" in s or "pikap" in s: return "pikaps"
+    if "suv" in s or "visurg" in s or "krosover" in s or "cross" in s or "apvidus" in s: return "apvidus"
+    if "universal" in s or "estate" in s or "wagon" in s or "kombi" in s or "touring" in s or "caravan" in s: return "universālis"
+    if "minibus" in s or "minivan" in s or "miniven" in s or "van" in s: return "minivens"
+    if "limous" in s or "limuzin" in s: return "limuzīns"
+    return s
+_FUEL={"petrol":"benzīns","diesel":"dīzelis","electric":"elektrība","hybrid":"hibrīds","gas":"gāze","lpg":"gāze"}
+_GEAR={"automatic":"automātiskā","manual":"mehāniskā"}
+def _nf(v): s=(v or "").lower().strip(); return _FUEL.get(s,s)
+def _ng(v): s=(v or "").lower().strip(); return _GEAR.get(s,s)
+
 def matches(car, sub):
+    # honor EVERY saved criterion (with source-value normalization so e.g. auto24 "coupe"
+    # matches a subscriber's "Kupeja", "diesel" matches "Dīzelis", etc.)
     if sub.get("country") and car.get("country")!=sub["country"]: return False
-    if sub.get("make") and (car.get("make") or "").lower()!=sub["make"].lower(): return False
-    if sub.get("model") and (car.get("model") or "").lower()!=sub["model"].lower(): return False
-    if sub.get("price_max") and (car.get("last_price") or 10**12)>sub["price_max"]: return False
-    if sub.get("year_min") and (car.get("year") or 0)<sub["year_min"]: return False
+    if sub.get("make")  and (car.get("make")  or "").lower()!=str(sub["make"]).lower():  return False
+    if sub.get("model") and (car.get("model") or "").lower()!=str(sub["model"]).lower(): return False
+    if sub.get("body")    and _nb(car.get("body"))    !=_nb(sub["body"]):    return False
+    if sub.get("fuel")    and _nf(car.get("fuel"))    !=_nf(sub["fuel"]):    return False
+    if sub.get("gearbox") and _ng(car.get("gearbox")) !=_ng(sub["gearbox"]): return False
+    p=car.get("last_price")
+    if sub.get("price_min") and (p is None or p<sub["price_min"]): return False
+    if sub.get("price_max") and (p is None or p>sub["price_max"]): return False
+    y=car.get("year") or 0
+    if sub.get("year_min") and y<sub["year_min"]: return False
+    if sub.get("year_max") and y>sub["year_max"]: return False
+    m=car.get("last_mileage")
+    if sub.get("mileage_min") and (m or 0)<sub["mileage_min"]: return False
+    if sub.get("mileage_max") and (m is None or m>sub["mileage_max"]): return False
+    try: e=float(car.get("engine_l") or 0)
+    except (TypeError,ValueError): e=0
+    if sub.get("engine_min") and e<sub["engine_min"]: return False
+    if sub.get("engine_max") and e and e>sub["engine_max"]: return False
     return True
 
 def car_row(c):

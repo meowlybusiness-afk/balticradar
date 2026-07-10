@@ -402,10 +402,10 @@ const COOKIE={
 const ST=()=>SUBT[lang]||SUBT.en;
 function subModelOpts(make,cur){
   const s=ST(); let opts=[];
-  if(make){ const A=AGG().filter(c=>c.make===make);
-    const models=[...new Set(A.map(c=>c.model).filter(v=>v&&!junkVal(v)))];
-    const series=[...new Set(A.map(c=>modelSeries(c.make,c.model)).filter(v=>v&&!junkVal(v)))].filter(x=>!models.includes(x));
-    opts=[...series,...models].sort(); }
+  if(make){
+    const models=FACET_MODELS[make]?[...FACET_MODELS[make]]:[...new Set(AGG().filter(c=>c.make===make).map(c=>c.model).filter(v=>v&&!junkVal(v)))];
+    const series=[...new Set(models.map(m=>modelSeries(make,m)).filter(v=>v&&!junkVal(v)))].filter(x=>!models.includes(x));
+    opts=[...series,...models].sort(); if(!FACET_MODELS[make])scanFacets(); }
   if(cur&&!opts.includes(cur)) opts.unshift(cur);
   return `<option value="">${s.model}</option>`+opts.map(v=>`<option ${cur===v?'selected':''}>${esc(v)}</option>`).join("");
 }
@@ -738,19 +738,42 @@ function pickMake(m){F.make=m;const el=document.getElementById("make");if(el)el.
 function openModalById(id){openCarById(id);}
 function refreshControls(){
   const A=AGG();
-  fillSelect("make",[...new Set(A.map(c=>c.make).filter(v=>v&&!junkVal(v)))].sort(),F.make);
-  const cm=F.make?A.filter(c=>c.make===F.make):A;
-  const models=[...new Set(cm.map(c=>c.model).filter(v=>v&&!junkVal(v)))];
-  const series=[...new Set(cm.map(c=>modelSeries(c.make,c.model)).filter(v=>v&&!junkVal(v)))].filter(s=>!models.includes(s));
-  fillSelect("model",[...series,...models].sort(),F.model);
+  const mk=(FACET_MAKES&&FACET_MAKES.length)?FACET_MAKES:[...new Set(A.map(c=>c.make).filter(v=>v&&!junkVal(v)))];
+  fillSelect("make",mk.filter(v=>v&&!junkVal(v)).sort(),F.make);
+  let models,series=[];
+  if(F.make){                                     // full model list for the chosen make (from facets)
+    models=FACET_MODELS[F.make]?[...FACET_MODELS[F.make]]:[...new Set(A.filter(c=>c.make===F.make).map(c=>c.model).filter(v=>v&&!junkVal(v)))];
+    series=[...new Set(models.map(m=>modelSeries(F.make,m)).filter(v=>v&&!junkVal(v)))].filter(s=>!models.includes(s));
+  } else { models=[...new Set(A.map(c=>c.model).filter(v=>v&&!junkVal(v)))]; }
+  fillSelect("model",[...series,...models].filter(v=>v&&!junkVal(v)).sort(),F.model);
   fillSelect("fuel",[...new Set(A.map(c=>norm("fuel",c.fuel)).filter(Boolean))].sort(),F.fuel);
   fillSelect("gear",[...new Set(A.map(c=>norm("gear",c.gearbox)).filter(Boolean))].sort(),F.gear);
   fillSelect("bodyf",[...new Set(A.filter(c=>c.body&&!BODYJUNK.has(String(deent(c.body)).toLowerCase().trim())).map(c=>norm("body",c.body)).filter(Boolean))].sort(),F.bodyf);
-  fillSelect("drive",[...new Set(A.map(c=>norm("drive",c.drivetrain)).filter(Boolean))].sort(),F.drive);}
+  fillSelect("drive",[...new Set(A.map(c=>norm("drive",c.drivetrain)).filter(Boolean))].sort(),F.drive);
+  if(!(FACET_MAKES&&FACET_MAKES.length))scanFacets();}
 
 const LIST_COLS="car_id,source,country,make,model,year,engine_l,fuel,gearbox,body,drivetrain,last_mileage,last_price,location,posted,first_seen,source_url";
 let sampleCars=[];
-function AGG(){return sampleCars.length?sampleCars:allCars;}   // large sample for dropdowns/ratings/similar
+function AGG(){return sampleCars.length?sampleCars:allCars;}   // large sample for ratings/similar
+// ---- FULL-CATALOGUE FACETS: dropdowns must list EVERY make + model, not just the newest sample ----
+let FACET_MAKES=null; const FACET_MODELS={}; let _facetScan=false;
+try{const _c=JSON.parse(localStorage.getItem("br_facets")||"null");
+  if(_c&&_c.t&&(Date.now()-_c.t<86400000)){FACET_MAKES=_c.m||null; Object.assign(FACET_MODELS,_c.mm||{});}}catch(e){}
+function _saveFacets(){try{localStorage.setItem("br_facets",JSON.stringify({t:Date.now(),m:FACET_MAKES,mm:FACET_MODELS}));}catch(e){}}
+async function scanFacets(){                      // one keyset pass over the whole catalogue; cached 24h
+  if((FACET_MAKES&&FACET_MAKES.length)||_facetScan)return; _facetScan=true;
+  const makes=new Set(), models={}; let after="";
+  try{
+    for(let i=0;i<160;i++){
+      const r=await fetch(`${SB_URL}/rest/v1/cars?select=car_id,make,model&active=eq.true&order=car_id.asc&limit=1000&car_id=gt.${encodeURIComponent(after)}`,{headers:SBH,cache:"no-store"});
+      if(!r.ok)break; const rows=await r.json(); if(!Array.isArray(rows)||!rows.length)break;
+      for(const x of rows){ if(x.make&&!junkVal(x.make)){ makes.add(x.make);
+        (models[x.make]=models[x.make]||new Set()); if(x.model&&!junkVal(x.model))models[x.make].add(x.model); } }
+      after=rows[rows.length-1].car_id; if(rows.length<1000)break;
+    }
+    if(makes.size){FACET_MAKES=[...makes]; for(const k in models)FACET_MODELS[k]=[...models[k]]; _saveFacets(); refreshControls();}
+  }catch(e){} finally{_facetScan=false;}
+}
 // ---- SERVER-SIDE PAGINATION: one page at a time from Supabase; scales to the whole ~83k catalogue ----
 function serverFilterActive(){return !!(countryFilter!=="all"||F.make||F.pmin||F.pmax||F.ymin||F.ymax||F.mmin||F.mmax);}
 function clientOnlyActive(){return !!(F.fuel||F.gear||F.bodyf||F.drive||F.q||F.emin||F.emax||F.model);}
@@ -854,7 +877,7 @@ async function tick(){
         if(rs.ok){const d=await rs.json(); if(Array.isArray(d))sampleCars=cleanRows(d);}}catch(e){}
       refreshControls();setFeatured(sampleCars);
       await loadGrid();
-      try{const rc=await fetch(`${SB_URL}/rest/v1/v_listings?select=car_id`,{headers:{...SBH,Prefer:"count=exact",Range:"0-0"},cache:"no-store"});
+      try{const rc=await fetch(`${SB_URL}/rest/v1/v_listings?select=car_id`,{headers:{...SBH,Prefer:"count=estimated",Range:"0-0"},cache:"no-store"});
         const t=parseInt((rc.headers.get("content-range")||"").split("/")[1]);
         if(!isNaN(t)){catalogTotal=t;try{localStorage.setItem("br_total",String(t));}catch(e){}
           if(!clientOnlyActive()&&!serverFilterActive()){setCount(t);paintPager(Math.max(1,Math.ceil(t/PAGE_SIZE)));}}}catch(e){}
@@ -901,7 +924,7 @@ async function loadHistory(carId){
     let pts=(await r.json()).filter(p=>p.price!=null);
     // anchor the line to the ad's ORIGINAL posting date on the source site: extend the earliest
     // known price back to when the ad was placed (we can't know prices from before we first saw it).
-    const _car=(window.allCars||[]).find(c=>c.car_id===carId);
+    const _car=(allCars||[]).concat(sampleCars||[]).find(c=>c.car_id===carId);
     if(_car&&_car.posted&&pts.length&&new Date(_car.posted)<new Date(pts[0].ts)){
       pts=[{ts:_car.posted,price:pts[0].price,mileage:pts[0].mileage},...pts];
     }
