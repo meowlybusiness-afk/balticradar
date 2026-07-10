@@ -292,6 +292,10 @@
       <option value="new">Jaunākie</option><option value="pa">Cena ↑</option>
       <option value="pd">Cena ↓</option><option value="yd">Gads ↓</option>
     </select>
+    <div style="display:flex;gap:8px;margin-top:2px">
+      <button id="doSearchBtn" onclick="doSearch()" style="flex:2;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:11px 8px;font-weight:800;font-size:14.5px;cursor:pointer">Meklēt</button>
+      <button id="doResetBtn" onclick="doReset()" style="flex:1;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:11px 8px;font-weight:700;font-size:13.5px;cursor:pointer">Atiestatīt</button>
+    </div>
   </aside>
   <main>
     <button class="filtbtn" id="filtbtn" onclick="toggleFilters()">Filtri</button>
@@ -362,6 +366,9 @@ function applyI18n(){
   const so=document.getElementById("sort").options;so[0].textContent=t.sNew;so[1].textContent=t.sPa;so[2].textContent=t.sPd;so[3].textContent=t.sYd;
   document.getElementById("pill-all").textContent=t.all;
   document.getElementById("notifyBtn").textContent=ST().nb;
+  {const BTN={lv:["Meklēt","Atiestatīt"],en:["Search","Reset"],ru:["Искать","Сбросить"],lt:["Ieškoti","Atstatyti"],et:["Otsi","Lähtesta"]};
+   const bb=BTN[lang]||BTN.en; const bs=document.getElementById("doSearchBtn"),brr=document.getElementById("doResetBtn");
+   if(bs)bs.textContent=bb[0]; if(brr)brr.textContent=bb[1];}
   const HERO={lv:["Visi Baltijas auto vienuviet","Esi pirmais, kas redz jaunos sludinājumus no ss.lv, autoplius.lt un auto24.ee"],
    en:["All Baltic cars in one place","Be the first to see new listings from ss.lv, autoplius.lt and auto24.ee"],
    ru:["Все авто Балтии в одном месте","Будьте первым, кто видит новые объявления с ss.lv, autoplius.lt и auto24.ee"],
@@ -1078,9 +1085,21 @@ document.getElementById("pills").onclick=e=>{const b=e.target.closest("button");
   countryFilter=b.dataset.c;[...document.querySelectorAll(".pills button")].forEach(x=>x.classList.toggle("on",x===b));curPage=1;repaint();};
 function bind(id,key){const el=document.getElementById(id);el.value=F[key]||"";
   el.addEventListener("input",()=>{F[key]=el.value;if(id==="make"){F.model="";refreshControls();}
-    localStorage.setItem("br_filters",JSON.stringify(F));curPage=1;
-    clearTimeout(bind._t);bind._t=setTimeout(repaint,260);});}   // debounce -> one query, not per-keystroke
-["q","pmin","pmax","ymin","ymax","mmin","mmax","emin","emax","make","model","fuel","gear","bodyf","drive","sort"].forEach(id=>bind(id,id));
+    localStorage.setItem("br_filters",JSON.stringify(F));});               // set the filter; search only on the button (fewer fetches, snappier)
+  el.addEventListener("keydown",e=>{if(e.key==="Enter")doSearch();});}      // Enter = search
+["q","pmin","pmax","ymin","ymax","mmin","mmax","emin","emax","make","model","fuel","gear","bodyf","drive"].forEach(id=>bind(id,id));
+(function(){const s=document.getElementById("sort");if(s){s.value=F.sort||"new";
+  s.addEventListener("change",()=>{F.sort=s.value;localStorage.setItem("br_filters",JSON.stringify(F));curPage=1;repaint();});}})();  // sort stays instant
+function doSearch(){curPage=1;repaint();const sb=document.querySelector(".sidebar");if(sb)sb.classList.remove("open");}
+function doReset(){
+  Object.keys(F).forEach(k=>{if(k!=="sort")delete F[k];});                  // clear every filter, keep sort
+  countryFilter="all";
+  ["q","pmin","pmax","ymin","ymax","mmin","mmax","emin","emax","make","model","fuel","gear","bodyf","drive"].forEach(id=>{const e=document.getElementById(id);if(e)e.value="";});
+  const hq=document.getElementById("heroq");if(hq)hq.value="";
+  [...document.querySelectorAll(".pills button")].forEach(x=>x.classList.toggle("on",x.dataset.c==="all"));
+  localStorage.setItem("br_filters",JSON.stringify(F));
+  refreshControls();curPage=1;repaint();
+}
 const langSel=document.getElementById("lang");langSel.value=lang;
 langSel.addEventListener("change",()=>{lang=langSel.value;localStorage.setItem("br_lang",lang);
   applyI18n();themeLabels();lastSig="";rendered.forEach(el=>el.remove());rendered.clear();repaint();});
