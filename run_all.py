@@ -94,6 +94,38 @@ def split_mm(title):
     if make and (re.fullmatch(r"\d+(\.\d+)?",make) or re.fullmatch(r"\d+\s*kW",make,re.I)): make=None
     if model and (re.fullmatch(r"\d+\.\d+",model) or re.fullmatch(r"\d+\s*kW",model,re.I)): model=None
     return make,model
+def sane_price(v):
+    """Reject parse artefacts. A real car ad is never 1 EUR. Returns None if implausible,
+    so a bad parse can NEVER overwrite a good price or invent a price-history entry."""
+    try:
+        v = int(v)
+    except (TypeError, ValueError):
+        return None
+    return v if 100 <= v <= 2000000 else None
+
+_AP_PRICE_RE = re.compile(r'class="price"[^>]*>\s*([\d][\d\s ]*)', re.I)
+def _ap_price(html):
+    """Current asking price from the main <div class="announcement-price"> block.
+
+    The old code did re.search(r'([\\d][\\d\\s]{2,})\\s*€', html) -> the FIRST "number €"
+    anywhere in the page. On a PROMOTION listing that is the struck-through OLD price
+    (<div class="price-previous"><span class="strike">41 990 €</span>), so the scraper
+    stored the pre-discount price and invented a fake price change. It could also hit the
+    "bez PVN / Eksportam" (ex-VAT) figure, the leasing monthly payment, or a partner ad.
+
+    The real price is  <div class="price"> 35 990 <span class="default-currency">€</span>
+    -- note the € lives in a SEPARATE tag, which is why the old "digits €" regex could
+    never match it and always fell through to the wrong number.
+    """
+    i = html.find('announcement-price')
+    seg = html[i:i + 1500] if i >= 0 else html
+    m = _AP_PRICE_RE.search(seg)
+    if m:
+        p = sane_price(_digits(m.group(1)))
+        if p:
+            return p
+    return None
+
 def _ap_main_gallery(photos, gap=50000):
     # Keep only the largest tight cluster of autoplius image IDs; partner-ad / related-listing
     # thumbnails are OTHER cars with far-off IDs and fall outside the main cluster (data-level,
@@ -127,8 +159,7 @@ def ap_detail(html, source_url=None):
     reg=_kw(kw,AP_LABELS["reg_date"]); year=int(reg[:4]) if reg and reg[:4].isdigit() else None
     er=_kw(kw,AP_LABELS["engine"]); em=re.search(r"(\d{3,5})",er) if er else None
     engine_cc=int(em.group(1)) if em else None
-    price=None; pm=re.search(r"([\d][\d\s ]{2,})\s*€", html)
-    if pm: price=_digits(pm.group(1))
+    price=_ap_price(html)   # main price block only: never the struck-through old price / ex-VAT / leasing
     vin=None
     for cand in re.findall(r"\bVIN\b[^<]{0,40}", html, re.IGNORECASE):
         t=re.search(r"\b([A-HJ-NPR-Z0-9]{6,17})\b", cand)
@@ -189,7 +220,8 @@ def a24_detail(html, source_url=None):
     fm=re.search(r"\b(petrol|diesel|electric|hybrid|gas)\b",ogd,re.I); fuel=fm.group(1).lower() if fm else None
     mil=re.search(r"([\d ]{3,})\s*km",ogd) or re.search(r"([\d ]{3,})\s*km",desc)
     mileage=_digits(mil.group(1)) if mil else None
-    pm=re.search(r"EUR\D*?([\d,]+)",ogd); price=int(pm.group(1).replace(",","")) if pm else None
+    pm=re.search(r"EUR\D*?([\d,]+)",ogd)
+    price=sane_price(pm.group(1).replace(",","")) if pm else None   # guard: "EUR 1" artefacts -> None
     el=re.search(r"(\d\.\d)\b",ogt); engine_l=el.group(1) if el else None
     kwm=re.search(r"(\d+)\s*kW",ogt); power=int(kwm.group(1)) if kwm else None
     ccm=re.search(r"(\d{3,5})\s*cm³",html); engine_cc=int(ccm.group(1)) if ccm else None
@@ -227,7 +259,7 @@ def ss_row(ad_id,url,title,cells,photo=None):
         c=c.strip()
         if not year and re.fullmatch(r"(19|20)\d{2}",c): year=int(c)
         elif not engine and (re.fullmatch(r"\d\.\d[A-Za-z]?",c) or c.upper()=="E"): engine=c
-        elif "€" in c: price=int(re.sub(r"[^\d]","",c) or 0) or None
+        elif "€" in c: price=sane_price(re.sub(r"[^\d]","",c))
         elif mileage is None and "tūkst" in c.lower():
             m=re.search(r"([\d ]+)",c); mileage=(int(re.sub(r"\D","",m.group(1)) or 0)*1000) or None
     el=re.match(r"(\d\.\d)",engine or ""); engine_l=el.group(1) if el else None
@@ -381,9 +413,14 @@ if USE_SB:
             if strong_signal_match(f,car) and price_sane(f.get("price_eur"),car.get("last_price")):
                 cid=car["car_id"]
                 _post("ads",[{"ad_id":f["ad_id"],"car_id":cid,"source":f.get("source"),"source_url":f.get("source_url"),"active":True,"first_seen":now_iso(),"last_seen":now_iso()}],upsert=True)
-                if f.get("price_eur")!=car.get("last_price") or f.get("mileage_km")!=car.get("last_mileage"):
-                    _post("price_history",[{"car_id":cid,"ts":now_iso(),"price":f.get("price_eur"),"mileage":f.get("mileage_km")}])
-                _patch("cars",{"car_id":f"eq.{cid}"},{"active":True,"last_price":f.get("price_eur"),"last_mileage":f.get("mileage_km"),"last_seen":now_iso()})
+                # A FAILED price parse must never wipe a good price or fake a "price change".
+                newp=sane_price(f.get("price_eur")); newm=f.get("mileage_km")
+                if newp is not None and (newp!=car.get("last_price") or newm!=car.get("last_mileage")):
+                    _post("price_history",[{"car_id":cid,"ts":now_iso(),"price":newp,"mileage":newm}])
+                upd={"active":True,"last_seen":now_iso()}
+                if newp is not None: upd["last_price"]=newp        # else keep the last known good price
+                if newm is not None: upd["last_mileage"]=newm
+                _patch("cars",{"car_id":f"eq.{cid}"},upd)
                 return "REPOST"
         if cands:
             _post("review_queue",[{"ad_id":f["ad_id"],"fingerprint":fingerprint(f)[0],"reason":"specs match, no signal","payload":f}],upsert=True); return "NEEDS_REVIEW"
@@ -393,10 +430,12 @@ if USE_SB:
             "engine_l":f.get("engine_l"),"power_kw":f.get("power_kw"),"fuel":f.get("fuel"),"gearbox":f.get("gearbox"),
             "body":f.get("body"),"drivetrain":f.get("drivetrain"),"color":f.get("color"),"owner_code":f.get("owner_code"),
             "vin_prefix":f.get("vin_prefix"),"location":f.get("location"),"photos":f.get("photos") or [],
-            "source_url":f.get("source_url"),"description":f.get("description"),"posted":f.get("posted"),"last_price":f.get("price_eur"),
+            "source_url":f.get("source_url"),"description":f.get("description"),"posted":f.get("posted"),"last_price":sane_price(f.get("price_eur")),
             "last_mileage":f.get("mileage_km"),"active":True,"first_seen":now_iso(),"last_seen":now_iso()}],upsert=True)
         _post("ads",[{"ad_id":f["ad_id"],"car_id":cid,"source":f.get("source"),"source_url":f.get("source_url"),"active":True,"first_seen":now_iso(),"last_seen":now_iso()}],upsert=True)
-        _post("price_history",[{"car_id":cid,"ts":now_iso(),"price":f.get("price_eur"),"mileage":f.get("mileage_km")}])
+        _p0=sane_price(f.get("price_eur"))
+        if _p0 is not None:   # no price point for a failed parse -> no junk in the history chart
+            _post("price_history",[{"car_id":cid,"ts":now_iso(),"price":_p0,"mileage":f.get("mileage_km")}])
         return "NEW_CAR"
     def bump_seen(ad_ids):
         ids=[a for a in ad_ids if a]
