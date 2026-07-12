@@ -886,12 +886,24 @@ async function fetchAllFiltered(cap, seq){
 }
 function cleanRows(rows){return rows.filter(isCar).filter(c=>!(c.source==="ss.lv"&&(c.last_price==null||c.last_price===0)));}
 async function sbPage(from,to,wantCount){
-  const r=await fetch(`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&${buildServerQ()}`,
-    {headers:{...SBH,Range:`${from}-${to}`,Prefer:wantCount?"count=estimated":"count=none"},cache:"no-store"});
-  if(!r.ok)throw new Error("sb "+r.status);
-  const rows=await r.json();
-  const tot=parseInt((r.headers.get("content-range")||"").split("/")[1]);
-  return {rows:Array.isArray(rows)?rows:[], total:isNaN(tot)?null:tot};
+  const q=buildServerQ();
+  const go=async(qq)=>{
+    const r=await fetch(`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&${qq}`,
+      {headers:{...SBH,Range:`${from}-${to}`,Prefer:wantCount?"count=estimated":"count=none"},cache:"no-store"});
+    if(!r.ok)throw new Error("sb "+r.status);
+    const rows=await r.json();
+    const tot=parseInt((r.headers.get("content-range")||"").split("/")[1]);
+    return {rows:Array.isArray(rows)?rows:[], total:isNaN(tot)?null:tot};
+  };
+  try{ return await go(q); }
+  catch(e){
+    // SAFETY NET: if a sort ever exceeds the DB statement timeout (500), fall back to
+    // the always-indexed first_seen sort rather than rendering an EMPTY grid.
+    // With the composite indexes in balticradar_db_fix.sql this path is never taken.
+    const safe=q.replace(/order=[^&]*/,"order=first_seen.desc");
+    if(safe!==q){ try{ return await go(safe); }catch(_){} }
+    throw e;
+  }
 }
 async function sbCount(){   // shallow, safe filtered count (Range 0-0) -> never times out on deep offsets
   try{const r=await fetch(`${SB_URL}/rest/v1/v_listings?select=car_id&${buildServerQ()}`,{headers:{...SBH,Range:"0-0",Prefer:"count=estimated"},cache:"no-store"});
