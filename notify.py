@@ -1,33 +1,83 @@
 """
-BalticRadar - alert notifier. Run AFTER run_all.py (or on a schedule).
-Finds cars added recently, matches them to each subscription's criteria, and
-emails the subscriber. Idempotent: never emails the same car twice (notifications
-table). Email sending is pluggable: set RESEND_API_KEY to actually send; without
-it, it prints what it WOULD send (so you can test before choosing a provider).
+BalticRadar - alert notifier.
 
-Env: SUPABASE_URL, SUPABASE_KEY (service key). Optional: RESEND_API_KEY,
-ALERT_FROM, LOOKBACK_H (default 24).
+CORE PRODUCT: a user saves a filter (e.g. Citroen + Nissan). The moment a matching
+car appears on ss.lv / auto24 / autoplius, they get an email. Timeliness IS the product.
+
+How it works
+------------
+1. Pull cars INGESTED SINCE THE LAST RUN (first_seen >= now - LOOKBACK_MIN), not the catalogue.
+2. Pull every saved_filter with notify_email = true whose owner is PREMIUM (alerts are paid).
+3. Match each new car against each filter's criteria (multi-value: makes/models/fuels/...).
+4. Email the owner, then record (filter_id, car_id) in filter_notifications so the same car
+   is NEVER sent twice, even if runs overlap.
+5. Legacy `subscriptions` (the old alert profile) are still honoured, deduped via `notifications`.
+
+Env
+---
+SUPABASE_URL, SUPABASE_KEY (service key)   required
+RESEND_API_KEY                             required to actually send; without it -> dry print
+ALERT_FROM      sender, e.g. "BalticRadar <alerts@yourdomain.lv>"
+                DEFAULT onboarding@resend.dev only delivers to the Resend account OWNER.
+LOOKBACK_MIN    default 45 (cron runs every 20 min -> overlap is safe, dedupe absorbs it)
+MAX_PER_EMAIL   default 12
+MAX_EMAILS      default 80 (Resend free tier = 100/day)
+TEST_TO         if set, EVERY email is redirected to this address (end-to-end test)
+DRY_RUN         "1" -> match + render but send nothing
 """
-import os, requests, datetime
+import os, sys, json, datetime, requests
 
-URL=os.environ.get("SUPABASE_URL","").rstrip("/"); KEY=os.environ.get("SUPABASE_KEY","")
-H={"apikey":KEY,"Authorization":f"Bearer {KEY}","Content-Type":"application/json"}
-LOOKBACK_H=int(os.environ.get("LOOKBACK_H",24))
-MAX_PER_EMAIL=int(os.environ.get("MAX_PER_EMAIL",20))
-SITE=os.environ.get("SITE_URL","https://balticradar.meowlybusiness.workers.dev")
-RESEND_KEY=os.environ.get("RESEND_API_KEY")
-FROM=os.environ.get("ALERT_FROM","BalticRadar <onboarding@resend.dev>")
+URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
+KEY = os.environ.get("SUPABASE_KEY", "")
+H = {"apikey": KEY, "Authorization": f"Bearer {KEY}", "Content-Type": "application/json"}
 
+LOOKBACK_MIN = int(os.environ.get("LOOKBACK_MIN", 45))
+MAX_PER_EMAIL = int(os.environ.get("MAX_PER_EMAIL", 12))
+MAX_EMAILS = int(os.environ.get("MAX_EMAILS", 80))
+SITE = os.environ.get("SITE_URL", "https://balticradar.meowlybusiness.workers.dev")
+RESEND_KEY = os.environ.get("RESEND_API_KEY")
+FROM = os.environ.get("ALERT_FROM", "BalticRadar <onboarding@resend.dev>")
+TEST_TO = (os.environ.get("TEST_TO") or "").strip()
+DRY_RUN = os.environ.get("DRY_RUN") == "1"
+
+FLAG = {"LV": "\U0001F1F1\U0001F1FB", "LT": "\U0001F1F1\U0001F1F9", "EE": "\U0001F1EA\U0001F1EA"}
+
+
+# ---------------------------------------------------------------- supabase
 def get(path):
     try:
-        r=requests.get(f"{URL}/rest/v1/{path}",headers=H,timeout=30).json()
-        return r if isinstance(r,list) else []
+        r = requests.get(f"{URL}/rest/v1/{path}", headers=H, timeout=40)
+        d = r.json()
+        return d if isinstance(d, list) else []
     except Exception as e:
-        print("get error:",e); return []
-def post(path,rows): return requests.post(f"{URL}/rest/v1/{path}",headers=H,json=rows,timeout=30)
+        print("GET error", path, e)
+        return []
 
+
+def post(path, rows, prefer=None):
+    if not rows:
+        return None
+    h = dict(H)
+    if prefer:
+        h["Prefer"] = prefer
+    try:
+        return requests.post(f"{URL}/rest/v1/{path}", headers=h, json=rows, timeout=40)
+    except Exception as e:
+        print("POST error", path, e)
+        return None
+
+
+def patch(path, body):
+    try:
+        return requests.patch(f"{URL}/rest/v1/{path}", headers=H, json=body, timeout=30)
+    except Exception as e:
+        print("PATCH error", path, e)
+        return None
+
+
+# ---------------------------------------------------------------- normalisation
 def _nb(v):
-    s=(v or "").lower()
+    s = (v or "").lower()
     if "sedan" in s: return "sedans"
     if "hatch" in s or "hečbek" in s or "hecbek" in s: return "hečbeks"
     if "coupe" in s or "kupej" in s: return "kupeja"
@@ -38,92 +88,331 @@ def _nb(v):
     if "minibus" in s or "minivan" in s or "miniven" in s or "van" in s: return "minivens"
     if "limous" in s or "limuzin" in s: return "limuzīns"
     return s
-_FUEL={"petrol":"benzīns","diesel":"dīzelis","electric":"elektrība","hybrid":"hibrīds","gas":"gāze","lpg":"gāze"}
-_GEAR={"automatic":"automātiskā","manual":"mehāniskā"}
-def _nf(v): s=(v or "").lower().strip(); return _FUEL.get(s,s)
-def _ng(v): s=(v or "").lower().strip(); return _GEAR.get(s,s)
 
-def matches(car, sub):
-    # honor EVERY saved criterion (with source-value normalization so e.g. auto24 "coupe"
-    # matches a subscriber's "Kupeja", "diesel" matches "Dīzelis", etc.)
-    if sub.get("country") and car.get("country")!=sub["country"]: return False
-    if sub.get("make")  and (car.get("make")  or "").lower()!=str(sub["make"]).lower():  return False
-    if sub.get("model") and (car.get("model") or "").lower()!=str(sub["model"]).lower(): return False
-    if sub.get("body")    and _nb(car.get("body"))    !=_nb(sub["body"]):    return False
-    if sub.get("fuel")    and _nf(car.get("fuel"))    !=_nf(sub["fuel"]):    return False
-    if sub.get("gearbox") and _ng(car.get("gearbox")) !=_ng(sub["gearbox"]): return False
-    p=car.get("last_price")
-    if sub.get("price_min") and (p is None or p<sub["price_min"]): return False
-    if sub.get("price_max") and (p is None or p>sub["price_max"]): return False
-    y=car.get("year") or 0
-    if sub.get("year_min") and y<sub["year_min"]: return False
-    if sub.get("year_max") and y>sub["year_max"]: return False
-    m=car.get("last_mileage")
-    if sub.get("mileage_min") and (m or 0)<sub["mileage_min"]: return False
-    if sub.get("mileage_max") and (m is None or m>sub["mileage_max"]): return False
-    try: e=float(car.get("engine_l") or 0)
-    except (TypeError,ValueError): e=0
-    if sub.get("engine_min") and e<sub["engine_min"]: return False
-    if sub.get("engine_max") and e and e>sub["engine_max"]: return False
+
+_FUEL = {"petrol": "benzīns", "gasoline": "benzīns", "diesel": "dīzelis", "electric": "elektrība",
+         "hybrid": "hibrīds", "gas": "gāze", "lpg": "gāze"}
+_GEAR = {"automatic": "automātiskā", "manual": "mehāniskā"}
+_DRIVE = {"fwd": "priekšējā", "front": "priekšējā", "rwd": "aizmugurējā", "rear": "aizmugurējā",
+          "awd": "pilnpiedziņa", "4x4": "pilnpiedziņa", "4wd": "pilnpiedziņa"}
+
+
+def _nf(v): s = (v or "").lower().strip(); return _FUEL.get(s, s)
+def _ng(v): s = (v or "").lower().strip(); return _GEAR.get(s, s)
+def _nd(v):
+    s = (v or "").lower().strip()
+    for k, x in _DRIVE.items():
+        if k in s:
+            return x
+    return s
+
+
+def model_series(make, model):
+    """Mirror of the site's modelSeries(): '3. sērija' must match 320/318/330..."""
+    m = (model or "").strip()
+    mk = (make or "").lower()
+    if not m:
+        return m
+    import re
+    if mk == "bmw":
+        x = re.match(r"^X\s?(\d)", m, re.I)
+        if x: return "X" + x.group(1)
+        z = re.match(r"^Z\s?(\d)", m, re.I)
+        if z: return "Z" + z.group(1)
+        d = re.match(r"^(\d)\d{2}", m)
+        if d: return d.group(1) + ". sērija"
+        return m
+    if "mercedes" in mk:
+        g = re.match(r"^(GLE|GLC|GLA|GLS|GLK|GLB|ML|CLA|CLS|SLK|SLC)", m, re.I)
+        if g: return g.group(1).upper()
+        c = re.match(r"^([A-Z])\s?\d", m, re.I)
+        if c: return c.group(1).upper() + "-klase"
+        return m
+    if mk == "audi":
+        a = re.match(r"^(RS\s?\d|S\s?\d|SQ\d|A\d|Q\d|TT|R8)", m, re.I)
+        if a: return a.group(1).upper().replace(" ", "")
+        return m
+    return m
+
+
+def arr(v):
+    """criteria values may be a list (new multi-select) or a bare string (legacy)."""
+    if v is None or v == "":
+        return []
+    if isinstance(v, list):
+        return [str(x) for x in v if x not in (None, "")]
+    return [str(v)]
+
+
+def crit(c, *keys):
+    """first non-empty of the given criteria keys (plural form first)"""
+    for k in keys:
+        a = arr(c.get(k))
+        if a:
+            return a
+    return []
+
+
+# ---------------------------------------------------------------- matching
+def matches(car, c):
+    """c = criteria dict. EMPTY LIST = no constraint (match all). Never invert that."""
+    countries = crit(c, "countries", "country")
+    if countries and car.get("country") not in countries:
+        return False
+
+    makes = [m.lower() for m in crit(c, "makes", "make")]
+    if makes and (car.get("make") or "").lower() not in makes:
+        return False
+
+    models = crit(c, "models", "models_q", "model")
+    if models:
+        cm = (car.get("model") or "").lower()
+        cs = model_series(car.get("make"), car.get("model")).lower()
+        if not any(m.lower() == cm or m.lower() == cs for m in models):
+            return False
+
+    fuels = [_nf(x) for x in crit(c, "fuels", "fuel")]
+    if fuels and _nf(car.get("fuel")) not in fuels:
+        return False
+
+    gears = [_ng(x) for x in crit(c, "gearboxes", "gearbox")]
+    if gears and _ng(car.get("gearbox")) not in gears:
+        return False
+
+    bodies = [_nb(x) for x in crit(c, "bodies", "body")]
+    if bodies and _nb(car.get("body")) not in bodies:
+        return False
+
+    drives = [_nd(x) for x in crit(c, "drivetrains", "drivetrain")]
+    if drives and _nd(car.get("drivetrain")) not in drives:
+        return False
+
+    p = car.get("last_price")
+    if c.get("price_min") and (p is None or p < c["price_min"]): return False
+    if c.get("price_max") and (p is None or p > c["price_max"]): return False
+
+    y = car.get("year") or 0
+    if c.get("year_min") and y < c["year_min"]: return False
+    if c.get("year_max") and y > c["year_max"]: return False
+
+    m = car.get("last_mileage")
+    if c.get("km_min") and (m or 0) < c["km_min"]: return False
+    if c.get("km_max") and (m is None or m > c["km_max"]): return False
+
+    try:
+        e = float(car.get("engine_l") or 0)
+    except (TypeError, ValueError):
+        e = 0
+    if c.get("eng_min") and e < c["eng_min"]: return False
+    if c.get("eng_max") and e and e > c["eng_max"]: return False
     return True
 
-def car_row(c):
-    img=(c.get("photos") or [None])[0]
-    thumb=(f'<img src="{img}" width="120" height="80" style="border-radius:8px;object-fit:cover;display:block">'
-           if img else '<div style="width:120px;height:80px;background:#e7eaf0;border-radius:8px"></div>')
-    title=f"{c.get('make') or ''} {c.get('model') or ''} {c.get('year') or ''}".strip()
-    specs=" · ".join(str(x) for x in [c.get('last_mileage') and f"{c.get('last_mileage')} km",
-        c.get('fuel'), c.get('gearbox')] if x)
-    price=f"{c.get('last_price')} &euro;" if c.get('last_price') else ''
-    url=c.get("source_url") or SITE
-    return (f'<tr><td style="padding:8px 8px 8px 0;vertical-align:top">{thumb}</td>'
-            f'<td style="padding:8px 0;vertical-align:top;font-family:Arial,sans-serif">'
-            f'<a href="{url}" style="color:#16202e;text-decoration:none;font-weight:700;font-size:15px">{title}</a><br>'
-            f'<span style="color:#69748a;font-size:12px">{specs}</span><br>'
-            f'<span style="color:#ff4605;font-weight:800;font-size:15px">{price}</span></td></tr>')
 
-def send_email(sub, cars, extra=0):
-    subject=f"{len(cars)} jauni auto pēc taviem kritērijiem | BalticRadar"
-    rows="".join(car_row(c) for c in cars)
-    more=f'<p style="color:#69748a;font-family:Arial">...un vēl {extra} sludinājumi vietnē.</p>' if extra>0 else ''
-    html=(f'<div style="background:#f5f6f8;padding:20px"><div style="max-width:580px;margin:0 auto;background:#fff;border-radius:14px;padding:24px">'
-          f'<div style="font-family:Arial,sans-serif;font-size:22px;font-weight:800;color:#16202e">Baltic<span style="color:#ff4605">Radar</span></div>'
-          f'<p style="font-family:Arial,sans-serif;color:#16202e">Sveiki{(" "+sub["name"]) if sub.get("name") else ""}! Jaunākie auto pēc taviem kritērijiem:</p>'
-          f'<table style="border-collapse:collapse;width:100%">{rows}</table>{more}'
-          f'<p style="margin:22px 0"><a href="{SITE}" style="background:#ff4605;color:#fff;padding:13px 26px;border-radius:10px;text-decoration:none;font-weight:700;font-family:Arial,sans-serif">Skatīt visus BalticRadar &rarr;</a></p>'
-          f'<p style="color:#9aa7b8;font-size:12px;font-family:Arial,sans-serif">Lai atrakstītos, atbildi uz šo e-pastu.</p></div></div>')
-    text="\n".join(f"- {c.get('make')} {c.get('model')} {c.get('year') or ''}, {c.get('last_price')} EUR  {c.get('source_url') or ''}" for c in cars)
-    text+=f"\n\nSkatīt visus: {SITE}"
-    if not RESEND_KEY:
-        print(f"\n[NO EMAIL PROVIDER] would email {sub['email']}: {subject} ({len(cars)} cars)\n")
+# ---------------------------------------------------------------- email
+def eur(n):
+    try:
+        return f"{int(n):,}".replace(",", " ") + " &euro;"
+    except (TypeError, ValueError):
+        return ""
+
+
+def car_row(c, drop=None):
+    img = (c.get("photos") or [None])[0]
+    thumb = (f'<img src="{img}" width="132" height="92" style="border-radius:10px;object-fit:cover;display:block">'
+             if img else '<div style="width:132px;height:92px;background:#eceef2;border-radius:10px"></div>')
+    title = f"{c.get('make') or ''} {c.get('model') or ''} {c.get('year') or ''}".strip()
+    bits = []
+    if c.get("last_mileage") is not None:
+        bits.append(f"{int(c['last_mileage']):,}".replace(",", " ") + " km")
+    for k in ("fuel", "gearbox", "body"):
+        if c.get(k):
+            bits.append(str(c[k]))
+    if c.get("engine_l"):
+        bits.append(f"{c['engine_l']} l")
+    specs = " &middot; ".join(bits)
+    flag = FLAG.get(c.get("country") or "", "")
+    src = c.get("source") or ""
+    url = c.get("source_url") or SITE
+    dropline = (f'<div style="color:#16a06a;font-weight:700;font-size:12px">Cena kritusi: '
+                f'<span style="text-decoration:line-through;color:#9aa7b8">{eur(drop)}</span> &rarr; {eur(c.get("last_price"))}</div>'
+                if drop else "")
+    return (
+        f'<tr>'
+        f'<td style="padding:10px 12px 10px 0;vertical-align:top;width:132px">{thumb}</td>'
+        f'<td style="padding:10px 0;vertical-align:top;font-family:Manrope,Arial,sans-serif">'
+        f'<a href="{url}" style="color:#111;text-decoration:none;font-weight:800;font-size:15px">{title}</a><br>'
+        f'<span style="color:#6b7280;font-size:12px">{specs}</span><br>'
+        f'<span style="color:#111;font-weight:800;font-size:16px">{eur(c.get("last_price"))}</span>'
+        f'<span style="color:#9aa7b8;font-size:12px"> &nbsp;{flag} {src}</span>'
+        f'{dropline}'
+        f'<div style="margin-top:6px"><a href="{url}" style="color:#16a06a;font-size:12px;font-weight:700;text-decoration:none">Atvērt sludinājumu &rarr;</a></div>'
+        f'</td></tr>'
+    )
+
+
+def build_html(name, filter_name, cars, drops, extra):
+    rows = "".join(car_row(c, drops.get(c["car_id"])) for c in cars)
+    more = (f'<p style="color:#6b7280;font-family:Arial;font-size:13px">…un vēl {extra} jauni sludinājumi vietnē.</p>'
+            if extra > 0 else "")
+    hello = f' {name}' if name else ""
+    return (
+        f'<div style="background:#f4f5f7;padding:22px">'
+        f'<div style="max-width:600px;margin:0 auto;background:#fff;border-radius:16px;padding:26px">'
+        f'<div style="font-family:Manrope,Arial,sans-serif;font-size:22px;font-weight:800;color:#111">'
+        f'Baltic<span style="color:#16a06a">Radar</span></div>'
+        f'<p style="font-family:Arial,sans-serif;color:#111;font-size:14px">'
+        f'Sveiki{hello}! Jauni auto pēc Tava filtra <b>{filter_name}</b> — tikko parādījās:</p>'
+        f'<table style="border-collapse:collapse;width:100%">{rows}</table>{more}'
+        f'<p style="margin:24px 0"><a href="{SITE}" style="background:#16a06a;color:#fff;padding:13px 26px;'
+        f'border-radius:999px;text-decoration:none;font-weight:800;font-family:Arial,sans-serif;font-size:14px">'
+        f'Skatīt BalticRadar &rarr;</a></p>'
+        f'<p style="color:#9aa7b8;font-size:11px;font-family:Arial,sans-serif">'
+        f'Šo e-pastu saņem, jo Tev ir saglabāts filtrs ar ieslēgtiem paziņojumiem. '
+        f'Paziņojumus vari izslēgt savā profilā sadaļā “Mani filtri”.</p>'
+        f'</div></div>'
+    )
+
+
+def send(to, subject, html, text):
+    if TEST_TO:
+        subject = f"[TEST -> {to}] {subject}"
+        to = TEST_TO
+    if DRY_RUN or not RESEND_KEY:
+        print(f"  [DRY] would email {to}: {subject}")
         return True
-    r=requests.post("https://api.resend.com/emails",
-        headers={"Authorization":f"Bearer {RESEND_KEY}","Content-Type":"application/json"},
-        json={"from":FROM,"to":[sub["email"]],"subject":subject,"html":html,"text":text},timeout=30)
-    print("emailed",sub["email"],"->",r.status_code)
-    return r.ok
+    r = requests.post(
+        "https://api.resend.com/emails",
+        headers={"Authorization": f"Bearer {RESEND_KEY}", "Content-Type": "application/json"},
+        json={"from": FROM, "to": [to], "subject": subject, "html": html, "text": text},
+        timeout=30,
+    )
+    ok = r.ok
+    print(f"  -> {to}: {r.status_code} {'' if ok else r.text[:200]}")
+    if not ok and r.status_code == 403:
+        print("  !! 403 = the sender domain is not verified in Resend. onboarding@resend.dev "
+              "can ONLY deliver to the Resend account owner. Set ALERT_FROM to a verified domain.")
+    return ok
 
+
+def price_drops(car_ids):
+    """{car_id: previous_price} for cars whose latest price is lower than the one before."""
+    out = {}
+    if not car_ids:
+        return out
+    CH = 40
+    for i in range(0, len(car_ids), CH):
+        chunk = car_ids[i:i + CH]
+        ids = ",".join(f'"{c}"' for c in chunk)
+        rows = get(f"price_history?select=car_id,price,ts&car_id=in.({ids})&order=ts.asc&limit=5000")
+        by = {}
+        for r in rows:
+            by.setdefault(r["car_id"], []).append(r)
+        for cid, hist in by.items():
+            if len(hist) >= 2:
+                prev, last = hist[-2].get("price"), hist[-1].get("price")
+                if prev and last and last < prev:
+                    out[cid] = prev
+    return out
+
+
+# ---------------------------------------------------------------- main
 def main():
-    since=(datetime.datetime.utcnow()-datetime.timedelta(hours=LOOKBACK_H)).isoformat()+"Z"
-    cars=get(f"cars?select=*&first_seen=gte.{since}&active=eq.true&limit=3000")
-    subs=get("subscriptions?select=*&order=created.asc") or get("subscriptions?select=*")
-    # de-dup by email: a person who re-registers/updates their profile keeps only their latest
-    _seen={}
-    for s in subs:
-        e=(s.get("email") or "").lower().strip()
-        if e: _seen[e]=s
-    subs=list(_seen.values())
-    print(f"{len(cars)} recent cars, {len(subs)} subscriptions, lookback {LOOKBACK_H}h")
-    for sub in subs:
-        already={n["car_id"] for n in get(f"notifications?select=car_id&subscription_id=eq.{sub['id']}")}
-        hits=[c for c in cars if c["car_id"] not in already and matches(c,sub)]
-        if not hits: continue
-        # newest first; email only the newest MAX, but mark ALL as notified so the
-        # older backlog isn't emailed later (subscribers only get the latest additions)
-        hits.sort(key=lambda c:(c.get("posted") or c.get("first_seen") or ""),reverse=True)
-        shown=hits[:MAX_PER_EMAIL]; extra=len(hits)-len(shown)
-        if send_email(sub,shown,extra):
-            post("notifications",[{"subscription_id":sub["id"],"car_id":c["car_id"]} for c in hits])
+    if not URL or not KEY:
+        print("FATAL: SUPABASE_URL / SUPABASE_KEY missing")
+        sys.exit(1)
 
-if __name__=="__main__":
+    since = (datetime.datetime.now(datetime.timezone.utc)
+             - datetime.timedelta(minutes=LOOKBACK_MIN)).isoformat().replace("+00:00", "Z")
+
+    cars = get(f"cars?select=*&active=eq.true&first_seen=gte.{since}&order=first_seen.desc&limit=3000")
+    print(f"NEW cars since {since} ({LOOKBACK_MIN} min): {len(cars)}")
+    if not cars:
+        print("nothing new -> no alerts")
+        return
+
+    drops = price_drops([c["car_id"] for c in cars])
+
+    filters = get("saved_filters?select=*&notify_email=eq.true")
+    profs = {p["id"]: p for p in get("profiles?select=id,email,full_name,is_premium,plan")}
+    print(f"saved filters with notifications ON: {len(filters)}")
+
+    sent_emails = 0
+
+    for f in filters:
+        prof = profs.get(f.get("user_id")) or {}
+        email = (prof.get("email") or "").strip()
+        if not email:
+            print(f"filter {f['id']} '{f.get('name')}': no email on profile -> skip")
+            continue
+        if not prof.get("is_premium"):
+            print(f"filter {f['id']} '{f.get('name')}' ({email}): NOT premium -> skip (alerts are a paid feature)")
+            continue
+
+        criteria = f.get("criteria") or {}
+        already = {n["car_id"] for n in get(f"filter_notifications?select=car_id&filter_id=eq.{f['id']}")}
+        hits = [c for c in cars if c["car_id"] not in already and matches(c, criteria)]
+        if not hits:
+            continue
+
+        hits.sort(key=lambda c: (c.get("first_seen") or c.get("posted") or ""), reverse=True)
+        shown = hits[:MAX_PER_EMAIL]
+        extra = len(hits) - len(shown)
+
+        if sent_emails >= MAX_EMAILS:
+            print(f"MAX_EMAILS ({MAX_EMAILS}) reached -> stopping (Resend daily cap)")
+            break
+
+        name = f.get("name") or "filtrs"
+        subject = f"{len(hits)} jauns auto: {name} | BalticRadar" if len(hits) == 1 \
+            else f"{len(hits)} jauni auto: {name} | BalticRadar"
+        html = build_html(prof.get("full_name"), name, shown, drops, extra)
+        text = "\n".join(
+            f"- {c.get('make')} {c.get('model')} {c.get('year') or ''} · "
+            f"{c.get('last_price')} EUR · {c.get('source_url') or ''}" for c in shown
+        ) + f"\n\nSkatīt visus: {SITE}"
+
+        if send(email, subject, html, text):
+            sent_emails += 1
+            # mark ALL hits (not just the shown ones) so the backlog is never re-sent later
+            post("filter_notifications",
+                 [{"filter_id": f["id"], "car_id": c["car_id"]} for c in hits],
+                 prefer="resolution=ignore-duplicates")
+            patch(f"saved_filters?id=eq.{f['id']}",
+                  {"last_notified_at": datetime.datetime.now(datetime.timezone.utc).isoformat()})
+            print(f"filter {f['id']} '{name}' -> {email}: {len(hits)} new car(s)")
+
+    # ---- legacy: the old "alerts profile" (subscriptions table), unchanged behaviour
+    subs = get("subscriptions?select=*")
+    seen = {}
+    for s in subs:
+        e = (s.get("email") or "").lower().strip()
+        if e:
+            seen[e] = s
+    for sub in seen.values():
+        if sent_emails >= MAX_EMAILS:
+            break
+        already = {n["car_id"] for n in get(f"notifications?select=car_id&subscription_id=eq.{sub['id']}")}
+        legacy_crit = {k: sub.get(k) for k in
+                       ("country", "make", "model", "body", "fuel", "gearbox",
+                        "price_min", "price_max", "year_min", "year_max")}
+        legacy_crit["km_min"] = sub.get("mileage_min")
+        legacy_crit["km_max"] = sub.get("mileage_max")
+        legacy_crit["eng_min"] = sub.get("engine_min")
+        legacy_crit["eng_max"] = sub.get("engine_max")
+        hits = [c for c in cars if c["car_id"] not in already and matches(c, legacy_crit)]
+        if not hits:
+            continue
+        hits.sort(key=lambda c: (c.get("first_seen") or ""), reverse=True)
+        shown = hits[:MAX_PER_EMAIL]
+        html = build_html(sub.get("name"), "Tavi kritēriji", shown, drops, len(hits) - len(shown))
+        text = "\n".join(f"- {c.get('make')} {c.get('model')} {c.get('source_url') or ''}" for c in shown)
+        if send(sub["email"], f"{len(hits)} jauni auto | BalticRadar", html, text):
+            sent_emails += 1
+            post("notifications", [{"subscription_id": sub["id"], "car_id": c["car_id"]} for c in hits],
+                 prefer="resolution=ignore-duplicates")
+
+    print(f"DONE. emails sent: {sent_emails}")
+
+
+if __name__ == "__main__":
     main()
