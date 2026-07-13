@@ -1354,5 +1354,331 @@ applyI18n();
 
 tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 </script>
+
+<!-- ===================== BALTICRADAR AUTH (Stage 1) ===================== -->
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* Design tokens borrowed from the reference prototype, namespaced to avoid
+   clashing with the existing --accent / --dark theme variables. */
+.br-scope,.br-modal,.br-hdr{--bracc:#16a06a;--brink:#1d1d1f;--brink2:#424245;--brmut:#86868b;--brline:#ededf0;--brline2:#dfdfe4;--brbg:#fff;--brbg2:#fbfbfd;--brup:#d2492f}
+
+/* ---- header controls ---- */
+.br-hdr{display:inline-flex;align-items:center;gap:8px;font-family:Manrope,system-ui,sans-serif;vertical-align:middle}
+.br-pill{border:1px solid var(--brline2);border-radius:999px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;background:var(--brbg);color:var(--brink);transition:.15s;white-space:nowrap;font-family:Manrope,sans-serif}
+.br-pill:hover{background:var(--brbg2)}
+.br-pill.solid{background:var(--brink);color:#fff;border-color:var(--brink)}
+.br-pill.solid:hover{opacity:.86}
+.br-ava{width:34px;height:34px;border-radius:50%;background:var(--bracc);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;cursor:pointer;border:none;font-family:Manrope,sans-serif}
+
+/* ---- modal ---- */
+.br-ov{position:fixed;inset:0;background:rgba(20,20,22,.5);backdrop-filter:blur(6px);z-index:99998;display:none}
+.br-ov.on{display:block}
+.br-modal{position:fixed;z-index:99999;top:50%;left:50%;transform:translate(-50%,-50%);width:min(93vw,392px);background:#fff;color:#1d1d1f;border-radius:22px;box-shadow:0 40px 90px -25px rgba(0,0,0,.45);display:none;font-family:Manrope,system-ui,sans-serif;max-height:92vh;overflow-y:auto;letter-spacing:-.01em}
+.br-modal.on{display:block}
+.br-inr{padding:32px 30px}
+.br-x{position:absolute;top:14px;right:16px;border:none;background:none;font-size:19px;cursor:pointer;color:var(--brmut);line-height:1;padding:6px}
+.br-logo{display:flex;align-items:center;justify-content:center;gap:9px;font-weight:800;font-size:19px;margin-bottom:8px}
+.br-logo .m{width:28px;height:28px;border-radius:8px;background:var(--brink);color:#fff;display:grid;place-items:center;font-size:15px}
+.br-tag{text-align:center;color:var(--brink2);font-size:14px;line-height:1.5;margin-bottom:22px;font-weight:500}
+.br-inp{width:100%;background:var(--brbg);border:1px solid var(--brline2);border-radius:12px;padding:13px 15px;font-size:14px;margin-bottom:10px;font-family:Manrope,sans-serif;font-weight:500;color:var(--brink)}
+.br-inp:focus{outline:none;border-color:var(--brink)}
+.br-btn{width:100%;background:var(--brink);color:#fff;border:none;border-radius:999px;padding:14px;font-weight:600;font-size:14px;cursor:pointer;font-family:Manrope,sans-serif;transition:.18s;margin-top:4px}
+.br-btn:hover{opacity:.87}
+.br-btn:disabled{opacity:.45;cursor:default}
+.br-gbtn{width:100%;background:var(--brbg);border:1px solid var(--brline2);border-radius:999px;padding:12px;font-weight:600;font-size:14px;cursor:pointer;margin-bottom:14px;font-family:Manrope,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--brink)}
+.br-gbtn:hover{background:var(--brbg2)}
+.br-div{display:flex;align-items:center;gap:12px;color:var(--brmut);font-size:11px;font-weight:600;margin-bottom:14px}
+.br-div:before,.br-div:after{content:"";flex:1;height:1px;background:var(--brline)}
+.br-alt{text-align:center;font-size:13px;color:var(--brmut);font-weight:500;margin-top:18px}
+.br-alt a{color:var(--bracc);font-weight:700;cursor:pointer;text-decoration:none}
+.br-link{background:none;border:none;color:var(--brmut);font-size:12px;font-weight:600;cursor:pointer;font-family:Manrope,sans-serif;padding:6px 0;text-align:right;display:block;width:100%;margin-bottom:6px}
+.br-link:hover{color:var(--brink)}
+.br-chk{display:flex;gap:9px;align-items:flex-start;font-size:12px;color:var(--brink2);font-weight:500;margin:6px 0 14px;line-height:1.45}
+.br-chk input{margin-top:2px;accent-color:var(--bracc);width:15px;height:15px;flex-shrink:0}
+.br-chk a{color:var(--bracc);font-weight:700;cursor:pointer}
+.br-msg{font-size:12.5px;font-weight:600;border-radius:10px;padding:10px 12px;margin-bottom:12px;line-height:1.45;display:none}
+.br-msg.err{display:block;background:rgba(210,73,47,.09);color:var(--brup)}
+.br-msg.ok{display:block;background:rgba(22,160,106,.1);color:var(--bracc)}
+.br-note{font-size:11px;color:var(--brmut);font-weight:500;text-align:center;margin-top:14px;line-height:1.45}
+.br-big{font-size:44px;text-align:center;margin-bottom:12px}
+.br-h{font-size:21px;font-weight:800;text-align:center;letter-spacing:-.02em;margin-bottom:8px}
+.br-view{display:none}
+.br-view.on{display:block}
+.br-tc{font-size:12.5px;color:var(--brink2);line-height:1.6;font-weight:500;max-height:46vh;overflow-y:auto;text-align:left}
+.br-tc h4{font-size:13px;font-weight:800;margin:14px 0 5px;color:var(--brink)}
+</style>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function(){
+  "use strict";
+  // SB_URL / SB_KEY are top-level consts declared in the main site script,
+  // so they are visible here as global lexical bindings. Never hard-code them.
+  var URL_ = (typeof SB_URL !== 'undefined') ? SB_URL : null;
+  var KEY_ = (typeof SB_KEY !== 'undefined') ? SB_KEY : null;
+  if(!URL_ || !KEY_ || !window.supabase){ console.error('[BR auth] Supabase config not found'); return; }
+
+  var supa = window.supabase.createClient(URL_, KEY_, {
+    auth:{ persistSession:true, autoRefreshToken:true, detectSessionInUrl:true, flowType:'pkce' }
+  });
+
+  var BR = window.BR = { supa:supa, user:null, profile:null };
+
+  /* ---------------- markup ---------------- */
+  var TC_HTML = ''
+    + '<h4>1. Par pakalpojumu</h4>BalticRadar apkopo publiski pieejamus sludinājumus par lietotām automašīnām Latvijā, Lietuvā un Igaunijā. Mēs neesam pārdevējs, starpnieks vai darījuma puse.'
+    + '<h4>2. Datu precizitāte</h4>Sludinājumu dati un cenu vēsture tiek iegūti automatizēti no trešo pušu avotiem. Mēs cenšamies nodrošināt precizitāti, taču negarantējam, ka informācija ir pilnīga vai aktuāla. Pirms darījuma vienmēr pārbaudiet datus pie pārdevēja.'
+    + '<h4>3. Konts</h4>Jūs esat atbildīgs par sava konta un paroles drošību. Viens konts – viena persona. Aizliegts automatizēti nolasīt (scrapot) vietnes saturu.'
+    + '<h4>4. Jūsu dati</h4>Mēs glabājam jūsu e-pastu, vārdu, saglabātās automašīnas un saglabātos filtrus, lai sniegtu pakalpojumu. Mēs nepārdodam jūsu datus. Jūs jebkurā brīdī varat pieprasīt konta dzēšanu.'
+    + '<h4>5. Paziņojumi</h4>Reģistrējoties jūs piekrītat saņemt ar kontu saistītus e-pastus (apstiprinājums, paroles atjaunošana). Cenu paziņojumi tiek sūtīti tikai tad, ja esat izveidojis saglabātu filtru.'
+    + '<h4>6. Maksas funkcijas</h4>Daļa funkciju (pilna cenu vēsture, e-pasta paziņojumi) nākotnē būs pieejama maksas plānā. Cenas un noteikumi tiks paziņoti pirms maksājumu ieviešanas.'
+    + '<h4>7. Atbildības ierobežojums</h4>Pakalpojums tiek sniegts "kāds tas ir". Mēs neatbildam par zaudējumiem, kas radušies, paļaujoties uz vietnē sniegto informāciju.'
+    + '<h4>8. Izmaiņas</h4>Noteikumi var tikt mainīti. Būtiskas izmaiņas paziņosim pa e-pastu.';
+
+  var html = ''
+  + '<div class="br-ov" id="brOv" onclick="BR.close()"></div>'
+  + '<div class="br-modal br-scope" id="brModal" role="dialog" aria-modal="true">'
+  + '<button class="br-x" onclick="BR.close()" aria-label="Aizvērt">&#10005;</button>'
+  + '<div class="br-inr">'
+
+  /* --- sign in --- */
+  + '<div class="br-view" id="brV-signin">'
+    + '<div class="br-logo"><span class="m">B</span> BalticRadar</div>'
+    + '<div class="br-tag">Pieslēdzies, lai saglabātu automašīnas un filtrus.</div>'
+    + '<div class="br-msg" id="brM-signin"></div>'
+    + '<button class="br-gbtn" onclick="BR.google()"><svg width="17" height="17" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.1-3.8 6.6-9.4 6.6-16.1z"/><path fill="#34A853" d="M24 46c6 0 11-2 14.6-5.4l-7.1-5.5c-2 1.3-4.5 2.1-7.5 2.1-5.8 0-10.7-3.9-12.400-9.1H4.2v5.7C7.8 41.1 15.3 46 24 46z"/><path fill="#FBBC05" d="M11.6 28.1c-.3-.9-.5-1.9-.5-3.1s.2-2.2.5-3.1v-5.7H4.2C2.8 19.1 2 21.9 2 25s.8 5.9 2.2 8.7l7.4-5.6z"/><path fill="#EA4335" d="M24 11.9c3.3 0 6.2 1.1 8.5 3.3l6.3-6.3C35 5.3 30 3 24 3 15.3 3 7.8 8 4.2 16.3l7.4 5.7c1.7-5.2 6.6-10.1 12.4-10.1z"/></svg> Turpināt ar Google</button>'
+    + '<div class="br-div">VAI</div>'
+    + '<input class="br-inp" id="brSiEmail" type="email" placeholder="E-pasts" autocomplete="email">'
+    + '<input class="br-inp" id="brSiPass" type="password" placeholder="Parole" autocomplete="current-password">'
+    + '<button class="br-link" onclick="BR.view(\'forgot\')">Aizmirsi paroli?</button>'
+    + '<button class="br-btn" id="brSiBtn" onclick="BR.signIn()">Pieslēgties</button>'
+    + '<div class="br-alt">Nav konta? <a onclick="BR.view(\'signup\')">Reģistrēties</a></div>'
+  + '</div>'
+
+  /* --- sign up --- */
+  + '<div class="br-view" id="brV-signup">'
+    + '<div class="br-logo"><span class="m">B</span> BalticRadar</div>'
+    + '<div class="br-tag">Izveido bezmaksas kontu.</div>'
+    + '<div class="br-msg" id="brM-signup"></div>'
+    + '<button class="br-gbtn" onclick="BR.google()"><svg width="17" height="17" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.1-3.8 6.6-9.4 6.6-16.1z"/><path fill="#34A853" d="M24 46c6 0 11-2 14.6-5.4l-7.1-5.5c-2 1.3-4.5 2.1-7.5 2.1-5.8 0-10.7-3.9-12.4-9.1H4.2v5.7C7.8 41.1 15.3 46 24 46z"/><path fill="#FBBC05" d="M11.6 28.1c-.3-.9-.5-1.9-.5-3.1s.2-2.2.5-3.1v-5.7H4.2C2.8 19.1 2 21.9 2 25s.8 5.9 2.2 8.7l7.4-5.6z"/><path fill="#EA4335" d="M24 11.9c3.3 0 6.2 1.1 8.5 3.3l6.3-6.3C35 5.3 30 3 24 3 15.3 3 7.8 8 4.2 16.3l7.4 5.7c1.7-5.2 6.6-10.1 12.4-10.1z"/></svg> Turpināt ar Google</button>'
+    + '<div class="br-div">VAI</div>'
+    + '<input class="br-inp" id="brSuName" type="text" placeholder="Vārds" autocomplete="name">'
+    + '<input class="br-inp" id="brSuEmail" type="email" placeholder="E-pasts" autocomplete="email">'
+    + '<input class="br-inp" id="brSuPass" type="password" placeholder="Parole (vismaz 8 zīmes)" autocomplete="new-password">'
+    + '<label class="br-chk"><input type="checkbox" id="brSuTc"><span>Piekrītu <a onclick="BR.view(\'tc\')">lietošanas noteikumiem</a> un privātuma politikai.</span></label>'
+    + '<button class="br-btn" id="brSuBtn" onclick="BR.signUp()">Izveidot kontu</button>'
+    + '<div class="br-alt">Jau ir konts? <a onclick="BR.view(\'signin\')">Pieslēgties</a></div>'
+  + '</div>'
+
+  /* --- check your email --- */
+  + '<div class="br-view" id="brV-verify">'
+    + '<div class="br-big">&#128231;</div>'
+    + '<div class="br-h">Pārbaudi e-pastu</div>'
+    + '<div class="br-tag">Nosūtījām apstiprinājuma saiti uz <b id="brVerifyEmail"></b>. Atver to, lai aktivizētu kontu.</div>'
+    + '<button class="br-btn" onclick="BR.close()">Labi</button>'
+    + '<div class="br-note">Nesaņēmi? Pārbaudi mēstuļu mapi.</div>'
+  + '</div>'
+
+  /* --- forgot --- */
+  + '<div class="br-view" id="brV-forgot">'
+    + '<div class="br-h">Atjaunot paroli</div>'
+    + '<div class="br-tag">Ievadi e-pastu — nosūtīsim saiti paroles maiņai.</div>'
+    + '<div class="br-msg" id="brM-forgot"></div>'
+    + '<input class="br-inp" id="brFoEmail" type="email" placeholder="E-pasts" autocomplete="email">'
+    + '<button class="br-btn" id="brFoBtn" onclick="BR.forgot()">Nosūtīt saiti</button>'
+    + '<div class="br-alt"><a onclick="BR.view(\'signin\')">Atpakaļ</a></div>'
+  + '</div>'
+
+  /* --- set new password (after reset link, and from profile) --- */
+  + '<div class="br-view" id="brV-reset">'
+    + '<div class="br-h">Jauna parole</div>'
+    + '<div class="br-tag">Izvēlies jaunu paroli savam kontam.</div>'
+    + '<div class="br-msg" id="brM-reset"></div>'
+    + '<input class="br-inp" id="brRsPass" type="password" placeholder="Jaunā parole (vismaz 8 zīmes)" autocomplete="new-password">'
+    + '<input class="br-inp" id="brRsPass2" type="password" placeholder="Atkārto paroli" autocomplete="new-password">'
+    + '<button class="br-btn" id="brRsBtn" onclick="BR.setPassword()">Saglabāt paroli</button>'
+  + '</div>'
+
+  /* --- T&C --- */
+  + '<div class="br-view" id="brV-tc">'
+    + '<div class="br-h">Lietošanas noteikumi</div>'
+    + '<div class="br-tc">' + TC_HTML + '</div>'
+    + '<button class="br-btn" onclick="BR.view(BR._back||\'signup\')">Aizvērt</button>'
+  + '</div>'
+
+  + '</div></div>';
+
+  var host = document.createElement('div');
+  host.innerHTML = html;
+  document.body.appendChild(host);
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  /* ---------------- view control ---------------- */
+  BR._back = 'signup';
+  BR.view = function(v){
+    if(v==='tc'){ /* remember where we came from */ }
+    else { BR._back = v; }
+    ['signin','signup','verify','forgot','reset','tc'].forEach(function(k){
+      var el = $('brV-'+k); if(el) el.classList.toggle('on', k===v);
+    });
+    $('brOv').classList.add('on');
+    $('brModal').classList.add('on');
+  };
+  BR.openAuth = function(v){ BR.view(v||'signin'); };
+  BR.close = function(){ $('brOv').classList.remove('on'); $('brModal').classList.remove('on'); };
+  function msg(view, text, kind){
+    var m = $('brM-'+view); if(!m) return;
+    m.textContent = text || '';
+    m.className = 'br-msg' + (text ? ' ' + (kind||'err') : '');
+  }
+  function busy(btnId, on, label){
+    var b = $(btnId); if(!b) return;
+    b.disabled = !!on;
+    if(on){ b.dataset.lbl = b.textContent; b.textContent = 'Lūdzu uzgaidi…'; }
+    else { b.textContent = label || b.dataset.lbl || b.textContent; }
+  }
+
+  /* ---------------- auth actions ---------------- */
+  BR.signUp = async function(){
+    var name = $('brSuName').value.trim();
+    var email = $('brSuEmail').value.trim();
+    var pass = $('brSuPass').value;
+    var tc = $('brSuTc').checked;
+    msg('signup','');
+    if(!email || !pass){ return msg('signup','Ievadi e-pastu un paroli.'); }
+    if(pass.length < 8){ return msg('signup','Parolei jābūt vismaz 8 zīmes garai.'); }
+    if(!tc){ return msg('signup','Lūdzu piekrīti lietošanas noteikumiem.'); }
+    busy('brSuBtn', true);
+    var r = await supa.auth.signUp({
+      email: email, password: pass,
+      options:{ data:{ full_name:name, tc_accepted:'true' },
+                emailRedirectTo: window.location.origin }
+    });
+    busy('brSuBtn', false, 'Izveidot kontu');
+    if(r.error){ return msg('signup', r.error.message); }
+    if(r.data.session){ BR.close(); return; }           // confirmations off -> logged straight in
+    $('brVerifyEmail').textContent = email;
+    BR.view('verify');
+  };
+
+  BR.signIn = async function(){
+    var email = $('brSiEmail').value.trim();
+    var pass = $('brSiPass').value;
+    msg('signin','');
+    if(!email || !pass){ return msg('signin','Ievadi e-pastu un paroli.'); }
+    busy('brSiBtn', true);
+    var r = await supa.auth.signInWithPassword({ email: email, password: pass });
+    busy('brSiBtn', false, 'Pieslēgties');
+    if(r.error){ return msg('signin', r.error.message); }
+    BR.close();
+  };
+
+  BR.google = async function(){
+    var r = await supa.auth.signInWithOAuth({
+      provider:'google',
+      options:{ redirectTo: window.location.origin }
+    });
+    if(r.error){
+      msg('signin','Google pieslēgšanās vēl nav aktivizēta. Lūdzu izmanto e-pastu.','err');
+      msg('signup','Google pieslēgšanās vēl nav aktivizēta. Lūdzu izmanto e-pastu.','err');
+    }
+  };
+
+  BR.forgot = async function(){
+    var email = $('brFoEmail').value.trim();
+    msg('forgot','');
+    if(!email){ return msg('forgot','Ievadi e-pastu.'); }
+    busy('brFoBtn', true);
+    var r = await supa.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
+    busy('brFoBtn', false, 'Nosūtīt saiti');
+    if(r.error){ return msg('forgot', r.error.message); }
+    msg('forgot','Ja konts pastāv, saite ir nosūtīta uz e-pastu.','ok');
+  };
+
+  BR.setPassword = async function(){
+    var p1 = $('brRsPass').value, p2 = $('brRsPass2').value;
+    msg('reset','');
+    if(p1.length < 8){ return msg('reset','Parolei jābūt vismaz 8 zīmes garai.'); }
+    if(p1 !== p2){ return msg('reset','Paroles nesakrīt.'); }
+    busy('brRsBtn', true);
+    var r = await supa.auth.updateUser({ password: p1 });
+    busy('brRsBtn', false, 'Saglabāt paroli');
+    if(r.error){ return msg('reset', r.error.message); }
+    msg('reset','Parole nomainīta.','ok');
+    setTimeout(BR.close, 1200);
+  };
+
+  BR.signOut = async function(){ await supa.auth.signOut(); location.reload(); };
+
+  /* ---------------- header ---------------- */
+  function mountHeader(){
+    if($('brHdr')) return;
+    var anchor = document.getElementById('notifyBtn');
+    var hdr = document.createElement('span');
+    hdr.className = 'br-hdr br-scope';
+    hdr.id = 'brHdr';
+    if(anchor && anchor.parentNode){ anchor.parentNode.insertBefore(hdr, anchor.nextSibling); }
+    else { document.body.appendChild(hdr); hdr.style.cssText='position:fixed;top:14px;right:16px;z-index:9000'; }
+    paintHeader();
+  }
+  function initials(){
+    var n = (BR.profile && BR.profile.full_name) || (BR.user && BR.user.email) || '?';
+    return n.trim().charAt(0).toUpperCase();
+  }
+  function paintHeader(){
+    var hdr = $('brHdr'); if(!hdr) return;
+    if(BR.user){
+      hdr.innerHTML = '<button class="br-ava" id="brAva" title="Profils">'+initials()+'</button>'
+                    + '<button class="br-pill" onclick="BR.signOut()">Iziet</button>';
+      $('brAva').onclick = function(){
+        if(window.BRProfile && window.BRProfile.open) window.BRProfile.open();   // Stage 2
+        else BR.view('reset');
+      };
+    } else {
+      hdr.innerHTML = '<button class="br-pill" onclick="BR.openAuth(\'signin\')">Pieslēgties</button>'
+                    + '<button class="br-pill solid" onclick="BR.openAuth(\'signup\')">Reģistrēties</button>';
+    }
+  }
+  BR.paintHeader = paintHeader;
+
+  /* ---------------- session ---------------- */
+  async function loadProfile(){
+    if(!BR.user){ BR.profile = null; return; }
+    var r = await supa.from('profiles').select('*').eq('id', BR.user.id).maybeSingle();
+    BR.profile = r.data || null;
+  }
+  async function refresh(session){
+    BR.user = session ? session.user : null;
+    await loadProfile();
+    paintHeader();
+    document.body.classList.toggle('br-authed', !!BR.user);
+    document.body.classList.toggle('br-premium', !!(BR.profile && BR.profile.is_premium));
+    window.dispatchEvent(new CustomEvent('br:auth', { detail:{ user:BR.user, profile:BR.profile } }));
+  }
+
+  supa.auth.onAuthStateChange(function(event, session){
+    if(event === 'PASSWORD_RECOVERY'){ BR.view('reset'); }
+    refresh(session);
+  });
+
+  function boot(){
+    mountHeader();
+    supa.auth.getSession().then(function(r){ refresh(r.data.session); });
+
+    // The old "Paziņojumi" button inserted straight into `subscriptions` with the
+    // public key (no auth). That table is now RLS-locked. Require a login first.
+    var oldOpenSub = window.openSub;
+    window.openSub = function(){
+      if(!BR.user){ return BR.openAuth('signup'); }
+      if(typeof oldOpenSub === 'function') return oldOpenSub.apply(this, arguments);
+    };
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
+</script>
+<!-- =================== END BALTICRADAR AUTH =================== -->
+
 </body>
 </html>
