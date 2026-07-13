@@ -1763,7 +1763,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
   background:rgba(255,255,255,.94);cursor:pointer;font-size:13px;display:grid;place-items:center}
 /* ---- model chips ---- */
 .br2chipbox{border:1px solid var(--ln2);border-radius:14px;padding:12px;margin-bottom:12px;background:var(--bg2)}
-.br2chips{display:flex;flex-wrap:wrap;gap:7px;max-height:190px;overflow-y:auto}
+.br2chips{display:flex;flex-wrap:wrap;gap:7px;max-height:260px;overflow-y:auto;align-content:flex-start}
 .br2chip{border:1px solid var(--ln2);background:#fff;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;
   cursor:pointer;font-family:Manrope,sans-serif;color:var(--ink);transition:.12s;user-select:none}
 .br2chip:hover{border-color:var(--ink)}
@@ -1822,25 +1822,53 @@ var eur = function(n){ return n==null?'—':nf(n)+' €'; };
 var isPrem = function(){ return !!(BR.profile && BR.profile.is_premium); };
 
 /* ================= make -> models, from the DB ================= */
-var MODELCACHE = {};
-var JUNK = /^(-kita-|kita|cits|other|-)$/i;
+var MODELMAP = null;                       // { make: [models] }  full, cached
+var MM_KEY = 'br_modelmap_v1';
+var MM_TTL = 6*60*60*1000;                 // 6h
+var JUNK = /^(-kita-|kita|cits|other|-|n\/a|null)$/i;
+
+function sortModels(a,b){
+  var aN = /^[0-9]/.test(a), bN = /^[0-9]/.test(b);
+  if(aN && bN){ var d = parseFloat(a) - parseFloat(b); if(d) return d; }
+  if(aN && !bN) return -1;
+  if(!aN && bN) return 1;
+  return a.localeCompare(b,'lv',{numeric:true,sensitivity:'base'});
+}
+
+// One small fetch of the v_make_models materialized view (~2.9k rows), then cached
+// in memory + localStorage. Switching makes is then instant and never re-hits the DB.
+async function loadModelMap(){
+  if(MODELMAP) return MODELMAP;
+  try{
+    var raw = localStorage.getItem(MM_KEY);
+    if(raw){
+      var c = JSON.parse(raw);
+      if(c && c.ts && (Date.now()-c.ts) < MM_TTL && c.map){ MODELMAP = c.map; return MODELMAP; }
+    }
+  }catch(e){}
+  var acc = {}, from = 0, PAGE = 1000;
+  while(true){
+    var r = await supa.from('v_make_models').select('make,model').order('make').range(from, from+PAGE-1);
+    if(r.error) break;
+    var rows = r.data || [];
+    rows.forEach(function(x){
+      var mk = (x.make||'').trim(), md = (x.model||'').trim();
+      if(!mk || !md || JUNK.test(md)) return;
+      (acc[mk] = acc[mk] || {})[md.toLowerCase()] = md;   // case-insensitive dedupe
+    });
+    if(rows.length < PAGE) break;
+    from += PAGE;
+  }
+  var map = {};
+  Object.keys(acc).forEach(function(mk){ map[mk] = Object.values(acc[mk]).sort(sortModels); });
+  MODELMAP = map;
+  try{ localStorage.setItem(MM_KEY, JSON.stringify({ts:Date.now(), map:map})); }catch(e){}
+  return MODELMAP;
+}
 async function modelsFor(make){
   if(!make) return [];
-  if(MODELCACHE[make]) return MODELCACHE[make];
-  var r = await supa.from('v_listings').select('model').eq('make', make).limit(3000);
-  if(r.error) return [];
-  var set = {};
-  (r.data||[]).forEach(function(x){
-    var m = (x.model||'').trim();
-    if(!m || JUNK.test(m)) return;
-    var k = m.toLowerCase();
-    if(!set[k]) set[k] = m;               // dedupe, case-insensitive
-  });
-  var out = Object.values(set).sort(function(a,b){
-    return a.localeCompare(b, 'lv', {numeric:true});
-  });
-  MODELCACHE[make] = out;
-  return out;
+  var map = await loadModelMap();
+  return map[make] || [];
 }
 
 /* ================= typable preset comboboxes ================= */
@@ -2256,6 +2284,7 @@ async function showForm(name, c, notify){
     + '<label class="br2l">Modeļi *</label>'
     + '<div class="br2chipbox">'
     +  '<div class="br2picked" id="f_picked"></div>'
+    +  '<input class="br2i" id="f_msearch" placeholder="Meklēt modeli (piem. X5)" autocomplete="off" style="margin-bottom:10px">'
     +  '<div class="br2chips" id="f_chips"><div class="br2hint">Vispirms izvēlies marku.</div></div>'
     +  '<div style="margin-top:10px"><button class="br2btn g" id="f_confirm" onclick="BRProfile.confirmModels()">Apstiprināt modeļus</button></div>'
     + '</div>'
@@ -2298,27 +2327,46 @@ async function showForm(name, c, notify){
   if(c.make){ fm.value = c.make; }
   await paintChips();
 }
+var CHIPLIST = [];
 async function paintChips(){
   var make = $('f_make') ? $('f_make').value : '';
   var chips = $('f_chips');
   if(!chips) return;
   if(!make){
+    CHIPLIST = [];
     chips.innerHTML = '<div class="br2hint">Vispirms izvēlies marku.</div>';
     paintPicked(); return;
   }
   chips.innerHTML = '<div class="br2hint">Ielādē modeļus…</div>';
-  var list = await modelsFor(make);
-  if(!list.length){ chips.innerHTML='<div class="br2hint">Šai markai nav modeļu.</div>'; return; }
-  chips.innerHTML = list.map(function(mm){
-    var on = PICKED.indexOf(mm)!==-1;
-    return '<button type="button" class="br2chip'+(on?' on':'')+'" data-m="'+esc(mm)+'">'+esc(mm)+'</button>';
-  }).join('');
+  CHIPLIST = await modelsFor(make);
+  var s = $('f_msearch');
+  if(s && !s._wired){
+    s._wired = true;
+    s.oninput = function(){ renderChips(); };
+  }
+  if(s) s.value = '';
+  renderChips();
+}
+function renderChips(){
+  var chips = $('f_chips'); if(!chips) return;
+  var s = $('f_msearch');
+  var q = (s && s.value || '').trim().toLowerCase();
+  var list = q ? CHIPLIST.filter(function(m){ return m.toLowerCase().indexOf(q) !== -1; }) : CHIPLIST;
+  if(!CHIPLIST.length){ chips.innerHTML = '<div class="br2hint">Šai markai nav modeļu.</div>'; return; }
+  if(!list.length){ chips.innerHTML = '<div class="br2hint">Nav modeļa, kas satur “'+esc(q)+'”.</div>'; return; }
+  chips.innerHTML = '<div class="br2hint" style="width:100%">'+list.length+' no '+CHIPLIST.length+' modeļiem'
+    + (q ? '' : ' — raksti augšā, lai atrastu ātrāk') + '</div>'
+    + list.map(function(mm){
+        var on = PICKED.indexOf(mm)!==-1;
+        return '<button type="button" class="br2chip'+(on?' on':'')+'" data-m="'+esc(mm)+'">'+esc(mm)+'</button>';
+      }).join('');
   chips.querySelectorAll('.br2chip').forEach(function(b){
     b.onclick = function(){
       var v = b.dataset.m;
       var i = PICKED.indexOf(v);
       if(i===-1) PICKED.push(v); else PICKED.splice(i,1);
       b.classList.toggle('on', PICKED.indexOf(v)!==-1);
+      paintPicked();
     };
   });
   paintPicked();
