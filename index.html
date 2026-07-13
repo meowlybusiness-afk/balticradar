@@ -1971,13 +1971,40 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
     applyGoogleFlag();
     supa.auth.getSession().then(function(r){ refresh(r.data.session); });
 
-    // The old "Paziņojumi" button inserted straight into `subscriptions` with the
-    // public key (no auth). That table is now RLS-locked. Require a login first.
-    var oldOpenSub = window.openSub;
+    // ONE path for alerts (Henrijs' bug: a logged-in user was still asked for an e-mail).
+    //   signed OUT -> sign up / log in
+    //   signed IN  -> Mans profils > Mani filtri. We already know who they are and where to
+    //                 e-mail them, so the legacy `subscriptions` form is never shown again.
     window.openSub = function(){
-      if(!BR.user){ return BR.openAuth('signup'); }
-      if(typeof oldOpenSub === 'function') return oldOpenSub.apply(this, arguments);
+      if(!BR.user) return BR.openAuth('signup');
+      if(window.BRProfile && window.BRProfile.open) return window.BRProfile.open('filters');
+      return BR.view('reset');
     };
+
+    // keep the CTA labels honest about what the button will actually do
+    window.addEventListener('br:auth', paintAlertCtas);
+    var _ai = window.applyI18n;
+    if(typeof _ai === 'function'){
+      window.applyI18n = function(){ var r=_ai.apply(this,arguments); try{ paintAlertCtas(); }catch(e){} return r; };
+    }
+    window.updateNotifyBtn = paintAlertCtas;   // legacy hook: was driven by the old localStorage profile
+    paintAlertCtas();
+  }
+
+  var CTAT = {
+    lv:{out:'Saņemt paziņojumus', inb:'Mani filtri',  nb_out:'Paziņojumi', nb_in:'Mani filtri'},
+    en:{out:'Get alerts',         inb:'My filters',   nb_out:'Alerts',     nb_in:'My filters'},
+    ru:{out:'Уведомления',        inb:'Мои фильтры',  nb_out:'Уведомления',nb_in:'Мои фильтры'},
+    lt:{out:'Gauti pranešimus',   inb:'Mano filtrai', nb_out:'Pranešimai', nb_in:'Mano filtrai'},
+    et:{out:'Saada teated',       inb:'Minu filtrid', nb_out:'Teated',     nb_in:'Minu filtrid'}
+  };
+  function paintAlertCtas(){
+    var t = CTAT[window.lang] || CTAT.lv;
+    var on = !!BR.user;
+    var nb = document.getElementById('notifyBtn');
+    if(nb) nb.textContent = on ? t.nb_in : t.nb_out;
+    var cta = document.getElementById('ctaAlerts');
+    if(cta) cta.textContent = on ? t.inb : t.out;
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
@@ -2571,12 +2598,44 @@ async function msModelGroups(){
   return g;
 }
 function msPickedHtml(key){
-  if(!MS[key].length) return '';
+  var n = MS[key].length;
+  if(!n) return '';
+  if(n > 12){   // "Visi modeļi" can select hundreds - don't render hundreds of pills
+    return '<span class="br2pick">'+n+' izvēlēti<b onclick="BRProfile.msNone(\''+key+'\')">✕</b></span>';
+  }
   return MS[key].map(function(v){
     var lbl = (key==='model') ? v.replace('|',' ') : v;
     return '<span class="br2pick">'+esc(lbl)+'<b onclick="BRProfile.msDrop(\''+key+'\',\''+esc(v)+'\')">✕</b></span>';
   }).join('');
 }
+function msAllRow(key, label){
+  return '<div style="display:flex;gap:8px;margin:2px 0 10px">'
+       + '<button type="button" class="br2btn o" onclick="BRProfile.msAll(\''+key+'\')">'+label+'</button>'
+       + '<button type="button" class="br2btn o" onclick="BRProfile.msNone(\''+key+'\')">Notīrīt</button></div>';
+}
+BRProfile.msAll = async function(key){
+  if(key==='model'){
+    var groups = await msModelGroups(), out = [];
+    groups.forEach(function(g){ g.models.forEach(function(m){ out.push(g.make+'|'+m); }); });
+    MS.model = out;
+    return msRender('model');
+  }
+  var f = MS_FIELDS.filter(function(x){ return x.key===key; })[0];
+  if(!f) return;
+  MS[key] = msOptions(f).slice();
+  if(key==='make'){ msRender('make'); return msRender('model'); }   // models depend on makes
+  msRender(key);
+};
+BRProfile.msAllMake = async function(mk){
+  var list = await modelsFor(mk);
+  list.forEach(function(m){ var v = mk+'|'+m; if(MS.model.indexOf(v)===-1) MS.model.push(v); });
+  msRender('model');
+};
+BRProfile.msNone = function(key){
+  MS[key] = [];
+  if(key==='make'){ MS.model = []; msRender('make'); return msRender('model'); }
+  msRender(key);
+};
 function msWire(box){
   box.querySelectorAll('.br2chip').forEach(function(b){
     b.onclick=function(){
@@ -2606,7 +2665,10 @@ async function msRender(key){
       var list = q ? g.models.filter(function(m){return m.toLowerCase().indexOf(q)!==-1;}) : g.models;
       total += g.models.length; shown += list.length;
       if(!list.length) return;
-      html += '<div class="msgrp">'+esc(g.make)+' <i>'+list.length+'</i></div><div class="br2chips" style="max-height:none">'
+      html += '<div class="msgrp">'+esc(g.make)+' <i>'+list.length+'</i>'
+            + ' <button type="button" class="br2chip" style="padding:3px 10px;font-size:11.5px"'
+            + ' onclick="BRProfile.msAllMake(\''+esc(g.make).replace(/'/g,"&#39;")+'\')">visi</button>'
+            + '</div><div class="br2chips" style="max-height:none">'
             + list.map(function(m){
                 var v=g.make+'|'+m;
                 return '<button type="button" class="br2chip'+(MS.model.indexOf(v)!==-1?' on':'')+'" data-k="model" data-v="'+esc(v)+'">'+esc(m)+'</button>';
@@ -2614,6 +2676,7 @@ async function msRender(key){
     });
     box.innerHTML = pick
       + '<input class="br2i" id="ms_q_model" placeholder="Meklēt modeli (piem. X5)" autocomplete="off" value="'+esc(q)+'">'
+      + msAllRow('model','Visi modeļi')
       + '<div class="br2hint">'+shown+' no '+total+' modeļiem · '+MS.make.length+' marka(s)</div>'
       + (html||'<div class="br2hint">Nav atbilstošu modeļu.</div>')
       + '<div style="margin-top:10px"><button class="br2btn g" onclick="BRProfile.msConfirm(\'model\')">Apstiprināt modeļus</button></div>';
@@ -2628,6 +2691,7 @@ async function msRender(key){
   var list = qv ? opts.filter(function(o){return o.toLowerCase().indexOf(qv)!==-1;}) : opts;
   box.innerHTML = pick
     + (long ? '<input class="br2i" id="ms_q_'+key+'" placeholder="Meklēt…" autocomplete="off" value="'+esc(qv)+'"><div class="br2hint">'+list.length+' no '+opts.length+'</div>' : '')
+    + msAllRow(key, 'Visi')
     + '<div class="br2chips">'
     + list.map(function(o){
         return '<button type="button" class="br2chip'+(MS[key].indexOf(o)!==-1?' on':'')+'" data-k="'+key+'" data-v="'+esc(o)+'">'+esc(o)+'</button>';

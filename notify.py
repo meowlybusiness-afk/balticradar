@@ -164,12 +164,28 @@ def matches(car, c):
     if makes and (car.get("make") or "").lower() not in makes:
         return False
 
-    models = crit(c, "models", "models_q", "model")
-    if models:
+    # models_q holds "Make|Model" pairs -> match the PAIR, so picking Audi A4 + BMW 320 can never
+    # let a BMW "A4" through. Fall back to bare model names for older/legacy filters.
+    pairs = crit(c, "models_q")
+    if pairs and any("|" in p for p in pairs):
+        cmk = (car.get("make") or "").lower()
         cm = (car.get("model") or "").lower()
         cs = model_series(car.get("make"), car.get("model")).lower()
-        if not any(m.lower() == cm or m.lower() == cs for m in models):
+        ok = False
+        for p in pairs:
+            mk, _, md = p.partition("|")
+            if mk.lower() == cmk and md.lower() in (cm, cs):
+                ok = True
+                break
+        if not ok:
             return False
+    else:
+        models = crit(c, "models", "model")
+        if models:
+            cm = (car.get("model") or "").lower()
+            cs = model_series(car.get("make"), car.get("model")).lower()
+            if not any(m.lower() == cm or m.lower() == cs for m in models):
+                return False
 
     fuels = [_nf(x) for x in crit(c, "fuels", "fuel")]
     if fuels and _nf(car.get("fuel")) not in fuels:
