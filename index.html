@@ -232,6 +232,44 @@
   .cookie .acc{background:var(--accent);color:#fff}
   .cookie .dec{background:rgba(255,255,255,.14);color:#fff}
 </style>
+<style id="ms-style">
+  /* ---- multi-select filter controls (compact, collapsed by default) ---- */
+  .msf{position:relative;width:100%}
+  .msf-btn{width:100%;display:flex;align-items:center;gap:8px;justify-content:space-between;
+    background:var(--bg,#111);border:.5px solid var(--line2,var(--line));color:var(--ink);
+    border-radius:11px;padding:11px 13px;font-size:13.5px;font-family:inherit;font-weight:500;
+    cursor:pointer;text-align:left;line-height:1.2}
+  .msf-btn:hover{border-color:var(--accent)}
+  .msf-btn.has{border-color:var(--accent)}
+  .msf-lab{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .msf-btn .msf-cv{flex:0 0 auto;font-size:11px;opacity:.65;transition:transform .15s}
+  .msf-btn.open .msf-cv{transform:rotate(180deg)}
+  .msf-n{flex:0 0 auto;background:var(--accent);color:#fff;border-radius:999px;font-size:11px;
+    font-weight:800;padding:1px 7px;line-height:16px}
+  #msdd{position:fixed;z-index:10000;display:none;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.38);padding:10px;
+    max-height:min(58vh,420px);display:none;flex-direction:column;font-family:inherit}
+  #msdd.open{display:flex}
+  #msdd .msdd-s{width:100%;background:#fff;color:#111;border:1px solid #d8d8de;border-radius:10px;
+    padding:9px 11px;font-size:13.5px;font-family:inherit;outline:none;margin-bottom:8px}
+  #msdd .msdd-s:focus{border-color:var(--accent)}
+  #msdd .msdd-body{overflow-y:auto;flex:1 1 auto;padding:2px}
+  #msdd .msdd-g{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--mut,#888);margin:8px 2px 6px}
+  #msdd .msdd-g:first-child{margin-top:2px}
+  #msdd .msdd-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .mschip{background:#f1f1f4;color:#111;border:1px solid #e2e2e8;border-radius:999px;
+    padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;line-height:1.25;
+    font-family:inherit;user-select:none;transition:background .12s,color .12s}
+  .mschip:hover{background:#e6e6ec}
+  .mschip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  #msdd .msdd-foot{display:flex;gap:8px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+  #msdd .msdd-ok{flex:2;background:var(--accent);color:#fff;border:none;border-radius:10px;
+    padding:10px 8px;font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit}
+  #msdd .msdd-clr{flex:1;background:transparent;color:var(--ink);border:1px solid var(--line);
+    border-radius:10px;padding:10px 8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
+  #msdd .msdd-empty{color:var(--mut,#888);font-size:13px;padding:10px 4px}
+</style>
 </head>
 <body>
 <script>
@@ -242,20 +280,28 @@
    Also guards against non-string / array values from the multi-select era. */
 (function(){
   try{
-    var KEY='br_filters', MARK='br_filters_v2';
+    var KEY='br_filters', MARK='br_filters_v3';
     if(!localStorage.getItem(MARK)){
       localStorage.removeItem(KEY);
       localStorage.removeItem('br_modelmap_v1');
       localStorage.setItem(MARK,'1');
     } else {
-      // sanitise: every persisted filter value must be a plain string
+      // sanitise: MULTI keys must be arrays of non-empty strings; every other key a plain string
+      var MULTI={make:1,model:1,fuel:1,gear:1,bodyf:1,drive:1};
       var raw=localStorage.getItem(KEY);
       if(raw){
         var f=JSON.parse(raw), dirty=false;
         Object.keys(f).forEach(function(k){
           var v=f[k];
-          if(v===null||v===undefined){ f[k]=''; dirty=true; }
-          else if(typeof v!=='string'){ f[k]=Array.isArray(v)?(v[0]!=null?String(v[0]):''):''; dirty=true; }
+          if(MULTI[k]){
+            var a = Array.isArray(v) ? v : (v===null||v===undefined||v==='' ? [] : [v]);
+            a = a.filter(function(x){return x!=null&&x!=='';}).map(String);
+            if(!Array.isArray(v)||a.length!==v.length){ dirty=true; }
+            f[k]=a;
+          } else {
+            if(v===null||v===undefined){ f[k]=''; dirty=true; }
+            else if(typeof v!=='string'){ f[k]=Array.isArray(v)?(v[0]!=null?String(v[0]):''):String(v); dirty=true; }
+          }
         });
         if(dirty) localStorage.setItem(KEY, JSON.stringify(f));
       }
@@ -341,12 +387,21 @@
       <button data-c="EE"><span class="fdot EE"></span>EE</button>
     </div>
     <input class="search" id="q" type="text" placeholder="Meklēt marku vai modeli…">
-    <select id="make"><option value="">Visas markas</option></select>
-    <select id="model"><option value="">Visi modeļi</option></select>
-    <select id="fuel"><option value="">Visas degvielas</option></select>
-    <select id="gear"><option value="">Visas ātrumkārbas</option></select>
-    <select id="bodyf"><option value="">Visas virsbūves</option></select>
-    <select id="drive"><option value="">Visas piedziņas</option></select>
+    <div class="msf" id="msf-make"  data-k="make"></div>
+    <div class="msf" id="msf-model" data-k="model"></div>
+    <div class="msf" id="msf-fuel"  data-k="fuel"></div>
+    <div class="msf" id="msf-gear"  data-k="gear"></div>
+    <div class="msf" id="msf-bodyf" data-k="bodyf"></div>
+    <div class="msf" id="msf-drive" data-k="drive"></div>
+    <!-- legacy hidden selects: kept so older code paths (i18n, fillSelect) keep working -->
+    <div id="legacySel" style="display:none" aria-hidden="true">
+      <select id="make"><option value="">Visas markas</option></select>
+      <select id="model"><option value="">Visi modeļi</option></select>
+      <select id="fuel"><option value="">Visas degvielas</option></select>
+      <select id="gear"><option value="">Visas ātrumkārbas</option></select>
+      <select id="bodyf"><option value="">Visas virsbūves</option></select>
+      <select id="drive"><option value="">Visas piedziņas</option></select>
+    </div>
     <div class="row2"><input id="pmin" type="number" placeholder="Cena no"><input id="pmax" type="number" placeholder="Cena līdz"></div>
     <div class="row2"><input id="ymin" type="number" placeholder="Gads no"><input id="ymax" type="number" placeholder="Gads līdz"></div>
     <div class="row2"><input id="mmin" type="number" placeholder="Nobrauk. no"><input id="mmax" type="number" placeholder="Nobrauk. līdz"></div>
@@ -386,7 +441,7 @@ const SB_KEY="sb_publishable_bcbzDTxRyE21hrM2fHntYA_fd5zCl8v";
 const SBH={apikey:SB_KEY,Authorization:"Bearer "+SB_KEY};
 // REPLACE with your carVertical affiliate link after signing up (free) at carvertical.com/affiliate-program
 const CARV="https://www.carvertical.com/lv";
-let countryFilter="all", firstLoad=true, allCars=[], catalogTotal=null;
+let countryFilter=[], firstLoad=true, allCars=[], catalogTotal=null;   // [] = all countries
 const PAGE_SIZE=30; let curPage=1;
 const RATEL={
  lv:{vg:"Lieliska cena",g:"Taisnīga cena",f:"Vidēja cena",h:"Augstāka cena",op:"Pārāk dārga"},
@@ -394,10 +449,22 @@ const RATEL={
  ru:{vg:"Отличная цена",g:"Справедливая цена",f:"Средняя цена",h:"Выше средней",op:"Завышенная цена"},
  lt:{vg:"Puiki kaina",g:"Teisinga kaina",f:"Vidutinė kaina",h:"Aukštesnė kaina",op:"Per brangu"},
  et:{vg:"Väga hea hind",g:"Õiglane hind",f:"Keskmine hind",h:"Kõrgem hind",op:"Ülehinnatud"}};
-const F={q:"",make:"",model:"",fuel:"",gear:"",bodyf:"",drive:"",pmin:"",pmax:"",ymin:"",ymax:"",mmin:"",mmax:"",emin:"",emax:"",sort:"new",
+// MULTI-SELECT: make/model/fuel/gear/bodyf/drive are ARRAYS. [] means "no filter" (match everything).
+const MULTIK=["make","model","fuel","gear","bodyf","drive"];
+function _arr(v){                       // tolerant: accepts array, string, null (old persisted values)
+  if(v==null||v==="")return [];
+  const a=Array.isArray(v)?v:[v];
+  return a.filter(x=>x!=null&&x!=="").map(String);
+}
+function inPred(col,v){                 // 0 -> "" (match all) | 1 -> eq | >1 -> in.(...) ; empty IN-list impossible
+  const a=_arr(v); if(!a.length)return "";
+  if(a.length===1)return col+"=eq."+encodeURIComponent(a[0]);
+  return col+"=in.("+encodeURIComponent(a.map(x=>'"'+String(x).replace(/"/g,'""')+'"').join(","))+")";
+}
+const F={q:"",make:[],model:[],fuel:[],gear:[],bodyf:[],drive:[],pmin:"",pmax:"",ymin:"",ymax:"",mmin:"",mmax:"",emin:"",emax:"",sort:"new",
   ...JSON.parse(localStorage.getItem("br_filters")||"{}")};
-// Drop stale/junk saved filters (e.g. a "&amp;" model saved before dropdowns were cleaned) so they can't hide the catalogue.
-["make","model"].forEach(k=>{if(F[k]&&junkVal(F[k]))F[k]="";});
+// Normalise every multi key to an array + drop stale/junk values so they can't hide the catalogue.
+MULTIK.forEach(k=>{F[k]=_arr(F[k]).filter(v=>!junkVal(v));});
 try{localStorage.setItem("br_filters",JSON.stringify(F));}catch(e){}
 let lang=localStorage.getItem("br_lang")||"lv";
 const LANG={
@@ -428,6 +495,7 @@ function applyI18n(){
   document.getElementById("mmin").placeholder=t.milFrom;document.getElementById("mmax").placeholder=t.milTo;
   const so=document.getElementById("sort").options;so[0].textContent=t.sNew;so[1].textContent=t.sPa;so[2].textContent=t.sPd;so[3].textContent=t.sYd;
   document.getElementById("pill-all").textContent=t.all;
+  if(typeof msRefreshAll==="function")msRefreshAll();
   document.getElementById("notifyBtn").textContent=ST().nb;
   {const BTN={lv:["Meklēt","Atiestatīt"],en:["Search","Reset"],ru:["Искать","Сбросить"],lt:["Ieškoti","Atstatyti"],et:["Otsi","Lähtesta"]};
    const bb=BTN[lang]||BTN.en; const bs=document.getElementById("doSearchBtn"),brr=document.getElementById("doResetBtn");
@@ -794,17 +862,17 @@ function applyFilters(cars){
   let r=cars.slice();
   // hide ss.lv "wanted to buy" ads (they have no price) so only cars for sale show
   r=r.filter(c=>!(c.source==="ss.lv"&&(c.last_price==null||c.last_price===0)));
-  if(countryFilter!=="all")r=r.filter(c=>c.country===countryFilter);
+  const CF=_arr(countryFilter); if(CF.length)r=r.filter(c=>CF.includes(c.country));
   if(F.q){const q=F.q.toLowerCase();r=r.filter(c=>((c.make||"")+" "+(c.model||"")).toLowerCase().includes(q));}
-  if(F.make)r=r.filter(c=>c.make===F.make);
-  if(F.model){const pool=F.make?cars.filter(c=>c.make===F.make):cars;
+  const MK=_arr(F.make); if(MK.length)r=r.filter(c=>MK.includes(c.make));
+  const MD=_arr(F.model);
+  if(MD.length){const pool=MK.length?cars.filter(c=>MK.includes(c.make)):cars;
     const exact=new Set(pool.map(c=>c.model));
-    if(exact.has(F.model))r=r.filter(c=>c.model===F.model);
-    else r=r.filter(c=>modelSeries(c.make,c.model)===F.model);}
-  if(F.fuel)r=r.filter(c=>norm("fuel",c.fuel||"")===F.fuel);
-  if(F.gear)r=r.filter(c=>norm("gear",c.gearbox||"")===F.gear);
-  if(F.bodyf)r=r.filter(c=>norm("body",c.body||"")===F.bodyf);
-  if(F.drive)r=r.filter(c=>norm("drive",c.drivetrain||"")===F.drive);
+    r=r.filter(c=>MD.some(v=>exact.has(v)?c.model===v:modelSeries(c.make,c.model)===v));}   // exact model, else series fallback
+  const FU=_arr(F.fuel);  if(FU.length)r=r.filter(c=>FU.includes(norm("fuel",c.fuel||"")));
+  const GE=_arr(F.gear);  if(GE.length)r=r.filter(c=>GE.includes(norm("gear",c.gearbox||"")));
+  const BO=_arr(F.bodyf); if(BO.length)r=r.filter(c=>BO.includes(norm("body",c.body||"")));
+  const DR=_arr(F.drive); if(DR.length)r=r.filter(c=>DR.includes(norm("drive",c.drivetrain||"")));
   if(F.mmin)r=r.filter(c=>(c.last_mileage||0)>=+F.mmin);
   if(F.mmax)r=r.filter(c=>(c.last_mileage??1e12)<=+F.mmax);
   if(F.pmin)r=r.filter(c=>(c.last_price||0)>=+F.pmin);
@@ -908,7 +976,7 @@ function showSugg(input){
     el.onmouseenter=()=>{[...box.querySelectorAll(".sugg")].forEach(x=>x.style.background="");el.style.background="var(--card2)";};});
 }
 function pickSuggestion(s){
-  F.make=s.make; F.model=s.model||""; F.q="";
+  F.make=[s.make]; F.model=s.model?[s.model]:[]; F.q="";
   const q1=document.getElementById("q"); if(q1)q1.value=""; const hq=document.getElementById("heroq"); if(hq)hq.value="";
   localStorage.setItem("br_filters",JSON.stringify(F));
   refreshControls(); hideSugg(); doSearch(); scrollToEl("grid");
@@ -935,22 +1003,24 @@ function observeReveals(){
   _revObs=new IntersectionObserver((es)=>{es.forEach(en=>{if(en.isIntersecting){en.target.classList.add("in");_revObs.unobserve(en.target);}});},{threshold:.12});
   document.querySelectorAll(".reveal:not(.in)").forEach(e=>_revObs.observe(e));
 }
-function pickMake(m){F.make=m;const el=document.getElementById("make");if(el)el.value=m;localStorage.setItem("br_filters",JSON.stringify(F));curPage=1;repaint();scrollToEl("grid");}
+function pickMake(m){F.make=[m];F.model=[];localStorage.setItem("br_filters",JSON.stringify(F));if(typeof msRefreshAll==="function")msRefreshAll();curPage=1;repaint();scrollToEl("grid");}
 function openModalById(id){openCarById(id);}
 function refreshControls(){
   const A=AGG();
   const mk=(FACET_MAKES&&FACET_MAKES.length)?FACET_MAKES:[...new Set(A.map(c=>c.make).filter(v=>v&&!junkVal(v)))];
-  fillSelect("make",mk.filter(v=>v&&!junkVal(v)).sort(),F.make);
+  const _mk1=_arr(F.make)[0]||"";
+  fillSelect("make",mk.filter(v=>v&&!junkVal(v)).sort(),_mk1);
   let models,series=[];
-  if(F.make){                                     // full model list for the chosen make (from facets)
-    models=FACET_MODELS[F.make]?[...FACET_MODELS[F.make]]:[...new Set(A.filter(c=>c.make===F.make).map(c=>c.model).filter(v=>v&&!junkVal(v)))];
-    series=[...new Set(models.map(m=>modelSeries(F.make,m)).filter(v=>v&&!junkVal(v)))].filter(s=>!models.includes(s));
+  if(_mk1){                                     // full model list for the chosen make (from facets)
+    models=FACET_MODELS[_mk1]?[...FACET_MODELS[_mk1]]:[...new Set(A.filter(c=>c.make===_mk1).map(c=>c.model).filter(v=>v&&!junkVal(v)))];
+    series=[...new Set(models.map(m=>modelSeries(_mk1,m)).filter(v=>v&&!junkVal(v)))].filter(s=>!models.includes(s));
   } else { models=[...new Set(A.map(c=>c.model).filter(v=>v&&!junkVal(v)))]; }
-  fillSelect("model",[...series,...models].filter(v=>v&&!junkVal(v)).sort(),F.model);
-  fillSelect("fuel",[...new Set(A.map(c=>norm("fuel",c.fuel)).filter(Boolean))].sort(),F.fuel);
-  fillSelect("gear",[...new Set(A.map(c=>norm("gear",c.gearbox)).filter(Boolean))].sort(),F.gear);
-  fillSelect("bodyf",[...new Set(A.filter(c=>c.body&&!BODYJUNK.has(String(deent(c.body)).toLowerCase().trim())).map(c=>norm("body",c.body)).filter(Boolean))].sort(),F.bodyf);
-  fillSelect("drive",[...new Set(A.map(c=>norm("drive",c.drivetrain)).filter(Boolean))].sort(),F.drive);
+  fillSelect("model",[...series,...models].filter(v=>v&&!junkVal(v)).sort(),_arr(F.model)[0]||"");
+  fillSelect("fuel",[...new Set(A.map(c=>norm("fuel",c.fuel)).filter(Boolean))].sort(),_arr(F.fuel)[0]||"");
+  fillSelect("gear",[...new Set(A.map(c=>norm("gear",c.gearbox)).filter(Boolean))].sort(),_arr(F.gear)[0]||"");
+  fillSelect("bodyf",[...new Set(A.filter(c=>c.body&&!BODYJUNK.has(String(deent(c.body)).toLowerCase().trim())).map(c=>norm("body",c.body)).filter(Boolean))].sort(),_arr(F.bodyf)[0]||"");
+  fillSelect("drive",[...new Set(A.map(c=>norm("drive",c.drivetrain)).filter(Boolean))].sort(),_arr(F.drive)[0]||"");
+  if(typeof msRefreshAll==="function")msRefreshAll();
   if(!(FACET_MAKES&&FACET_MAKES.length))scanFacets();}
 
 const LIST_COLS="car_id,source,country,make,model,year,engine_l,fuel,gearbox,body,drivetrain,last_mileage,last_price,location,posted,first_seen,source_url";
@@ -977,13 +1047,13 @@ async function scanFacets(){                      // one keyset pass over the wh
   }catch(e){} finally{_facetScan=false;}
 }
 // ---- SERVER-SIDE PAGINATION: one page at a time from Supabase; scales to the whole ~83k catalogue ----
-function serverFilterActive(){return !!(countryFilter!=="all"||F.make||F.q||F.pmin||F.pmax||F.ymin||F.ymax||F.mmin||F.mmax);}
-function clientOnlyActive(){return !!(F.fuel||F.gear||F.bodyf||F.drive||F.emin||F.emax||F.model);}
+function serverFilterActive(){return !!(_arr(countryFilter).length||_arr(F.make).length||F.q||F.pmin||F.pmax||F.ymin||F.ymax||F.mmin||F.mmax);}
+function clientOnlyActive(){return !!(_arr(F.fuel).length||_arr(F.gear).length||_arr(F.bodyf).length||_arr(F.drive).length||F.emin||F.emax||_arr(F.model).length);}
 function qPred(){const qq=String(F.q||"").trim().replace(/[(),*]/g," ").trim(); return qq?`or=(make.ilike.*${encodeURIComponent(qq)}*,model.ilike.*${encodeURIComponent(qq)}*)`:"";}
 function buildServerQ(){
   const p=[];
-  if(countryFilter!=="all")p.push("country=eq."+encodeURIComponent(countryFilter));
-  if(F.make)p.push("make=eq."+encodeURIComponent(F.make));
+  {const cp=inPred("country",countryFilter); if(cp)p.push(cp);}
+  {const mp=inPred("make",F.make); if(mp)p.push(mp);}
   {const qp=qPred(); if(qp)p.push(qp);}
   if(F.ymin)p.push("year=gte."+(+F.ymin)); if(F.ymax)p.push("year=lte."+(+F.ymax));
   if(F.pmin)p.push("last_price=gte."+(+F.pmin)); if(F.pmax)p.push("last_price=lte."+(+F.pmax));
@@ -994,8 +1064,8 @@ function buildServerQ(){
 }
 function buildFilterPreds(){   // server-safe filter predicates ONLY (no order) for the full-brand fetch
   const p=[];
-  if(countryFilter!=="all")p.push("country=eq."+encodeURIComponent(countryFilter));
-  if(F.make)p.push("make=eq."+encodeURIComponent(F.make));
+  {const cp=inPred("country",countryFilter); if(cp)p.push(cp);}
+  {const mp=inPred("make",F.make); if(mp)p.push(mp);}
   {const qp=qPred(); if(qp)p.push(qp);}
   if(F.ymin)p.push("year=gte."+(+F.ymin)); if(F.ymax)p.push("year=lte."+(+F.ymax));
   if(F.pmin)p.push("last_price=gte."+(+F.pmin)); if(F.pmax)p.push("last_price=lte."+(+F.pmax));
@@ -1292,24 +1362,169 @@ document.getElementById("subov").addEventListener("click",e=>{if(e.target.id==="
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();
   if(document.getElementById("ov").classList.contains("show")){if(e.key==="ArrowLeft")gal(-1);if(e.key==="ArrowRight")gal(1);}});
 
+
+/* =========================================================================
+   MULTI-SELECT FILTER CONTROLS
+   Compact collapsed control -> anchored overlay dropdown -> chips -> Apstiprināt
+   ========================================================================= */
+const MSTXT={
+ lv:{ok:"Apstiprināt",clr:"Notīrīt",find:"Meklēt…",none:"Nav opciju"},
+ en:{ok:"Apply",clr:"Clear",find:"Search…",none:"No options"},
+ ru:{ok:"Применить",clr:"Очистить",find:"Поиск…",none:"Нет опций"},
+ lt:{ok:"Patvirtinti",clr:"Išvalyti",find:"Ieškoti…",none:"Nėra parinkčių"},
+ et:{ok:"Kinnita",clr:"Tühjenda",find:"Otsi…",none:"Valikuid pole"}};
+const MST=()=>MSTXT[lang]||MSTXT.en;
+const MSDEF={
+ make: {ph:()=>T().allMakes||"All makes",   search:true},
+ model:{ph:()=>T().allModels||"All models", search:true},
+ fuel: {ph:()=>T().allFuels||"All fuels",   search:false},
+ gear: {ph:()=>T().allGears||"All gearboxes",search:false},
+ bodyf:{ph:()=>T().allBodies||"All bodies", search:false},
+ drive:{ph:()=>T().allDrives||"All drivetrains",search:false}};
+
+function msOptions(k){          // -> [{g:"groupLabel"|"", items:[...]}]
+  const A=AGG();
+  if(k==="make"){
+    const mk=(FACET_MAKES&&FACET_MAKES.length)?[...FACET_MAKES]:[...new Set(A.map(c=>c.make))];
+    return [{g:"",items:mk.filter(v=>v&&!junkVal(v)).sort()}];
+  }
+  if(k==="model"){
+    const MK=_arr(F.make);
+    if(!MK.length) return [{g:"",items:[...new Set(A.map(c=>c.model).filter(v=>v&&!junkVal(v)))].sort()}];
+    return MK.map(mk=>{                                  // GROUPED BY MAKE
+      const models=FACET_MODELS[mk]?[...FACET_MODELS[mk]]
+        :[...new Set(A.filter(c=>c.make===mk).map(c=>c.model).filter(v=>v&&!junkVal(v)))];
+      const series=[...new Set(models.map(m=>modelSeries(mk,m)).filter(v=>v&&!junkVal(v)))].filter(x=>!models.includes(x));
+      return {g:mk, items:[...series,...models].filter(v=>v&&!junkVal(v)).sort()};
+    });
+  }
+  if(k==="fuel")  return [{g:"",items:[...new Set(A.map(c=>norm("fuel",c.fuel)).filter(Boolean))].sort()}];
+  if(k==="gear")  return [{g:"",items:[...new Set(A.map(c=>norm("gear",c.gearbox)).filter(Boolean))].sort()}];
+  if(k==="bodyf") return [{g:"",items:[...new Set(A.filter(c=>c.body&&!BODYJUNK.has(String(deent(c.body)).toLowerCase().trim())).map(c=>norm("body",c.body)).filter(Boolean))].sort()}];
+  if(k==="drive") return [{g:"",items:[...new Set(A.map(c=>norm("drive",c.drivetrain)).filter(Boolean))].sort()}];
+  return [];
+}
+function msLabel(k){
+  const sel=_arr(F[k]);
+  if(!sel.length)return {txt:MSDEF[k].ph(), n:0};
+  if(sel.length<=2)return {txt:sel.join(", "), n:sel.length};
+  return {txt:sel.slice(0,2).join(", "), n:sel.length};
+}
+function msRefreshAll(){
+  Object.keys(MSDEF).forEach(k=>{
+    const host=document.getElementById("msf-"+k); if(!host)return;
+    const L=msLabel(k), on=L.n>0;
+    host.innerHTML='<button type="button" class="msf-btn'+(on?" has":"")+(_msOpen===k?" open":"")+'" data-k="'+k+'">'
+      +'<span class="msf-lab">'+esc(L.txt)+'</span>'
+      +(L.n>1?'<span class="msf-n">'+L.n+'</span>':'')
+      +'<span class="msf-cv">⌄</span></button>';
+  });
+}
+let _msOpen=null, _msSel=[], _msDD=null;
+function _msDDEl(){
+  if(_msDD)return _msDD;
+  _msDD=document.createElement("div"); _msDD.id="msdd";
+  _msDD.innerHTML='<input class="msdd-s" id="msddS" type="text" autocomplete="off">'
+    +'<div class="msdd-body" id="msddB"></div>'
+    +'<div class="msdd-foot"><button type="button" class="msdd-ok" id="msddOK"></button>'
+    +'<button type="button" class="msdd-clr" id="msddCLR"></button></div>';
+  document.body.appendChild(_msDD);
+  _msDD.addEventListener("click",e=>{
+    const ch=e.target.closest(".mschip");
+    if(ch){const v=ch.dataset.v; const i=_msSel.indexOf(v);
+      if(i>=0)_msSel.splice(i,1); else _msSel.push(v);
+      ch.classList.toggle("on", _msSel.indexOf(v)>=0); return;}
+    if(e.target.id==="msddOK"){msCommit();return;}
+    if(e.target.id==="msddCLR"){_msSel=[]; [..._msDD.querySelectorAll(".mschip")].forEach(c=>c.classList.remove("on")); return;}
+  });
+  const si=_msDD.querySelector("#msddS");
+  si.addEventListener("input",()=>msPaintBody(si.value));
+  si.addEventListener("keydown",e=>{if(e.key==="Enter")msCommit();});
+  return _msDD;
+}
+function msPaintBody(q){
+  const dd=_msDDEl(), body=dd.querySelector("#msddB");
+  const groups=msOptions(_msOpen);
+  const s=(q||"").trim().toLowerCase();
+  let html="", any=false;
+  groups.forEach(g=>{
+    const items=g.items.filter(v=>!s||String(v).toLowerCase().includes(s)||(g.g&&(g.g+" "+v).toLowerCase().includes(s)));
+    if(!items.length)return; any=true;
+    if(g.g)html+='<div class="msdd-g">'+esc(g.g)+'</div>';
+    html+='<div class="msdd-chips">'+items.map(v=>'<button type="button" class="mschip'+(_msSel.indexOf(v)>=0?" on":"")+'" data-v="'+esc(String(v)).replace(/"/g,"&quot;")+'">'+esc(String(v))+'</button>').join("")+'</div>';
+  });
+  body.innerHTML = any?html:'<div class="msdd-empty">'+esc(MST().none)+'</div>';
+}
+function msOpen(k,btn){
+  if(_msOpen===k){msClose();return;}
+  _msOpen=k; _msSel=_arr(F[k]).slice();
+  const dd=_msDDEl(), si=dd.querySelector("#msddS");
+  dd.querySelector("#msddOK").textContent=MST().ok;
+  dd.querySelector("#msddCLR").textContent=MST().clr;
+  si.value=""; si.placeholder=MST().find;
+  si.style.display=MSDEF[k].search?"block":"none";
+  msPaintBody("");
+  dd.classList.add("open");
+  const r=btn.getBoundingClientRect();
+  const w=Math.min(Math.max(r.width,k==="model"?300:250), Math.max(240,window.innerWidth-24));
+  let left=Math.min(r.left, window.innerWidth-w-12); left=Math.max(12,left);
+  dd.style.width=w+"px"; dd.style.left=left+"px";
+  const below=window.innerHeight-r.bottom-14;
+  if(below<220 && r.top>below){ dd.style.top=""; dd.style.bottom=(window.innerHeight-r.top+6)+"px"; dd.style.maxHeight=Math.min(420,r.top-20)+"px"; }
+  else { dd.style.bottom=""; dd.style.top=(r.bottom+6)+"px"; dd.style.maxHeight=Math.min(420,below)+"px"; }
+  msRefreshAll();
+  if(MSDEF[k].search)setTimeout(()=>si.focus(),20);
+}
+function msClose(){ _msOpen=null; if(_msDD)_msDD.classList.remove("open"); msRefreshAll(); }
+function msCommit(){
+  const k=_msOpen; if(!k){msClose();return;}
+  const before=_arr(F[k]).join("|"), now=_msSel.slice();
+  F[k]=now;
+  if(k==="make" && before!==now.join("|")){
+    const allowed=new Set(); now.forEach(mk=>{                       // keep only models that belong to the selected makes
+      (FACET_MODELS[mk]||[]).forEach(m=>{allowed.add(m); const sr=modelSeries(mk,m); if(sr)allowed.add(sr);});});
+    F.model=_arr(F.model).filter(v=>allowed.has(v));
+  }
+  try{localStorage.setItem("br_filters",JSON.stringify(F));}catch(e){}
+  msClose();
+  curPage=1; repaint();
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest(".msf-btn");
+  if(b){ e.preventDefault(); msOpen(b.dataset.k,b); return; }
+  if(_msOpen && !e.target.closest("#msdd")) msClose();
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&_msOpen)msClose();});
+window.addEventListener("resize",()=>{if(_msOpen)msClose();});
+window.addEventListener("scroll",()=>{if(_msOpen)msClose();},true);
+msRefreshAll();
+
+function paintPills(){[...document.querySelectorAll(".pills button")].forEach(x=>{
+  const c=x.dataset.c;
+  x.classList.toggle("on", c==="all" ? _arr(countryFilter).length===0 : _arr(countryFilter).includes(c));});}
 document.getElementById("pills").onclick=e=>{const b=e.target.closest("button");if(!b)return;
-  countryFilter=b.dataset.c;[...document.querySelectorAll(".pills button")].forEach(x=>x.classList.toggle("on",x===b));curPage=1;repaint();};
+  const c=b.dataset.c;
+  if(c==="all")countryFilter=[];
+  else{const i=countryFilter.indexOf(c); if(i>=0)countryFilter.splice(i,1); else countryFilter.push(c);}   // multi-select countries
+  paintPills();curPage=1;repaint();};
 function bind(id,key){const el=document.getElementById(id);el.value=F[key]||"";
   el.addEventListener("input",()=>{F[key]=el.value;if(id==="make"){F.model="";refreshControls();}
     localStorage.setItem("br_filters",JSON.stringify(F));});               // set the filter; search only on the button (fewer fetches, snappier)
   el.addEventListener("keydown",e=>{if(e.key==="Enter")doSearch();});}      // Enter = search
-["q","pmin","pmax","ymin","ymax","mmin","mmax","emin","emax","make","model","fuel","gear","bodyf","drive"].forEach(id=>bind(id,id));
+["q","pmin","pmax","ymin","ymax","mmin","mmax","emin","emax"].forEach(id=>bind(id,id));   // multi-select fields are handled by the MS module
 (function(){const s=document.getElementById("sort");if(s){s.value=F.sort||"new";
   s.addEventListener("change",()=>{F.sort=s.value;localStorage.setItem("br_filters",JSON.stringify(F));curPage=1;repaint();});}})();  // sort stays instant
 function doSearch(){curPage=1;repaint();const sb=document.querySelector(".sidebar");if(sb)sb.classList.remove("open");}
 function doReset(){
   Object.keys(F).forEach(k=>{if(k!=="sort")delete F[k];});                  // clear every filter, keep sort
-  countryFilter="all";
+  MULTIK.forEach(k=>{F[k]=[];});                                            // multi keys back to [] = match all
+  F.q="";
+  countryFilter=[];
   ["q","pmin","pmax","ymin","ymax","mmin","mmax","emin","emax","make","model","fuel","gear","bodyf","drive"].forEach(id=>{const e=document.getElementById(id);if(e)e.value="";});
   const hq=document.getElementById("heroq");if(hq)hq.value="";
-  [...document.querySelectorAll(".pills button")].forEach(x=>x.classList.toggle("on",x.dataset.c==="all"));
+  paintPills();
   localStorage.setItem("br_filters",JSON.stringify(F));
-  refreshControls();curPage=1;repaint();
+  refreshControls();msRefreshAll();curPage=1;repaint();
 }
 const langSel=document.getElementById("lang");langSel.value=lang;
 langSel.addEventListener("change",()=>{lang=langSel.value;localStorage.setItem("br_lang",lang);
