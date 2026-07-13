@@ -18,6 +18,10 @@ on:
         description: "ss.lv | autoplius | auto24 (blank = all)"
         default: ""
 
+permissions:
+  contents: read
+  issues: write        # needed so a failed run can open an issue
+
 concurrency:
   group: revalidate
   cancel-in-progress: false
