@@ -94,6 +94,24 @@ def split_mm(title):
     if make and (re.fullmatch(r"\d+(\.\d+)?",make) or re.fullmatch(r"\d+\s*kW",make,re.I)): make=None
     if model and (re.fullmatch(r"\d+\.\d+",model) or re.fullmatch(r"\d+\s*kW",model,re.I)): model=None
     return make,model
+def uniq(seq):
+    """De-duplicate but KEEP the page's own order.
+    The old code used sorted(set(...)), which sorted the photo URLs ALPHABETICALLY and
+    destroyed the gallery order - so a card's lead image was whichever URL happened to
+    sort first (an interior shot, a boot, a wheel) instead of the car."""
+    seen=set(); out=[]
+    for x in seq:
+        if x not in seen:
+            seen.add(x); out.append(x)
+    return out
+
+def lead_with(main, photos):
+    """Put the listing's own main image (og:image) first - that's the thumbnail the source
+    site itself shows. The old code only inserted it when it was ABSENT, so whenever it was
+    already in the gallery (the normal case) it never got promoted to the front."""
+    if not main: return photos
+    return [main]+[p for p in photos if p!=main]
+
 def sane_price(v):
     """Reject parse artefacts. A real car ad is never 1 EUR. Returns None if implausible,
     so a bad parse can NEVER overwrite a good price or invent a price-history entry."""
@@ -171,10 +189,10 @@ def ap_detail(html, source_url=None):
     for _m in ('related-announcements','js-other-partner-anns','other-announcements','block-related','js-similar','similar-announcements'):
         _i=html.find(_m)
         if _i>2000: _cut=min(_cut,_i)
-    photos=sorted(set(re.findall(r"https://autoplius-img\.dgn\.lt/[^\s\"')]+\.jpg", html[:_cut])))
+    photos=uniq(re.findall(r"https://autoplius-img\.dgn\.lt/[^\s\"')]+\.jpg", html[:_cut]))
     photos=_ap_main_gallery(photos)   # drop any partner-ad / related-listing photos that still leaked in
     og=meta(html,"og:image","property")
-    if og and og not in photos: photos.insert(0,og)
+    photos=lead_with(og, photos)      # the car's main photo leads the card, not a random interior shot
     seg=html.split("Tapatība apstiprināta",1); src=seg[1][:300] if len(seg)>1 else html
     CW={"Latvija":"LV","Latvia":"LV","Igaunija":"EE","Estija":"EE","Estonia":"EE","Lietuva":"LT","Lithuania":"LT"}
     lm=re.search(r"([A-ZĀ-Ž][^\n,<>]{1,28}),\s*(Lietuva|Latvija|Igaunija|Estija|Estonia|Latvia|Lithuania)", src)
@@ -235,9 +253,9 @@ def a24_detail(html, source_url=None):
     for mm in re.finditer(r"VIN",html):
         t=re.search(r"\b([A-HJ-NPR-Z0-9]{5,17})\b", html[mm.end():mm.end()+60])
         if t and re.search(r"[A-Z]",t.group(1)) and re.search(r"\d",t.group(1)): vin=t.group(1); break
-    photos=sorted(set(re.findall(r"https://img\d*\.img-bcg\.eu/[^\s\"')]+\.jpg",html)))
+    photos=uniq(re.findall(r"https://img\d*\.img-bcg\.eu/[^\s\"')]+\.jpg",html))
     photos=[p for p in photos if "/h30/" in p]
-    if img and img not in photos: photos.insert(0,img)
+    photos=lead_with(img, photos)     # main photo first (page order preserved, not alphabetical)
     return {"ad_id":ad_id,"source_url":ogurl or source_url,"make":make,"model":model,"year":year,
         "engine_cc":engine_cc,"fuel":fuel,"gearbox":gear,"body":body,"drivetrain":None,
         "owner_code":None,"vin_prefix":vin,"price_eur":price,"mileage_km":mileage,
