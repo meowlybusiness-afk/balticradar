@@ -273,6 +273,18 @@ def build_html(name, filter_name, cars, drops, extra):
     )
 
 
+SHARED_FROM = "BalticRadar <onboarding@resend.dev>"
+
+
+def _resend(sender, to, subject, html, text):
+    return requests.post(
+        "https://api.resend.com/emails",
+        headers={"Authorization": f"Bearer {RESEND_KEY}", "Content-Type": "application/json"},
+        json={"from": sender, "to": [to], "subject": subject, "html": html, "text": text},
+        timeout=30,
+    )
+
+
 def send(to, subject, html, text):
     if TEST_TO:
         subject = f"[TEST -> {to}] {subject}"
@@ -280,18 +292,30 @@ def send(to, subject, html, text):
     if DRY_RUN or not RESEND_KEY:
         print(f"  [DRY] would email {to}: {subject}")
         return True
-    r = requests.post(
-        "https://api.resend.com/emails",
-        headers={"Authorization": f"Bearer {RESEND_KEY}", "Content-Type": "application/json"},
-        json={"from": FROM, "to": [to], "subject": subject, "html": html, "text": text},
-        timeout=30,
-    )
-    ok = r.ok
-    print(f"  -> {to}: {r.status_code} {'' if ok else r.text[:200]}")
-    if not ok and r.status_code == 403:
-        print("  !! 403 = the sender domain is not verified in Resend. onboarding@resend.dev "
-              "can ONLY deliver to the Resend account owner. Set ALERT_FROM to a verified domain.")
-    return ok
+
+    r = _resend(FROM, to, subject, html, text)
+    if r.ok:
+        print(f"  -> {to}: {r.status_code} (from {FROM})")
+        return True
+
+    body = r.text[:200]
+    print(f"  -> {to}: {r.status_code} {body}")
+
+    # The configured sender was rejected. 422 'domain is invalid' / 403 'not verified' both mean
+    # the ALERT_FROM domain is not (yet) verified in Resend. Fall back to Resend's shared sender,
+    # which STILL DELIVERS TO THE RESEND ACCOUNT OWNER - so the owner keeps getting alerts while
+    # the real domain is being set up. Every other recipient will 403 here, and we say so loudly.
+    if r.status_code in (403, 422) and FROM != SHARED_FROM:
+        print(f"  !! sender '{FROM}' rejected -> retrying with {SHARED_FROM}")
+        r2 = _resend(SHARED_FROM, to, subject, html, text)
+        if r2.ok:
+            print(f"  -> {to}: {r2.status_code} (delivered via shared sender; owner-only)")
+            return True
+        print(f"  -> {to}: {r2.status_code} {r2.text[:200]}")
+        print("  !! BLOCKED: no verified sending domain. onboarding@resend.dev only delivers to the "
+              "Resend ACCOUNT OWNER; every other subscriber is rejected. Verify a domain you own in "
+              "Resend, add its DKIM/SPF records, then set the ALERT_FROM secret to alerts@<domain>.")
+    return False
 
 
 def price_drops(car_ids):
@@ -324,7 +348,20 @@ def main():
     since = (datetime.datetime.now(datetime.timezone.utc)
              - datetime.timedelta(minutes=LOOKBACK_MIN)).isoformat().replace("+00:00", "Z")
 
-    cars = get(f"cars?select=*&active=eq.true&first_seen=gte.{since}&order=first_seen.desc&limit=3000")
+    cars = []
+    for off in range(0, 6000, 1000):                    # PostgREST hard-caps a response at 1000 rows
+        h = dict(H); h["Range"] = f"{off}-{off + 999}"
+        try:
+            r = requests.get(f"{URL}/rest/v1/cars?select=*&active=eq.true"
+                             f"&first_seen=gte.{since}&order=first_seen.desc", headers=h, timeout=40)
+            page = r.json()
+        except Exception as e:
+            print("cars fetch error:", e); break
+        if not isinstance(page, list) or not page:
+            break
+        cars.extend(page)
+        if len(page) < 1000:
+            break
     print(f"NEW cars since {since} ({LOOKBACK_MIN} min): {len(cars)}")
     if not cars:
         print("nothing new -> no alerts")
