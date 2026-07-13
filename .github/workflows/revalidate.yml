@@ -1,0 +1,64 @@
+name: BalticRadar revalidate
+
+# Re-checks listings against the source and SOFT-HIDES the expired ones.
+# Never deletes. 420 checks/hour x 24 = ~10,000/day -> full 93k sweep in ~9-10 days,
+# then it loops round to the oldest again and keeps the catalogue fresh forever.
+on:
+  schedule:
+    - cron: "17 * * * *"      # hourly, off the hour so it doesn't collide with collect
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "1 = report only, write nothing"
+        default: "1"
+      batch:
+        description: "how many listings to check this run"
+        default: "420"
+      only_source:
+        description: "ss.lv | autoplius | auto24 (blank = all)"
+        default: ""
+
+concurrency:
+  group: revalidate
+  cancel-in-progress: false
+
+jobs:
+  revalidate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install deps
+        run: pip install requests
+
+      - name: Revalidate
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SCRAPER_KEY:  ${{ secrets.SCRAPER_KEY }}
+          PROXY_URL:    ${{ secrets.PROXY_URL }}
+          # Scheduled runs apply changes. Manual runs default to a dry run.
+          DRY_RUN:      ${{ github.event_name == 'schedule' && '0' || inputs.dry_run }}
+          BATCH:        ${{ inputs.batch || '420' }}
+          ONLY_SOURCE:  ${{ inputs.only_source }}
+        run: python revalidate.py
+
+      # The user has been burned by silent failures - make a break loud.
+      - name: Open an issue if the run failed
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const url = `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `Revalidate job failed (${new Date().toISOString().slice(0,16)})`,
+              body: `The revalidate workflow failed or a source blocked us.\n\nRun: ${url}`,
+              labels: ['revalidate']
+            });
