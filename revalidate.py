@@ -39,6 +39,8 @@ SCRAPER_KEY  = os.environ.get("SCRAPER_KEY", "")   # existing ScraperAPI key (op
 PROXY_URL    = os.environ.get("PROXY_URL", "")     # e.g. DataImpulse residential (optional)
 
 DRY_RUN      = os.environ.get("DRY_RUN", "1") == "1"
+DIAG         = os.environ.get("DIAG", "0") == "1"      # print evidence for every check (marker re-verification)
+SELFTEST     = os.environ.get("SELFTEST", "").strip()  # comma-separated URLs to classify and dump
 BATCH        = int(os.environ.get("BATCH", "420"))   # ~10k/day over 24 hourly runs
 ONLY_SOURCE  = os.environ.get("ONLY_SOURCE", "")     # optional: ss.lv | autoplius | auto24
 
@@ -59,6 +61,8 @@ SOURCES = {
     "ss.lv": {
         "delay": 1.4,                 # seconds between requests to this host
         "proxy": False,
+        "force_scraper": False,       # ss.lv answers GitHub's IP directly
+        "cc": "lv",
         "dead_markers": [
             "sludinājums ir neaktīvs",
             "sludinajums ir neaktivs",
@@ -73,6 +77,8 @@ SOURCES = {
     "autoplius": {
         "delay": 2.2,                 # slowest: this is the one that IP-blocked us
         "proxy": True,                # route via residential proxy when available
+        "force_scraper": True,        # GitHub IP is hard-blocked here; go straight to ScraperAPI
+        "cc": "lt",
         "dead_markers": [
             "sludinājums nav aktīvs",   # lv.autoplius.lt  (VERIFIED)
             "sludinajums nav aktivs",
@@ -84,6 +90,8 @@ SOURCES = {
     "auto24": {
         "delay": 1.4,
         "proxy": False,
+        "force_scraper": True,        # GitHub IP is blocked here too
+        "cc": "ee",
         "dead_markers": [
             "this advertisement is not active",
             "advertisement has expired",
@@ -193,39 +201,65 @@ def build_proxies(use_proxy):
     return None
 
 
+def scraper_get(url, cc=""):
+    """ScraperAPI. Geotargeting (country_code) is a PAID feature - if it 403s on the free
+    plan we retry without it rather than reporting a false block."""
+    if not SCRAPER_KEY:
+        return 0, "", "no-scraper-key"
+    attempts = ([{"country_code": cc}] if cc else []) + [{}]
+    last = (0, "", "scraperapi")
+    for extra in attempts:
+        try:
+            params = {"api_key": SCRAPER_KEY, "url": url, "follow_redirect": "true"}
+            params.update(extra)
+            r = requests.get("https://api.scraperapi.com/", params=params, timeout=75)
+            mode = "scraperapi" + ("+" + cc if extra else "")
+            if r.status_code == 200:
+                return 200, r.text or "", mode
+            # 404/410 from the target is passed through by ScraperAPI -> a real expiry signal
+            if r.status_code in (404, 410):
+                return r.status_code, r.text or "", mode
+            last = (r.status_code, r.text or "", mode)
+        except Exception as e:
+            last = (0, "", "scraperapi-error")
+    return last
+
+
 def get_html(url, cfg):
     """
     Returns (status, html, mode).
     Plain GET only -- no browser -> no images/CSS/fonts are ever downloaded.
-    Escalates to ScraperAPI only if the direct hit looks blocked.
+    Sources whose block-wall we already know (autoplius, auto24 vs GitHub's datacenter IP)
+    go straight to ScraperAPI instead of burning a guaranteed-blocked direct request.
     """
+    if cfg.get("force_scraper") and SCRAPER_KEY and not PROXY_URL:
+        return scraper_get(url, cfg.get("cc", ""))
+
     proxies = build_proxies(cfg["proxy"])
     headers = {"User-Agent": UA, "Accept-Language": "lv,en;q=0.8"}
     try:
         r = requests.get(url, headers=headers, proxies=proxies,
                          timeout=30, allow_redirects=True)
         html = r.text or ""
-        if r.status_code == 404 or r.status_code == 410:
+        if r.status_code in (404, 410):
             return r.status_code, html, "direct"
         if r.status_code == 200 and not looks_blocked(html):
             return 200, html, "direct"
         blocked_status = r.status_code
-    except Exception as e:
+    except Exception:
         blocked_status = 0
         html = ""
 
-    if SCRAPER_KEY:
-        try:
-            r = requests.get("https://api.scraperapi.com/",
-                             params={"api_key": SCRAPER_KEY, "url": url,
-                                     "country_code": "eu"},
-                             timeout=70)
-            if r.status_code == 200 and not looks_blocked(r.text):
-                return 200, r.text, "scraperapi"
-            return r.status_code, r.text or "", "scraperapi"
-        except Exception:
-            pass
+    st, sh, mode = scraper_get(url, cfg.get("cc", ""))
+    if st:
+        return st, sh, mode
     return blocked_status, html, "blocked"
+
+
+def title_of(html):
+    import re
+    m = re.search(r"<title[^>]*>(.*?)</title>", html or "", re.S | re.I)
+    return re.sub(r"\s+", " ", (m.group(1) if m else "")).strip()[:90]
 
 
 def looks_blocked(html):
@@ -284,7 +318,35 @@ def extract_price(html, source):
 # ----------------------------------------------------------------------------
 # Main
 # ----------------------------------------------------------------------------
+def selftest():
+    """Classify a hand-picked list of URLs (known dead / known live) and dump the evidence,
+    so the dead-markers can be RE-VERIFIED instead of trusted."""
+    log("=== SELFTEST: classifying known URLs ===")
+    for url in [u.strip() for u in SELFTEST.split(",") if u.strip()]:
+        src = ("ss.lv" if "ss.lv" in url or "ss.com" in url
+               else "autoplius" if "autoplius" in url
+               else "auto24" if "auto24" in url else "")
+        cfg = SOURCES.get(src)
+        if not cfg:
+            log(f"  ? unknown source for {url}")
+            continue
+        status, html, mode = get_html(url, cfg)
+        verdict, reason = classify(status, html, cfg)
+        low = (html or "").lower()
+        hits = [m for m in cfg["dead_markers"] if m in low]
+        alive_hits = [m for m in cfg["alive_markers"] if m in low]
+        log(f"\n  URL       {url}")
+        log(f"  source    {src}   http={status}  mode={mode}  len={len(html or '')}")
+        log(f"  title     {title_of(html)!r}")
+        log(f"  dead hit  {hits}")
+        log(f"  alive hit {alive_hits}")
+        log(f"  VERDICT   {verdict.upper()}  ({reason})")
+    log("\n=== SELFTEST done (nothing written) ===")
+
+
 def main():
+    if SELFTEST:
+        return selftest()
     rows = fetch_batch(BATCH)
     log(f"=== BalticRadar revalidate | DRY_RUN={DRY_RUN} | batch={len(rows)} ===")
     if rows:
@@ -317,6 +379,10 @@ def main():
         status, html, mode = get_html(url, cfg)
         verdict, reason = classify(status, html, cfg)
         st["checked"] += 1
+
+        if DIAG:
+            log(f"  DIAG {src:<9} {verdict:<7} http={status:<4} mode={mode:<14} "
+                f"len={len(html or ''):<7} reason={reason:<22} title={title_of(html)!r} {url[:60]}")
 
         if verdict == "unknown":
             st["unknown"] += 1

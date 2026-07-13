@@ -36,7 +36,10 @@ MAX_PER_EMAIL = int(os.environ.get("MAX_PER_EMAIL", 12))
 MAX_EMAILS = int(os.environ.get("MAX_EMAILS", 80))
 SITE = os.environ.get("SITE_URL", "https://balticradar.meowlybusiness.workers.dev")
 RESEND_KEY = os.environ.get("RESEND_API_KEY")
-FROM = os.environ.get("ALERT_FROM", "BalticRadar <onboarding@resend.dev>")
+# NOTE: an UNSET GitHub secret is passed through as an EMPTY STRING, not as "missing" - so
+# os.environ.get(..., default) would return "" and Resend answers 422 "domain is invalid".
+# Use `or` so an empty ALERT_FROM falls back to the shared sender.
+FROM = (os.environ.get("ALERT_FROM") or "").strip() or "BalticRadar <onboarding@resend.dev>"
 TEST_TO = (os.environ.get("TEST_TO") or "").strip()
 DRY_RUN = os.environ.get("DRY_RUN") == "1"
 

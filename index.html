@@ -1988,7 +1988,13 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
       window.applyI18n = function(){ var r=_ai.apply(this,arguments); try{ paintAlertCtas(); }catch(e){} return r; };
     }
     window.updateNotifyBtn = paintAlertCtas;   // legacy hook: was driven by the old localStorage profile
+    // renderContent() re-writes the hero CTA text from LANG, so repaint after it too
+    var _rc = window.renderContent;
+    if(typeof _rc === 'function'){
+      window.renderContent = function(){ var r=_rc.apply(this,arguments); try{ paintAlertCtas(); }catch(e){} return r; };
+    }
     paintAlertCtas();
+    setTimeout(paintAlertCtas, 800);   // after first render/i18n pass
   }
 
   var CTAT = {
@@ -2809,7 +2815,31 @@ BRProfile.delFilter = async function(id){
   renderFiltersHome();
 };
 
-BRProfile.runFilter = async function(id){
+/* Sort options inside "Mani filtri" - same set as the main listings page (Henrijs' request). */
+var FSORTS = [
+  ['new', 'Jaunākie'],
+  ['pa',  'Lētākie'],
+  ['pd',  'Dārgākie'],
+  ['yd',  'Gads ↓'],
+  ['km',  'Mazākais nobraukums']
+];
+function fsortApply(q, sort){
+  if(sort==='pa') return q.order('last_price',   {ascending:true,  nullsFirst:false});
+  if(sort==='pd') return q.order('last_price',   {ascending:false, nullsFirst:false});
+  if(sort==='yd') return q.order('year',         {ascending:false, nullsFirst:false});
+  if(sort==='km') return q.order('last_mileage', {ascending:true,  nullsFirst:false});
+  return q.order('first_seen', {ascending:false});          // 'new' (default)
+}
+function fsortSelect(id, sort){
+  return '<select class="br2s" id="br2Sort" style="width:auto;min-width:170px"'
+       + ' onchange="BRProfile.runFilter('+id+', this.value)">'
+       + FSORTS.map(function(o){
+           return '<option value="'+o[0]+'"'+(o[0]===sort?' selected':'')+'>'+o[1]+'</option>';
+         }).join('')
+       + '</select>';
+}
+BRProfile.runFilter = async function(id, sort){
+  sort = sort || 'new';
   var w=$('br2FltWrap');
   var r = await supa.from('saved_filters').select('*').eq('id',id).maybeSingle();
   if(r.error||!r.data) return;
@@ -2819,7 +2849,7 @@ BRProfile.runFilter = async function(id){
     + '<div style="font-size:12px;color:#86868b;font-weight:500;margin-bottom:16px">'+esc(describe(c))+'</div>'
     + '<div id="br2Res"><div class="br2empty">Meklē…</div></div>';
 
-  var q = supa.from('v_listings').select('car_id,make,model,year,last_price,last_mileage,fuel,photos');
+  var q = supa.from('v_listings').select('car_id,make,model,year,last_price,last_mileage,fuel,photos,first_seen');
   var arr = function(a, one){ return (a && a.length) ? a : (one ? [one] : []); };
   var IN = function(col, vals){ if(vals.length) q = q.in(col, vals); };
   IN('make',       arr(c.makes, c.make));
@@ -2835,7 +2865,7 @@ BRProfile.runFilter = async function(id){
   if(c.year_max!=null)  q=q.lte('year',c.year_max);
   if(c.km_min!=null)    q=q.gte('last_mileage',c.km_min);
   if(c.km_max!=null)    q=q.lte('last_mileage',c.km_max);
-  var res = await q.order('last_price',{ascending:true}).limit(60);
+  var res = await fsortApply(q, sort).limit(60);
 
   var box=$('br2Res'); if(!box) return;
   if(res.error){ box.innerHTML='<div class="br2empty">Kļūda: '+esc(res.error.message)+'</div>'; return; }
@@ -2845,8 +2875,12 @@ BRProfile.runFilter = async function(id){
     var okset = {}; c.models_q.forEach(function(x){ okset[x.toLowerCase()]=1; });
     rows = rows.filter(function(r2){ return okset[(r2.make+'|'+r2.model).toLowerCase()]; });
   }
-  box.innerHTML = '<div style="font-size:12.5px;font-weight:700;color:#86868b;margin-bottom:12px">'
-    + rows.length + ' atbilstoši auto</div>' + cardsHtml(rows,false);
+  box.innerHTML =
+      '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">'
+    +   '<div style="font-size:12.5px;font-weight:700;color:#86868b">' + rows.length + ' atbilstoši auto</div>'
+    +   fsortSelect(id, sort)
+    + '</div>'
+    + cardsHtml(rows,false);
 };
 
 /* ---- boot ---- */
