@@ -1574,16 +1574,32 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
     BR.close();
   };
 
+  // Flip to true ONLY after Google is enabled in Supabase > Auth > Providers.
+  // While false the button is hidden, because signInWithOAuth navigates away and
+  // Supabase renders its own raw JSON error page that JS cannot intercept.
+  var GOOGLE_ENABLED = false;
+
   BR.google = async function(){
+    if(!GOOGLE_ENABLED){
+      msg('signin','Google pieslēgšanās vēl nav pieejama. Lūdzu izmanto e-pastu.','err');
+      msg('signup','Google pieslēgšanās vēl nav pieejama. Lūdzu izmanto e-pastu.','err');
+      return;
+    }
     var r = await supa.auth.signInWithOAuth({
       provider:'google',
       options:{ redirectTo: window.location.origin }
     });
     if(r.error){
-      msg('signin','Google pieslēgšanās vēl nav aktivizēta. Lūdzu izmanto e-pastu.','err');
-      msg('signup','Google pieslēgšanās vēl nav aktivizēta. Lūdzu izmanto e-pastu.','err');
+      msg('signin','Google pieslēgšanās neizdevās. Lūdzu izmanto e-pastu.','err');
+      msg('signup','Google pieslēgšanās neizdevās. Lūdzu izmanto e-pastu.','err');
     }
   };
+
+  function applyGoogleFlag(){
+    if(GOOGLE_ENABLED) return;
+    document.querySelectorAll('.br-gbtn').forEach(function(b){ b.style.display='none'; });
+    document.querySelectorAll('.br-div').forEach(function(d){ d.style.display='none'; });
+  }
 
   BR.forgot = async function(){
     var email = $('brFoEmail').value.trim();
@@ -1664,6 +1680,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 
   function boot(){
     mountHeader();
+    applyGoogleFlag();
     supa.auth.getSession().then(function(r){ refresh(r.data.session); });
 
     // The old "Paziņojumi" button inserted straight into `subscriptions` with the
