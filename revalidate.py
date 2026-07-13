@@ -273,7 +273,7 @@ def extract_price(html, source):
     for p in pats.get(source, []):
         m = re.search(p, low)
         if m:
-            digits = re.sub(r)\D", "", m.group(1))
+            digits = re.sub(r"\D", "", m.group(1))
             if digits.isdigit():
                 v = int(digits)
                 if 100 <= v <= 500000:
