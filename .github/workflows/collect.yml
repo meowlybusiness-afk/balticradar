@@ -33,7 +33,7 @@ jobs:
           SS_SWEEP_DET: "1000"  # detail-fetch up to 1000 new swept cars/run (ss.lv is fast/direct)
           SKIP_LTEE: "1"        # autoplius/auto24 handled by the separate proxied workflow
           BACKFILL: "500"       # drain the remaining 1-photo/undated backlog faster (free, direct)
-          DEACTIVATE: "1"       # ON: sold/withdrawn cars stop showing on the site.
+          DEACTIVATE: "0"   # OFF: time-based rule hid live cars. revalidate.py replaces it.       # ON: sold/withdrawn cars stop showing on the site.
           DEACTIVATE_DAYS: "14" # 14d (not 3d): the cron needs time to re-visit all 93k cars.
                                 # A car is hidden only after 14 days of never being seen again.
                                 # Nothing is DELETED - active=false only. All history is kept, and
