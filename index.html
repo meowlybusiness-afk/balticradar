@@ -1698,42 +1698,41 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 <!-- =================== END BALTICRADAR AUTH =================== -->
 
 
-<!-- ================== BALTICRADAR PROFILE / FAVOURITES / FILTERS (Stage 2) ================== -->
+<!-- ============ BALTICRADAR STAGE 3-5 : filters, chips, profile, premium gate ============ -->
 <style>
 .br2{--a:#16a06a;--ink:#1d1d1f;--i2:#424245;--mut:#86868b;--ln:#ededf0;--ln2:#dfdfe4;--bg2:#fbfbfd;--up:#d2492f}
-/* heart on cards */
+/* ---- heart ---- */
 #grid .card{position:relative}
 .br-heart{position:absolute;top:10px;right:10px;z-index:5;width:34px;height:34px;border-radius:50%;border:none;
-  background:rgba(255,255,255,.92);backdrop-filter:blur(4px);cursor:pointer;display:grid;place-items:center;
-  font-size:16px;line-height:1;box-shadow:0 2px 10px -2px rgba(0,0,0,.35);transition:.15s;padding:0}
+  background:rgba(255,255,255,.92);cursor:pointer;display:grid;place-items:center;font-size:16px;line-height:1;
+  box-shadow:0 2px 10px -2px rgba(0,0,0,.35);transition:.15s;padding:0}
 .br-heart:hover{transform:scale(1.12)}
 .br-heart.on{background:#16a06a}
 .br-heart .o{display:block}.br-heart .f{display:none}
 .br-heart.on .o{display:none}.br-heart.on .f{display:block}
-.br-mheart{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--ln2);background:#fff;color:#1d1d1f;
+.br-mheart{display:inline-flex;align-items:center;gap:7px;border:1px solid #dfdfe4;background:#fff;color:#1d1d1f;
   border-radius:999px;padding:10px 18px;font-weight:600;font-size:13px;cursor:pointer;font-family:Manrope,sans-serif;margin:10px 0}
 .br-mheart.on{background:#16a06a;color:#fff;border-color:#16a06a}
-/* profile overlay */
+/* ---- profile panel ---- */
 .br2ov{position:fixed;inset:0;background:rgba(20,20,22,.5);backdrop-filter:blur(6px);z-index:99996;display:none}
 .br2ov.on{display:block}
-.br2p{position:fixed;z-index:99997;top:0;right:0;height:100vh;width:min(96vw,860px);background:#fff;color:#1d1d1f;
-  display:none;font-family:Manrope,system-ui,sans-serif;overflow-y:auto;box-shadow:-30px 0 90px -30px rgba(0,0,0,.5);
-  letter-spacing:-.01em}
+.br2p{position:fixed;z-index:99997;top:0;right:0;height:100vh;width:min(96vw,900px);background:#fff;color:#1d1d1f;
+  display:none;font-family:Manrope,system-ui,sans-serif;overflow-y:auto;box-shadow:-30px 0 90px -30px rgba(0,0,0,.5);letter-spacing:-.01em}
 .br2p.on{display:block}
-.br2h{position:sticky;top:0;background:rgba(255,255,255,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--ln);
-  padding:20px 30px;display:flex;align-items:center;justify-content:space-between;z-index:2}
+.br2h{position:sticky;top:0;background:rgba(255,255,255,.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--ln);
+  padding:20px 30px;display:flex;align-items:center;justify-content:space-between;z-index:3}
 .br2h h2{font-size:21px;font-weight:800;letter-spacing:-.02em}
 .br2x{border:none;background:none;font-size:20px;cursor:pointer;color:var(--mut);padding:6px}
 .br2tabs{display:flex;gap:8px;padding:16px 30px 0;flex-wrap:wrap}
 .br2tab{border:1px solid var(--ln2);background:#fff;border-radius:999px;padding:9px 16px;font-size:13px;font-weight:600;
   cursor:pointer;font-family:Manrope,sans-serif;color:var(--ink);white-space:nowrap}
 .br2tab.on{background:var(--ink);color:#fff;border-color:var(--ink)}
-.br2b{padding:24px 30px 60px}
+.br2b{padding:24px 30px 70px}
 .br2v{display:none}.br2v.on{display:block}
-.br2sec{border:1px solid var(--ln);border-radius:16px;padding:22px;margin-bottom:18px}
+.br2sec{border:1px solid var(--ln);border-radius:18px;padding:22px;margin-bottom:18px}
 .br2sec h3{font-size:15px;font-weight:800;margin-bottom:4px}
 .br2sec .s{font-size:12.5px;color:var(--mut);font-weight:500;margin-bottom:16px;line-height:1.5}
-.br2l{font-size:11.5px;color:var(--mut);font-weight:700;margin-bottom:6px;display:block;text-transform:uppercase;letter-spacing:.03em}
+.br2l{font-size:11px;color:var(--mut);font-weight:700;margin-bottom:6px;display:block;text-transform:uppercase;letter-spacing:.04em}
 .br2i,.br2s{width:100%;background:#fff;border:1px solid var(--ln2);border-radius:11px;padding:11px 13px;font-size:13.5px;
   font-family:Manrope,sans-serif;font-weight:500;color:var(--ink);margin-bottom:12px}
 .br2i:focus,.br2s:focus{outline:none;border-color:var(--ink)}
@@ -1744,7 +1743,6 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 .br2btn.g{background:var(--a)}
 .br2btn.o{background:#fff;color:var(--ink);border:1px solid var(--ln2)}
 .br2btn.d{background:#fff;color:var(--up);border:1px solid var(--ln2)}
-.br2btn:disabled{opacity:.45;cursor:default}
 .br2row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .br2row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 @media(max-width:640px){.br2row,.br2row3{grid-template-columns:1fr}}
@@ -1753,538 +1751,679 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 .br2msg.err{display:block;background:rgba(210,73,47,.09);color:var(--up)}
 .br2empty{text-align:center;padding:44px 20px;color:var(--mut);font-size:13.5px;font-weight:500;line-height:1.6}
 .br2empty .e{font-size:40px;display:block;margin-bottom:12px}
-/* fav grid */
-.br2cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
-.br2c{border:1px solid var(--ln);border-radius:14px;overflow:hidden;cursor:pointer;transition:.16s;position:relative}
-.br2c:hover{box-shadow:0 12px 30px -18px rgba(0,0,0,.35);transform:translateY(-2px)}
+.br2cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.br2c{border:1px solid var(--ln);border-radius:18px;overflow:hidden;cursor:pointer;transition:.16s;position:relative}
+.br2c:hover{box-shadow:0 14px 32px -18px rgba(0,0,0,.4);transform:translateY(-2px)}
 .br2c img{width:100%;aspect-ratio:16/10;object-fit:cover;display:block;background:#f0f0f3}
 .br2c .cb{padding:11px 13px}
 .br2c .t{font-weight:700;font-size:13.5px}
 .br2c .m{font-size:11.5px;color:var(--mut);font-weight:500;margin-top:3px}
 .br2c .p{font-weight:800;font-size:14.5px;margin-top:7px}
-.br2c .rm{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(255,255,255,.94);
-  cursor:pointer;font-size:13px;display:grid;place-items:center;box-shadow:0 2px 8px -2px rgba(0,0,0,.3)}
-/* saved filter rows */
-.br2f{border:1px solid var(--ln);border-radius:14px;padding:16px 18px;margin-bottom:12px;display:flex;
-  justify-content:space-between;align-items:center;gap:14px}
+.br2c .rm{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;
+  background:rgba(255,255,255,.94);cursor:pointer;font-size:13px;display:grid;place-items:center}
+/* ---- model chips ---- */
+.br2chipbox{border:1px solid var(--ln2);border-radius:14px;padding:12px;margin-bottom:12px;background:var(--bg2)}
+.br2chips{display:flex;flex-wrap:wrap;gap:7px;max-height:190px;overflow-y:auto}
+.br2chip{border:1px solid var(--ln2);background:#fff;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;
+  cursor:pointer;font-family:Manrope,sans-serif;color:var(--ink);transition:.12s;user-select:none}
+.br2chip:hover{border-color:var(--ink)}
+.br2chip.on{background:var(--a);color:#fff;border-color:var(--a)}
+.br2chip.on:before{content:"\2713  "}
+.br2picked{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px;min-height:4px}
+.br2pick{display:inline-flex;align-items:center;gap:6px;background:var(--ink);color:#fff;border-radius:999px;
+  padding:6px 8px 6px 13px;font-size:12.5px;font-weight:700}
+.br2pick b{cursor:pointer;background:rgba(255,255,255,.22);width:17px;height:17px;border-radius:50%;
+  display:grid;place-items:center;font-size:10px;font-weight:700}
+.br2hint{font-size:11.5px;color:var(--mut);font-weight:600;margin:8px 0}
+/* ---- saved filter rows ---- */
+.br2f{border:1px solid var(--ln);border-radius:18px;padding:16px 18px;margin-bottom:12px;display:flex;
+  justify-content:space-between;align-items:center;gap:14px;cursor:pointer;transition:.15s}
+.br2f:hover{box-shadow:0 12px 28px -20px rgba(0,0,0,.4);border-color:var(--ln2)}
 .br2f .n{font-weight:700;font-size:14px}
 .br2f .c{font-size:12px;color:var(--mut);font-weight:500;margin-top:4px;line-height:1.5}
 .br2f .acts{display:flex;gap:7px;flex-shrink:0}
 .br2f .acts button{border:1px solid var(--ln2);background:#fff;border-radius:999px;padding:7px 13px;font-size:12px;
   font-weight:600;cursor:pointer;font-family:Manrope,sans-serif;color:var(--ink)}
 .br2f .acts button.del{color:var(--up)}
-.br2bill{background:var(--bg2);border:1px dashed var(--ln2);border-radius:16px;padding:34px;text-align:center}
+/* ---- lockbox (Henry) ---- */
+.lockbox{position:relative;border:1px solid var(--ln);border-radius:18px;overflow:hidden}
+.lockrows{filter:blur(6px);opacity:.55;pointer-events:none;padding:20px}
+.lockrow{height:14px;background:linear-gradient(90deg,#e8e8ec,#f4f4f7);border-radius:999px;margin-bottom:12px}
+.lockrow:nth-child(2){width:78%}.lockrow:nth-child(3){width:62%}.lockrow:nth-child(4){width:85%}.lockrow:nth-child(5){width:54%}
+.lockcta{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:26px;background:linear-gradient(180deg,rgba(255,255,255,.55),rgba(255,255,255,.9))}
+.lockcta .ic{font-size:30px;margin-bottom:10px}
+.lockcta h4{font-size:15.5px;font-weight:800;margin-bottom:6px}
+.lockcta p{font-size:12.5px;color:var(--mut);font-weight:500;max-width:330px;line-height:1.55;margin-bottom:14px}
+.lockcta .btn{background:var(--a);color:#fff;border:none;border-radius:999px;padding:11px 22px;font-weight:700;
+  font-size:13px;cursor:pointer;font-family:Manrope,sans-serif}
+.br2bill{background:var(--bg2);border:1px dashed var(--ln2);border-radius:18px;padding:34px;text-align:center}
 .br2bill .tag{display:inline-block;background:var(--ink);color:#fff;font-size:10px;font-weight:800;letter-spacing:.06em;
   padding:5px 10px;border-radius:999px;margin-bottom:14px}
-.br2bill h3{font-size:16px;font-weight:800;margin-bottom:6px}
-.br2bill p{font-size:13px;color:var(--mut);font-weight:500;line-height:1.6;max-width:420px;margin:0 auto}
-.br2plan{display:inline-flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid var(--ln2);border-radius:999px;
-  padding:7px 14px;font-size:12px;font-weight:700}
+.br2plan{display:inline-flex;align-items:center;gap:7px;background:var(--bg2);border:1px solid var(--ln2);
+  border-radius:999px;padding:7px 14px;font-size:12px;font-weight:700}
 .br2tc{font-size:12.5px;color:var(--i2);line-height:1.65;font-weight:500}
 .br2tc h4{font-size:13px;font-weight:800;margin:16px 0 5px;color:var(--ink)}
+.br2back{background:none;border:none;color:var(--mut);font-weight:700;font-size:12.5px;cursor:pointer;
+  font-family:Manrope,sans-serif;padding:0 0 12px}
 </style>
 
 <script>
 (function(){
-  "use strict";
-  function ready(fn){ if(window.BR && window.BR.supa) fn(); else setTimeout(function(){ready(fn);}, 120); }
-  ready(function(){
+"use strict";
+function ready(fn){ if(window.BR && window.BR.supa) fn(); else setTimeout(function(){ready(fn);},120); }
+ready(function(){
 
-  var supa = BR.supa;
-  var $ = function(id){ return document.getElementById(id); };
-  var esc = function(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){
-    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
-  var eur = function(n){ return n==null ? '—' : new Intl.NumberFormat('lv-LV').format(n)+' €'; };
+var supa = BR.supa, $ = function(i){return document.getElementById(i);};
+var esc = function(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});};
+var nf = function(n){ return new Intl.NumberFormat('lv-LV').format(n); };
+var eur = function(n){ return n==null?'—':nf(n)+' €'; };
+var isPrem = function(){ return !!(BR.profile && BR.profile.is_premium); };
 
-  /* ================= FAVOURITES ================= */
-  var FAV = new Set();
-  var PHOTO2ID = {};        // photo URL -> car_id  (cards carry no id in the DOM)
-
-  // capture page rows from the site's own PostgREST calls
-  var _fetch = window.fetch;
-  window.fetch = function(input){
-    var url = (typeof input === 'string') ? input : (input && input.url) || '';
-    var p = _fetch.apply(this, arguments);
-    if(url.indexOf('/rest/v1/v_listings') !== -1){
-      p.then(function(r){
-        try{
-          r.clone().json().then(function(rows){
-            if(!Array.isArray(rows)) return;
-            rows.forEach(function(row){
-              if(row && row.car_id && Array.isArray(row.photos)){
-                row.photos.forEach(function(u){ PHOTO2ID[u] = row.car_id; });
-              }
-            });
-            decorate();
-          }).catch(function(){});
-        }catch(e){}
-      }).catch(function(){});
-    }
-    return p;
-  };
-
-  async function loadFavs(){
-    FAV = new Set();
-    if(!BR.user) return;
-    var r = await supa.from('favourites').select('car_id');
-    if(!r.error && r.data) r.data.forEach(function(x){ FAV.add(x.car_id); });
-  }
-
-  BR.toggleFav = async function(carId, btn){
-    if(!BR.user){ return BR.openAuth('signup'); }
-    if(FAV.has(carId)){
-      FAV.delete(carId);
-      if(btn) btn.classList.remove('on');
-      await supa.from('favourites').delete().eq('user_id', BR.user.id).eq('car_id', carId);
-    } else {
-      FAV.add(carId);
-      if(btn) btn.classList.add('on');
-      await supa.from('favourites').insert({ user_id: BR.user.id, car_id: carId });
-    }
-    if($('br2v-favs') && $('br2v-favs').classList.contains('on')) renderFavs();
-  };
-
-  var HEART = '<span class="o">♡</span><span class="f">♥</span>';
-
-  function cardCarId(card){
-    var img = card.querySelector('img');
-    if(!img) return null;
-    var src = img.getAttribute('src') || img.dataset.src || '';
-    return PHOTO2ID[src] || null;
-  }
-
-  function decorate(){
-    document.querySelectorAll('#grid .card').forEach(function(card){
-      var id = cardCarId(card);
-      if(!id) return;
-      var b = card.querySelector('.br-heart');
-      if(!b){
-        b = document.createElement('button');
-        b.className = 'br-heart';
-        b.innerHTML = HEART;
-        b.title = 'Saglabāt';
-        b.onclick = function(ev){ ev.stopPropagation(); ev.preventDefault(); BR.toggleFav(b.dataset.cid, b); };
-        card.appendChild(b);
-      }
-      b.dataset.cid = id;
-      b.classList.toggle('on', FAV.has(id));
-    });
-  }
-  BR.decorateFavs = decorate;
-
-  new MutationObserver(function(){ decorate(); })
-    .observe(document.body, { childList:true, subtree:true });
-
-  // heart inside the car detail modal
-  var _open = window.openCarById;
-  if(typeof _open === 'function'){
-    window.openCarById = function(id){
-      var r = _open.apply(this, arguments);
-      setTimeout(function(){
-        var box = document.getElementById('modalBox') || document.getElementById('modal');
-        if(!box || box.querySelector('.br-mheart')) return;
-        var b = document.createElement('button');
-        b.className = 'br-mheart' + (FAV.has(id) ? ' on' : '');
-        b.innerHTML = HEART + '<span>' + (FAV.has(id) ? 'Saglabāts' : 'Saglabāt') + '</span>';
-        b.onclick = function(){
-          BR.toggleFav(id, null);
-          var on = FAV.has(id);
-          b.classList.toggle('on', on);
-          b.innerHTML = HEART + '<span>' + (on ? 'Saglabāts' : 'Saglabāt') + '</span>';
-        };
-        var body = box.querySelector('.mbody') || box;
-        body.insertBefore(b, body.firstChild);
-      }, 700);
-      return r;
-    };
-  }
-
-  /* ================= PROFILE PANEL ================= */
-  var TC = ''
-    + '<h4>1. Par pakalpojumu</h4>BalticRadar apkopo publiski pieejamus sludinājumus par lietotām automašīnām Latvijā, Lietuvā un Igaunijā. Mēs neesam pārdevējs, starpnieks vai darījuma puse.'
-    + '<h4>2. Datu precizitāte</h4>Dati un cenu vēsture tiek iegūti automatizēti no trešo pušu avotiem. Negarantējam, ka informācija ir pilnīga vai aktuāla. Pirms darījuma pārbaudiet datus pie pārdevēja.'
-    + '<h4>3. Konts</h4>Jūs esat atbildīgs par sava konta un paroles drošību. Viens konts – viena persona. Aizliegts automatizēti nolasīt vietnes saturu.'
-    + '<h4>4. Jūsu dati</h4>Glabājam jūsu e-pastu, vārdu, saglabātās automašīnas un filtrus, lai sniegtu pakalpojumu. Mēs nepārdodam jūsu datus. Varat jebkurā brīdī pieprasīt konta dzēšanu.'
-    + '<h4>5. Paziņojumi</h4>Cenu paziņojumi tiek sūtīti tikai tad, ja esat izveidojis saglabātu filtru.'
-    + '<h4>6. Maksas funkcijas</h4>Pilna cenu vēsture un e-pasta paziņojumi nākotnē būs maksas plānā. Cenas tiks paziņotas pirms ieviešanas.'
-    + '<h4>7. Atbildības ierobežojums</h4>Pakalpojums tiek sniegts "kāds tas ir". Neatbildam par zaudējumiem, kas radušies, paļaujoties uz vietnē sniegto informāciju.'
-    + '<h4>8. Izmaiņas</h4>Noteikumi var tikt mainīti. Būtiskas izmaiņas paziņosim pa e-pastu.';
-
-  var host = document.createElement('div');
-  host.innerHTML = ''
-  + '<div class="br2ov" id="br2ov" onclick="BRProfile.close()"></div>'
-  + '<div class="br2p br2" id="br2p" role="dialog" aria-modal="true">'
-  +   '<div class="br2h"><h2>Mans profils</h2><button class="br2x" onclick="BRProfile.close()">&#10005;</button></div>'
-  +   '<div class="br2tabs">'
-  +     '<button class="br2tab on" data-t="acct">Konts</button>'
-  +     '<button class="br2tab" data-t="favs">Saglabātās <span id="br2favN"></span></button>'
-  +     '<button class="br2tab" data-t="filters">Mani filtri <span id="br2fltN"></span></button>'
-  +     '<button class="br2tab" data-t="bill">Abonements</button>'
-  +     '<button class="br2tab" data-t="tc">Noteikumi</button>'
-  +   '</div>'
-  +   '<div class="br2b">'
-
-  /* --- account --- */
-  +     '<div class="br2v on" id="br2v-acct">'
-  +       '<div class="br2sec"><h3>Konta informācija</h3><div class="s">E-pastu nevar mainīt.</div>'
-  +         '<div class="br2msg" id="br2m-acct"></div>'
-  +         '<label class="br2l">E-pasts</label><input class="br2i" id="br2Email" disabled>'
-  +         '<label class="br2l">Vārds</label><input class="br2i" id="br2Name" placeholder="Tavs vārds">'
-  +         '<div><span class="br2plan" id="br2Plan"></span></div>'
-  +         '<div style="margin-top:16px"><button class="br2btn" onclick="BRProfile.saveAcct()">Saglabāt</button></div>'
-  +       '</div>'
-  +       '<div class="br2sec"><h3>Mainīt paroli</h3><div class="s">Vismaz 8 zīmes.</div>'
-  +         '<div class="br2msg" id="br2m-pw"></div>'
-  +         '<div class="br2row">'
-  +           '<div><label class="br2l">Jaunā parole</label><input class="br2i" id="br2Pw1" type="password" autocomplete="new-password"></div>'
-  +           '<div><label class="br2l">Atkārto</label><input class="br2i" id="br2Pw2" type="password" autocomplete="new-password"></div>'
-  +         '</div>'
-  +         '<button class="br2btn" onclick="BRProfile.changePw()">Mainīt paroli</button>'
-  +       '</div>'
-  +       '<div class="br2sec"><h3>Sesija</h3><div class="s">Izrakstīties no šīs ierīces.</div>'
-  +         '<button class="br2btn o" onclick="BR.signOut()">Iziet</button></div>'
-  +     '</div>'
-
-  /* --- favourites --- */
-  +     '<div class="br2v" id="br2v-favs"><div id="br2FavBox"></div></div>'
-
-  /* --- saved filters --- */
-  +     '<div class="br2v" id="br2v-filters">'
-  +       '<div class="br2sec"><h3>Jauns filtrs</h3>'
-  +         '<div class="s">Saglabātie filtri nosaka, par kuriem auto sūtīsim e-pasta paziņojumus.</div>'
-  +         '<div class="br2msg" id="br2m-flt"></div>'
-  +         '<label class="br2l">Nosaukums</label><input class="br2i" id="f_name" placeholder="Piem. Lēts dīzeļa universālis">'
-  +         '<div class="br2row3">'
-  +           '<div><label class="br2l">Valsts</label><select class="br2s" id="f_country"><option value="">Visas</option><option value="LV">LV</option><option value="LT">LT</option><option value="EE">EE</option></select></div>'
-  +           '<div><label class="br2l">Marka</label><select class="br2s" id="f_make"></select></div>'
-  +           '<div><label class="br2l">Virsbūve</label><select class="br2s" id="f_body"></select></div>'
-  +         '</div>'
-  +         '<label class="br2l">Modeļi (vairāki — turi Ctrl/Cmd)</label>'
-  +         '<select class="br2s" id="f_models" multiple size="5"></select>'
-  +         '<div class="br2row3">'
-  +           '<div><label class="br2l">Degviela</label><select class="br2s" id="f_fuel"></select></div>'
-  +           '<div><label class="br2l">Ātrumkārba</label><select class="br2s" id="f_gear"></select></div>'
-  +           '<div><label class="br2l">Paziņojumi</label><select class="br2s" id="f_notify"><option value="1">Ieslēgti</option><option value="0">Izslēgti</option></select></div>'
-  +         '</div>'
-  +         '<div class="br2row">'
-  +           '<div><label class="br2l">Cena no (€)</label><input class="br2i" id="f_pmin" type="number" min="0"></div>'
-  +           '<div><label class="br2l">Cena līdz (€)</label><input class="br2i" id="f_pmax" type="number" min="0"></div>'
-  +         '</div>'
-  +         '<div class="br2row">'
-  +           '<div><label class="br2l">Gads no</label><input class="br2i" id="f_ymin" type="number" min="1950" max="2030"></div>'
-  +           '<div><label class="br2l">Gads līdz</label><input class="br2i" id="f_ymax" type="number" min="1950" max="2030"></div>'
-  +         '</div>'
-  +         '<div class="br2row">'
-  +           '<div><label class="br2l">Nobraukums no</label><select class="br2s" id="f_mmin"></select></div>'
-  +           '<div><label class="br2l">Nobraukums līdz</label><select class="br2s" id="f_mmax"></select></div>'
-  +         '</div>'
-  +         '<input type="hidden" id="f_id">'
-  +         '<div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">'
-  +           '<button class="br2btn g" onclick="BRProfile.saveFilter()" id="f_save">Saglabāt filtru</button>'
-  +           '<button class="br2btn o" onclick="BRProfile.resetFilterForm()">Notīrīt</button>'
-  +         '</div>'
-  +       '</div>'
-  +       '<div id="br2FltBox"></div>'
-  +     '</div>'
-
-  /* --- billing placeholder --- */
-  +     '<div class="br2v" id="br2v-bill">'
-  +       '<div class="br2bill">'
-  +         '<span class="tag">DRĪZUMĀ</span>'
-  +         '<h3>Abonements un norēķini</h3>'
-  +         '<p>Šī sadaļa ir rezervēta maksājumiem. Maksājumu apstrāde (Stripe / PayPal) vēl <b>nav ieviesta</b>. '
-  +         'Šobrīd visi konti ir bezmaksas plānā.</p>'
-  +         '<div style="margin-top:18px"><span class="br2plan" id="br2Plan2"></span></div>'
-  +       '</div>'
-  +     '</div>'
-
-  /* --- T&C --- */
-  +     '<div class="br2v" id="br2v-tc"><div class="br2sec"><h3>Lietošanas noteikumi</h3>'
-  +       '<div class="br2tc">' + TC + '</div></div></div>'
-
-  +   '</div>'
-  + '</div>';
-  document.body.appendChild(host);
-
-  var BRProfile = window.BRProfile = {};
-
-  BRProfile.open = function(tab){
-    if(!BR.user) return BR.openAuth('signin');
-    $('br2ov').classList.add('on');
-    $('br2p').classList.add('on');
-    document.body.style.overflow = 'hidden';
-    fillAcct(); buildFilterOptions();
-    BRProfile.tab(tab || 'acct');
-    loadFavs().then(function(){ renderFavs(); decorate(); });
-    renderFilters();
-  };
-  BRProfile.close = function(){
-    $('br2ov').classList.remove('on');
-    $('br2p').classList.remove('on');
-    document.body.style.overflow = '';
-  };
-  BRProfile.tab = function(t){
-    ['acct','favs','filters','bill','tc'].forEach(function(k){
-      var v = $('br2v-'+k); if(v) v.classList.toggle('on', k===t);
-    });
-    document.querySelectorAll('.br2tab').forEach(function(b){ b.classList.toggle('on', b.dataset.t===t); });
-    if(t==='favs') renderFavs();
-    if(t==='filters') renderFilters();
-  };
-  document.querySelectorAll('.br2tab').forEach(function(b){
-    b.onclick = function(){ BRProfile.tab(b.dataset.t); };
+/* ================= make -> models, from the DB ================= */
+var MODELCACHE = {};
+var JUNK = /^(-kita-|kita|cits|other|-)$/i;
+async function modelsFor(make){
+  if(!make) return [];
+  if(MODELCACHE[make]) return MODELCACHE[make];
+  var r = await supa.from('v_listings').select('model').eq('make', make).limit(3000);
+  if(r.error) return [];
+  var set = {};
+  (r.data||[]).forEach(function(x){
+    var m = (x.model||'').trim();
+    if(!m || JUNK.test(m)) return;
+    var k = m.toLowerCase();
+    if(!set[k]) set[k] = m;               // dedupe, case-insensitive
   });
+  var out = Object.values(set).sort(function(a,b){
+    return a.localeCompare(b, 'lv', {numeric:true});
+  });
+  MODELCACHE[make] = out;
+  return out;
+}
 
-  function m(id, text, kind){
-    var e = $(id); if(!e) return;
-    e.textContent = text || '';
-    e.className = 'br2msg' + (text ? ' ' + (kind||'err') : '');
-  }
+/* ================= typable preset comboboxes ================= */
+var PRESETS = {
+  price:  [0,500,1000,1500,2000,2500,3000,4000,5000,6000,7500,10000,12500,15000,20000,25000,30000,40000,50000,75000,100000],
+  km:     [0,5000,10000,20000,30000,50000,75000,100000,125000,150000,200000,250000,300000],
+  engine: [0.8,1.0,1.2,1.4,1.6,1.8,2.0,2.2,2.5,3.0,3.5,4.0,5.0],
+  year:   (function(){ var a=[]; for(var y=2026;y>=1970;y--) a.push(y); return a; })()
+};
+var DLDONE = false;
+function ensureDatalists(){
+  if(DLDONE) return; DLDONE = true;
+  var wrap = document.createElement('div');
+  wrap.style.display='none';
+  wrap.innerHTML = Object.keys(PRESETS).map(function(k){
+    return '<datalist id="brdl-'+k+'">' + PRESETS[k].map(function(v){
+      return '<option value="'+v+'">'+(k==='engine'? v+' l' : nf(v))+'</option>';
+    }).join('') + '</datalist>';
+  }).join('');
+  document.body.appendChild(wrap);
+}
+/* Turn an existing <input type=number> into a typable combobox with presets.
+   Keeps id + .value so the site's own query builder keeps working untouched. */
+function comboise(id, kind){
+  var el = $(id);
+  if(!el || el.dataset.brCombo) return;
+  ensureDatalists();
+  el.setAttribute('list','brdl-'+kind);
+  el.setAttribute('type','text');
+  el.setAttribute('inputmode','decimal');
+  el.setAttribute('autocomplete','off');
+  el.dataset.brCombo = '1';
+}
 
-  /* ---- account ---- */
-  function fillAcct(){
-    $('br2Email').value = (BR.user && BR.user.email) || '';
-    $('br2Name').value  = (BR.profile && BR.profile.full_name) || '';
-    var prem = !!(BR.profile && BR.profile.is_premium);
-    var txt = prem ? '⭐ Premium' : 'Bezmaksas plāns';
-    $('br2Plan').textContent = txt;
-    if($('br2Plan2')) $('br2Plan2').textContent = txt;
+/* ================= MAIN SEARCH PANEL fixes ================= */
+async function repaintMainModels(){
+  var mk = $('make'), md = $('model');
+  if(!mk || !md) return;
+  var make = mk.value || '';
+  var keep = md.value;
+  var first = md.options[0] ? md.options[0].textContent : 'Visi modeļi';
+  md.innerHTML = '<option value="">'+esc(first)+'</option>';
+  if(!make){ md.value=''; return; }
+  var list = await modelsFor(make);
+  list.forEach(function(m){
+    var o = document.createElement('option');
+    o.value = m; o.textContent = m;
+    md.appendChild(o);
+  });
+  md.value = list.indexOf(keep) !== -1 ? keep : '';
+}
+function wireMainPanel(){
+  var mk = $('make');
+  if(mk && !mk.dataset.brWired){
+    mk.dataset.brWired = '1';
+    mk.addEventListener('change', repaintMainModels);
+    if(mk.value) repaintMainModels();
   }
-  BRProfile.saveAcct = async function(){
-    m('br2m-acct','');
-    var r = await supa.from('profiles').update({ full_name: $('br2Name').value.trim(), updated_at: new Date().toISOString() })
-                      .eq('id', BR.user.id).select().maybeSingle();
-    if(r.error) return m('br2m-acct', r.error.message);
-    BR.profile = r.data || BR.profile;
-    if(BR.paintHeader) BR.paintHeader();
-    m('br2m-acct','Saglabāts.','ok');
-  };
-  BRProfile.changePw = async function(){
-    m('br2m-pw','');
-    var a = $('br2Pw1').value, b = $('br2Pw2').value;
-    if(a.length < 8) return m('br2m-pw','Parolei jābūt vismaz 8 zīmes garai.');
-    if(a !== b)      return m('br2m-pw','Paroles nesakrīt.');
-    var r = await supa.auth.updateUser({ password: a });
-    if(r.error) return m('br2m-pw', r.error.message);
-    $('br2Pw1').value = ''; $('br2Pw2').value = '';
-    m('br2m-pw','Parole nomainīta.','ok');
-  };
+  comboise('pmin','price');  comboise('pmax','price');
+  comboise('mmin','km');     comboise('mmax','km');
+  comboise('emin','engine'); comboise('emax','engine');
+  comboise('ymin','year');   comboise('ymax','year');
+}
 
-  /* ---- favourites view ---- */
-  async function renderFavs(){
-    var box = $('br2FavBox'); if(!box) return;
-    await loadFavs();
-    if($('br2favN')) $('br2favN').textContent = FAV.size ? '('+FAV.size+')' : '';
-    if(!FAV.size){
-      box.innerHTML = '<div class="br2empty"><span class="e">♡</span>Nav saglabātu auto.<br>Nospied sirsniņu uz jebkura sludinājuma.</div>';
-      return;
-    }
-    box.innerHTML = '<div class="br2empty">Ielādē…</div>';
-    var ids = [...FAV];
-    var r = await supa.from('v_listings').select('car_id,make,model,year,last_price,last_mileage,fuel,photos,country').in('car_id', ids);
-    if(r.error){ box.innerHTML = '<div class="br2empty">Kļūda: '+esc(r.error.message)+'</div>'; return; }
-    var rows = r.data || [];
-    var gone = FAV.size - rows.length;
-    var html = '<div class="br2cards">' + rows.map(function(c){
-      var img = (c.photos && c.photos[0]) ? '<img src="'+esc(c.photos[0])+'" loading="lazy">' : '<img>';
-      return '<div class="br2c" onclick="BRProfile.openCar(\''+esc(c.car_id)+'\')">'
-        + img
-        + '<button class="rm" title="Noņemt" onclick="event.stopPropagation();BRProfile.unfav(\''+esc(c.car_id)+'\')">✕</button>'
-        + '<div class="cb"><div class="t">'+esc(c.make)+' '+esc(c.model)+'</div>'
-        + '<div class="m">'+esc(c.year||'')+' · '+(c.last_mileage!=null?new Intl.NumberFormat('lv-LV').format(c.last_mileage)+' km':'—')+' · '+esc(c.fuel||'')+'</div>'
-        + '<div class="p">'+eur(c.last_price)+'</div></div></div>';
-    }).join('') + '</div>';
-    if(gone > 0){
-      html += '<div class="br2empty" style="padding:18px">'+gone+' saglabāt'+(gone===1?'s auto vairs nav':'i auto vairs nav')+' pieejam'+(gone===1?'s':'i')+' (sludinājums beidzies).</div>';
-    }
-    box.innerHTML = html;
-  }
-  BRProfile.unfav = async function(id){
-    FAV.delete(id);
-    await supa.from('favourites').delete().eq('user_id', BR.user.id).eq('car_id', id);
-    renderFavs(); decorate();
-  };
-  BRProfile.openCar = function(id){
-    BRProfile.close();
-    if(typeof window.openCarById === 'function') window.openCarById(id);
-  };
-
-  /* ---- saved filters ---- */
-  var KM = [0,25000,50000,75000,100000,150000,200000,250000,300000];
-  function cloneOpts(fromId, toId, anyLabel){
-    var src = document.getElementById(fromId), dst = $(toId);
-    if(!dst) return;
-    dst.innerHTML = '';
-    if(anyLabel !== null) dst.innerHTML = '<option value="">'+anyLabel+'</option>';
-    if(!src) return;
-    var seen = {};
-    [...src.options].forEach(function(o){
-      var v = (o.value||'').trim();
-      if(!v) return;
-      var k = v.toLowerCase();
-      if(seen[k]) return;      // dedupe
-      seen[k] = 1;
-      var n = document.createElement('option');
-      n.value = v; n.textContent = o.textContent.trim();
-      dst.appendChild(n);
-    });
-  }
-  function buildFilterOptions(){
-    cloneOpts('make','f_make','Visas markas');
-    cloneOpts('bodyf','f_body','Visas virsbūves');
-    cloneOpts('fuel','f_fuel','Visas degvielas');
-    cloneOpts('gear','f_gear','Visas ātrumkārbas');
-    cloneOpts('model','f_models', null);
-    var mk = function(sel, last){
-      var s = $(sel); if(!s) return;
-      s.innerHTML = '<option value="">'+(last?'Nav ierobežojuma':'Nav ierobežojuma')+'</option>';
-      KM.forEach(function(v){
-        var o = document.createElement('option');
-        o.value = v;
-        o.textContent = new Intl.NumberFormat('lv-LV').format(v) + (v===300000?'+ km':' km');
-        s.appendChild(o);
+/* ================= favourites (carried over) ================= */
+var FAV = new Set(), PHOTO2ID = {};
+var _fetch = window.fetch;
+window.fetch = function(input){
+  var url = (typeof input==='string') ? input : (input && input.url) || '';
+  var p = _fetch.apply(this, arguments);
+  if(url.indexOf('/rest/v1/v_listings') !== -1){
+    p.then(function(r){ try{ r.clone().json().then(function(rows){
+      if(!Array.isArray(rows)) return;
+      rows.forEach(function(row){
+        if(row && row.car_id && Array.isArray(row.photos))
+          row.photos.forEach(function(u){ PHOTO2ID[u] = row.car_id; });
       });
-    };
-    mk('f_mmin'); mk('f_mmax', true);
-    // repopulate models when make changes
-    var fm = $('f_make');
-    if(fm && !fm._wired){
-      fm._wired = true;
-      fm.onchange = function(){
-        var siteMake = document.getElementById('make');
-        if(siteMake){ siteMake.value = fm.value; siteMake.dispatchEvent(new Event('change',{bubbles:true})); }
-        setTimeout(function(){ cloneOpts('model','f_models', null); }, 400);
-      };
+      decorate();
+    }).catch(function(){}); }catch(e){} }).catch(function(){});
+  }
+  return p;
+};
+async function loadFavs(){
+  FAV = new Set();
+  if(!BR.user) return;
+  var r = await supa.from('favourites').select('car_id');
+  if(!r.error && r.data) r.data.forEach(function(x){ FAV.add(x.car_id); });
+}
+BR.toggleFav = async function(id, btn){
+  if(!BR.user) return BR.openAuth('signup');
+  if(FAV.has(id)){ FAV.delete(id); if(btn) btn.classList.remove('on');
+    await supa.from('favourites').delete().eq('user_id',BR.user.id).eq('car_id',id);
+  } else { FAV.add(id); if(btn) btn.classList.add('on');
+    await supa.from('favourites').insert({user_id:BR.user.id, car_id:id});
+  }
+};
+var HEART = '<span class="o">♡</span><span class="f">♥</span>';
+function decorate(){
+  document.querySelectorAll('#grid .card').forEach(function(card){
+    var img = card.querySelector('img'); if(!img) return;
+    var id = PHOTO2ID[img.getAttribute('src')||img.dataset.src||''];
+    if(!id) return;
+    var b = card.querySelector('.br-heart');
+    if(!b){
+      b = document.createElement('button');
+      b.className='br-heart'; b.innerHTML=HEART; b.title='Saglabāt';
+      b.onclick=function(e){ e.stopPropagation(); e.preventDefault(); BR.toggleFav(b.dataset.cid,b); };
+      card.appendChild(b);
     }
+    b.dataset.cid = id;
+    b.classList.toggle('on', FAV.has(id));
+  });
+}
+new MutationObserver(function(){ decorate(); wireMainPanel(); })
+  .observe(document.body,{childList:true,subtree:true});
+
+/* ============ premium gate on the car modal's price history ============ */
+var _open = window.openCarById;
+if(typeof _open === 'function'){
+  window.openCarById = function(id){
+    var r = _open.apply(this, arguments);
+    setTimeout(function(){ gateHistory(id); }, 800);
+    return r;
+  };
+}
+async function gateHistory(id){
+  var card = $('pchgcard') || $('hist');
+  if(card && !isPrem() && !card.dataset.brLocked){
+    card.dataset.brLocked = '1';
+    var box = document.createElement('div');
+    box.className = 'lockbox br2';
+    box.style.marginTop = '10px';
+    box.innerHTML = '<div class="lockrows"><div class="lockrow"></div><div class="lockrow"></div>'
+      + '<div class="lockrow"></div><div class="lockrow"></div><div class="lockrow"></div></div>'
+      + '<div class="lockcta"><div class="ic">🔒</div><h4>Cenu un nobraukuma vēsture</h4>'
+      + '<p>Redzi, kā mainījusies šī auto cena un nobraukums. Pieejams Premium plānā.</p>'
+      + '<button class="btn" onclick="BRProfile.open(\'bill\')">Uzzināt vairāk</button></div>';
+    card.style.display = 'none';
+    card.parentNode.insertBefore(box, card);
   }
-  function criteria(){
-    var models = [...$('f_models').selectedOptions].map(function(o){ return o.value; });
-    var num = function(id){ var v = $(id).value; return v==='' ? null : Number(v); };
-    return {
-      country: $('f_country').value || null,
-      make:    $('f_make').value || null,
-      models:  models,
-      body:    $('f_body').value || null,
-      fuel:    $('f_fuel').value || null,
-      gearbox: $('f_gear').value || null,
-      price_min: num('f_pmin'), price_max: num('f_pmax'),
-      year_min:  num('f_ymin'), year_max:  num('f_ymax'),
-      km_min:    num('f_mmin'), km_max:    num('f_mmax')
-    };
+  if(card && isPrem()){
+    card.style.display = '';
+    var prev = card.previousElementSibling;
+    if(prev && prev.classList.contains('lockbox')) prev.remove();
+    addMileageHistory(id, card);
   }
-  function describe(c){
-    var p = [];
-    if(c.country) p.push(c.country);
-    if(c.make) p.push(c.make);
-    if(c.models && c.models.length) p.push(c.models.join(', '));
-    if(c.body) p.push(c.body);
-    if(c.fuel) p.push(c.fuel);
-    if(c.gearbox) p.push(c.gearbox);
-    if(c.price_min!=null || c.price_max!=null) p.push((c.price_min!=null?c.price_min:'0')+'–'+(c.price_max!=null?c.price_max:'∞')+' €');
-    if(c.year_min!=null || c.year_max!=null) p.push((c.year_min||'')+'–'+(c.year_max||''));
-    if(c.km_min!=null || c.km_max!=null) p.push((c.km_min!=null?c.km_min:0)+'–'+(c.km_max!=null?c.km_max:'∞')+' km');
-    return p.length ? p.join(' · ') : 'Visi auto';
-  }
-  BRProfile.resetFilterForm = function(){
-    ['f_name','f_pmin','f_pmax','f_ymin','f_ymax'].forEach(function(i){ $(i).value=''; });
-    ['f_country','f_make','f_body','f_fuel','f_gear','f_mmin','f_mmax'].forEach(function(i){ $(i).value=''; });
-    [...$('f_models').options].forEach(function(o){ o.selected=false; });
-    $('f_notify').value = '1';
-    $('f_id').value = '';
-    $('f_save').textContent = 'Saglabāt filtru';
-    m('br2m-flt','');
-  };
-  BRProfile.saveFilter = async function(){
-    m('br2m-flt','');
-    var name = $('f_name').value.trim() || 'Mans filtrs';
-    var payload = {
-      user_id: BR.user.id,
-      name: name,
-      criteria: criteria(),
-      notify_email: $('f_notify').value === '1',
-      updated_at: new Date().toISOString()
-    };
-    var id = $('f_id').value;
-    var r = id
-      ? await supa.from('saved_filters').update(payload).eq('id', id).select()
-      : await supa.from('saved_filters').insert(payload).select();
-    if(r.error) return m('br2m-flt', r.error.message);
-    m('br2m-flt', id ? 'Filtrs atjaunināts.' : 'Filtrs saglabāts.', 'ok');
-    BRProfile.resetFilterForm();
-    renderFilters();
-  };
-  BRProfile.editFilter = function(id, json){
-    var c = JSON.parse(decodeURIComponent(json));
-    $('f_id').value = id;
-    $('f_name').value = c.__name || '';
-    $('f_country').value = c.country || '';
-    $('f_make').value = c.make || '';
-    $('f_body').value = c.body || '';
-    $('f_fuel').value = c.fuel || '';
-    $('f_gear').value = c.gearbox || '';
-    $('f_pmin').value = c.price_min ?? '';
-    $('f_pmax').value = c.price_max ?? '';
-    $('f_ymin').value = c.year_min ?? '';
-    $('f_ymax').value = c.year_max ?? '';
-    $('f_mmin').value = c.km_min ?? '';
-    $('f_mmax').value = c.km_max ?? '';
-    $('f_notify').value = c.__notify ? '1' : '0';
-    [...$('f_models').options].forEach(function(o){ o.selected = (c.models||[]).indexOf(o.value) !== -1; });
-    $('f_save').textContent = 'Atjaunināt filtru';
-    $('br2p').scrollTop = 0;
-  };
-  BRProfile.delFilter = async function(id){
-    await supa.from('saved_filters').delete().eq('id', id);
-    renderFilters();
-  };
-  BRProfile.applyFilter = function(json){
-    var c = JSON.parse(decodeURIComponent(json));
-    var set = function(id, v){ var e = document.getElementById(id); if(e && v!=null && v!=='') e.value = v; };
-    set('make', c.make); set('bodyf', c.body); set('fuel', c.fuel); set('gear', c.gearbox);
-    set('pmin', c.price_min); set('pmax', c.price_max);
-    set('ymin', c.year_min);  set('ymax', c.year_max);
-    set('mmin', c.km_min);    set('mmax', c.km_max);
-    BRProfile.close();
-    var btn = document.getElementById('doSearchBtn');
-    if(btn) btn.click();
-  };
-  async function renderFilters(){
-    var box = $('br2FltBox'); if(!box) return;
-    var r = await supa.from('saved_filters').select('*').order('created_at', { ascending:false });
-    if(r.error){ box.innerHTML = '<div class="br2empty">Kļūda: '+esc(r.error.message)+'</div>'; return; }
-    var rows = r.data || [];
-    if($('br2fltN')) $('br2fltN').textContent = rows.length ? '('+rows.length+')' : '';
-    if(!rows.length){
-      box.innerHTML = '<div class="br2empty"><span class="e">&#128269;</span>Nav saglabātu filtru.<br>Izveido filtru augšā, lai saņemtu paziņojumus.</div>';
-      return;
-    }
-    box.innerHTML = rows.map(function(f){
-      var c = f.criteria || {};
-      var pack = encodeURIComponent(JSON.stringify(Object.assign({}, c, { __name:f.name, __notify:f.notify_email })));
-      return '<div class="br2f"><div><div class="n">'+esc(f.name)
-        + (f.notify_email ? ' <span style="color:#16a06a;font-size:11px;font-weight:700">● paziņojumi</span>' : '')
-        + '</div><div class="c">'+esc(describe(c))+'</div></div>'
-        + '<div class="acts">'
-        + '<button onclick="BRProfile.applyFilter(\''+pack+'\')">Meklēt</button>'
-        + '<button onclick="BRProfile.editFilter('+f.id+',\''+pack+'\')">Labot</button>'
-        + '<button class="del" onclick="BRProfile.delFilter('+f.id+')">Dzēst</button>'
-        + '</div></div>';
-    }).join('');
+}
+async function addMileageHistory(id, card){
+  if(card.querySelector('.br-mileage')) return;
+  var r = await supa.from('price_history').select('ts,price,mileage').eq('car_id', id).order('ts',{ascending:true});
+  if(r.error || !r.data || !r.data.length) return;
+  var pts = r.data.filter(function(x){ return x.mileage != null; });
+  if(pts.length < 2) return;
+  var d = document.createElement('div');
+  d.className = 'br-mileage br2';
+  d.style.cssText='margin-top:10px;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600';
+  d.innerHTML = '<div style="color:#86868b;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">'
+    + 'Nobraukuma vēsture</div>'
+    + pts.map(function(p){ return String(p.ts).slice(0,10)+' · '+nf(p.mileage)+' km'; }).join('<br>');
+  card.appendChild(d);
+}
+
+/* ================= PROFILE PANEL ================= */
+var TC = '<h4>1. Par pakalpojumu</h4>BalticRadar apkopo publiski pieejamus sludinājumus. Mēs neesam pārdevējs vai darījuma puse.'
+ + '<h4>2. Datu precizitāte</h4>Dati tiek iegūti automatizēti no trešo pušu avotiem. Pirms darījuma pārbaudiet datus pie pārdevēja.'
+ + '<h4>3. Konts</h4>Jūs esat atbildīgs par sava konta drošību. Viens konts – viena persona.'
+ + '<h4>4. Jūsu dati</h4>Glabājam jūsu e-pastu, vārdu, saglabātās automašīnas un filtrus. Mēs nepārdodam jūsu datus.'
+ + '<h4>5. Paziņojumi</h4>Cenu paziņojumi tiek sūtīti tikai par saglabātajiem filtriem (maksas funkcija).'
+ + '<h4>6. Maksas funkcijas</h4>Saglabātie filtri, e-pasta paziņojumi un pilna cenu/nobraukuma vēsture ir Premium funkcijas.'
+ + '<h4>7. Atbildības ierobežojums</h4>Pakalpojums tiek sniegts "kāds tas ir".'
+ + '<h4>8. Izmaiņas</h4>Noteikumi var tikt mainīti.';
+
+var host = document.createElement('div');
+host.innerHTML =
+  '<div class="br2ov" id="br2ov" onclick="BRProfile.close()"></div>'
++ '<div class="br2p br2" id="br2p" role="dialog">'
++  '<div class="br2h"><h2>Mans profils</h2><button class="br2x" onclick="BRProfile.close()">&#10005;</button></div>'
++  '<div class="br2tabs">'
++    '<button class="br2tab on" data-t="acct">Konts</button>'
++    '<button class="br2tab" data-t="favs">Saglabātās <span id="br2favN"></span></button>'
++    '<button class="br2tab" data-t="filters">Mani filtri <span id="br2fltN"></span></button>'
++    '<button class="br2tab" data-t="bill">Abonements</button>'
++    '<button class="br2tab" data-t="tc">Noteikumi</button>'
++  '</div>'
++  '<div class="br2b">'
++   '<div class="br2v on" id="br2v-acct">'
++     '<div class="br2sec"><h3>Konta informācija</h3><div class="s">E-pastu nevar mainīt.</div>'
++       '<div class="br2msg" id="br2m-acct"></div>'
++       '<label class="br2l">E-pasts</label><input class="br2i" id="br2Email" disabled>'
++       '<label class="br2l">Vārds</label><input class="br2i" id="br2Name" placeholder="Tavs vārds">'
++       '<div><span class="br2plan" id="br2Plan"></span></div>'
++       '<div style="margin-top:16px"><button class="br2btn" onclick="BRProfile.saveAcct()">Saglabāt</button></div>'
++     '</div>'
++     '<div class="br2sec"><h3>Mainīt paroli</h3><div class="s">Vismaz 8 zīmes.</div>'
++       '<div class="br2msg" id="br2m-pw"></div>'
++       '<div class="br2row">'
++         '<div><label class="br2l">Jaunā parole</label><input class="br2i" id="br2Pw1" type="password"></div>'
++         '<div><label class="br2l">Atkārto</label><input class="br2i" id="br2Pw2" type="password"></div>'
++       '</div><button class="br2btn" onclick="BRProfile.changePw()">Mainīt paroli</button>'
++     '</div>'
++     '<div class="br2sec"><h3>Sesija</h3><div class="s">Izrakstīties no šīs ierīces.</div>'
++       '<button class="br2btn o" onclick="BR.signOut()">Iziet</button></div>'
++   '</div>'
++   '<div class="br2v" id="br2v-favs"><div id="br2FavBox"></div></div>'
++   '<div class="br2v" id="br2v-filters"><div id="br2FltWrap"></div></div>'
++   '<div class="br2v" id="br2v-bill">'
++     '<div class="br2bill"><span class="tag">DRĪZUMĀ</span>'
++       '<h3 style="font-size:16px;font-weight:800;margin-bottom:6px">Abonements un norēķini</h3>'
++       '<p style="font-size:13px;color:#86868b;font-weight:500;line-height:1.6;max-width:420px;margin:0 auto">'
++       'Šī sadaļa ir rezervēta maksājumiem. Maksājumu apstrāde (Stripe / PayPal) vēl <b>nav ieviesta</b>.</p>'
++       '<div style="margin-top:18px"><span class="br2plan" id="br2Plan2"></span></div>'
++     '</div>'
++   '</div>'
++   '<div class="br2v" id="br2v-tc"><div class="br2sec"><h3>Lietošanas noteikumi</h3>'
++     '<div class="br2tc">'+TC+'</div></div></div>'
++  '</div></div>';
+document.body.appendChild(host);
+
+var BRProfile = window.BRProfile = {};
+var PICKED = [];      // chosen models (chips)
+var EDIT_ID = null;
+
+BRProfile.open = function(tab){
+  if(!BR.user) return BR.openAuth('signin');
+  $('br2ov').classList.add('on'); $('br2p').classList.add('on');
+  document.body.style.overflow='hidden';
+  fillAcct();
+  BRProfile.tab(tab||'acct');
+};
+BRProfile.close = function(){
+  $('br2ov').classList.remove('on'); $('br2p').classList.remove('on');
+  document.body.style.overflow='';
+};
+BRProfile.tab = function(t){
+  ['acct','favs','filters','bill','tc'].forEach(function(k){
+    var v=$('br2v-'+k); if(v) v.classList.toggle('on', k===t);
+  });
+  document.querySelectorAll('.br2tab').forEach(function(b){ b.classList.toggle('on', b.dataset.t===t); });
+  if(t==='favs') renderFavs();
+  if(t==='filters') renderFiltersHome();
+};
+document.querySelectorAll('.br2tab').forEach(function(b){ b.onclick=function(){ BRProfile.tab(b.dataset.t); }; });
+
+function m(id,text,kind){ var e=$(id); if(!e) return;
+  e.textContent=text||''; e.className='br2msg'+(text?' '+(kind||'err'):''); }
+
+/* ---- account ---- */
+function fillAcct(){
+  if(!$('br2Email')) return;
+  $('br2Email').value = (BR.user&&BR.user.email)||'';
+  $('br2Name').value  = (BR.profile&&BR.profile.full_name)||'';
+  var txt = isPrem() ? '⭐ Premium' : 'Bezmaksas plāns';
+  $('br2Plan').textContent = txt;
+  if($('br2Plan2')) $('br2Plan2').textContent = txt;
+}
+BRProfile.saveAcct = async function(){
+  m('br2m-acct','');
+  var r = await supa.from('profiles').update({full_name:$('br2Name').value.trim(), updated_at:new Date().toISOString()})
+    .eq('id',BR.user.id).select().maybeSingle();
+  if(r.error) return m('br2m-acct', r.error.message);
+  BR.profile = r.data||BR.profile;
+  if(BR.paintHeader) BR.paintHeader();
+  m('br2m-acct','Saglabāts.','ok');
+};
+BRProfile.changePw = async function(){
+  m('br2m-pw','');
+  var a=$('br2Pw1').value, b=$('br2Pw2').value;
+  if(a.length<8) return m('br2m-pw','Parolei jābūt vismaz 8 zīmes garai.');
+  if(a!==b) return m('br2m-pw','Paroles nesakrīt.');
+  var r = await supa.auth.updateUser({password:a});
+  if(r.error) return m('br2m-pw', r.error.message);
+  $('br2Pw1').value=''; $('br2Pw2').value='';
+  m('br2m-pw','Parole nomainīta.','ok');
+};
+
+/* ---- favourites ---- */
+async function renderFavs(){
+  var box=$('br2FavBox'); if(!box) return;
+  await loadFavs();
+  if($('br2favN')) $('br2favN').textContent = FAV.size? '('+FAV.size+')':'';
+  if(!FAV.size){ box.innerHTML='<div class="br2empty"><span class="e">♡</span>Nav saglabātu auto.<br>Nospied sirsniņu uz sludinājuma.</div>'; return; }
+  box.innerHTML='<div class="br2empty">Ielādē…</div>';
+  var r = await supa.from('v_listings')
+    .select('car_id,make,model,year,last_price,last_mileage,fuel,photos').in('car_id',[...FAV]);
+  if(r.error){ box.innerHTML='<div class="br2empty">Kļūda</div>'; return; }
+  box.innerHTML = cardsHtml(r.data||[], true);
+}
+function cardsHtml(rows, rm){
+  if(!rows.length) return '<div class="br2empty">Nav rezultātu.</div>';
+  return '<div class="br2cards">' + rows.map(function(c){
+    return '<div class="br2c" onclick="BRProfile.openCar(\''+esc(c.car_id)+'\')">'
+      + ((c.photos&&c.photos[0]) ? '<img src="'+esc(c.photos[0])+'" loading="lazy">' : '<img>')
+      + (rm ? '<button class="rm" onclick="event.stopPropagation();BRProfile.unfav(\''+esc(c.car_id)+'\')">✕</button>' : '')
+      + '<div class="cb"><div class="t">'+esc(c.make)+' '+esc(c.model)+'</div>'
+      + '<div class="m">'+esc(c.year||'')+' · '+(c.last_mileage!=null?nf(c.last_mileage)+' km':'—')+' · '+esc(c.fuel||'')+'</div>'
+      + '<div class="p">'+eur(c.last_price)+'</div></div></div>';
+  }).join('') + '</div>';
+}
+BRProfile.unfav = async function(id){
+  FAV.delete(id);
+  await supa.from('favourites').delete().eq('user_id',BR.user.id).eq('car_id',id);
+  renderFavs(); decorate();
+};
+BRProfile.openCar = function(id){
+  BRProfile.close();
+  if(typeof window.openCarById==='function') window.openCarById(id);
+};
+
+/* ================= MY FILTERS ================= */
+function lockHtml(title, body){
+  return '<div class="lockbox">'
+   + '<div class="lockrows"><div class="lockrow"></div><div class="lockrow"></div><div class="lockrow"></div>'
+   + '<div class="lockrow"></div><div class="lockrow"></div></div>'
+   + '<div class="lockcta"><div class="ic">🔒</div><h4>'+title+'</h4><p>'+body+'</p>'
+   + '<button class="btn" onclick="BRProfile.tab(\'bill\')">Uzzināt vairāk</button></div></div>';
+}
+
+async function renderFiltersHome(){
+  var w = $('br2FltWrap'); if(!w) return;
+
+  if(!isPrem()){
+    w.innerHTML = lockHtml('Saglabātie filtri ir Premium funkcija',
+      'Izveido filtrus un saņem e-pasta paziņojumus, tiklīdz parādās atbilstošs auto. Pieejams Premium plānā.');
+    if($('br2fltN')) $('br2fltN').textContent='';
+    return;
   }
 
-  /* ---- wire header + auth changes ---- */
-  window.addEventListener('br:auth', function(){
-    loadFavs().then(decorate);
-    if(BR.user) fillAcct();
-    else BRProfile.close();
+  var r = await supa.from('saved_filters').select('*').order('created_at',{ascending:false});
+  if(r.error){ w.innerHTML='<div class="br2empty">Kļūda: '+esc(r.error.message)+'</div>'; return; }
+  var rows = r.data||[];
+  if($('br2fltN')) $('br2fltN').textContent = rows.length? '('+rows.length+')':'';
+
+  w.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
+    + '<div style="font-weight:800;font-size:15px">Mani filtri</div>'
+    + '<button class="br2btn g" onclick="BRProfile.newFilter()">+ Izveidot filtru</button></div>'
+    + '<div id="br2FltForm"></div>'
+    + '<div id="br2FltList">' + (rows.length
+        ? rows.map(filterRow).join('')
+        : '<div class="br2empty"><span class="e">🔍</span>Nav saglabātu filtru.<br>Nospied “Izveidot filtru”.</div>')
+      + '</div>';
+}
+function filterRow(f){
+  var c = f.criteria||{};
+  return '<div class="br2f" onclick="BRProfile.runFilter('+f.id+')">'
+    + '<div><div class="n">'+esc(f.name)
+    + (f.notify_email?' <span style="color:#16a06a;font-size:11px;font-weight:700">● paziņojumi</span>':'')
+    + '</div><div class="c">'+esc(describe(c))+'</div></div>'
+    + '<div class="acts">'
+    + '<button onclick="event.stopPropagation();BRProfile.runFilter('+f.id+')">Skatīt</button>'
+    + '<button onclick="event.stopPropagation();BRProfile.editFilter('+f.id+')">Labot</button>'
+    + '<button class="del" onclick="event.stopPropagation();BRProfile.delFilter('+f.id+')">Dzēst</button>'
+    + '</div></div>';
+}
+function describe(c){
+  var p=[];
+  if(c.country) p.push(c.country);
+  if(c.make) p.push(c.make);
+  if(c.models&&c.models.length) p.push(c.models.join(', '));
+  if(c.body) p.push(c.body);
+  if(c.fuel) p.push(c.fuel);
+  if(c.gearbox) p.push(c.gearbox);
+  if(c.drivetrain) p.push(c.drivetrain);
+  if(c.price_min!=null||c.price_max!=null) p.push((c.price_min!=null?nf(c.price_min):'0')+'–'+(c.price_max!=null?nf(c.price_max):'∞')+' €');
+  if(c.year_min!=null||c.year_max!=null) p.push((c.year_min||'')+'–'+(c.year_max||''));
+  if(c.km_min!=null||c.km_max!=null) p.push((c.km_min!=null?nf(c.km_min):0)+'–'+(c.km_max!=null?nf(c.km_max):'∞')+' km');
+  if(c.eng_min!=null||c.eng_max!=null) p.push((c.eng_min||'')+'–'+(c.eng_max||'')+' l');
+  return p.length? p.join(' · ') : 'Visi auto';
+}
+
+/* ---- the form ---- */
+function selOpts(id, label){
+  var src = document.getElementById(id);
+  var out = '<option value="">'+label+'</option>';
+  if(!src) return out;
+  var seen={};
+  [...src.options].forEach(function(o){
+    var v=(o.value||'').trim(); if(!v) return;
+    var k=v.toLowerCase(); if(seen[k]) return; seen[k]=1;
+    out += '<option value="'+esc(v)+'">'+esc(o.textContent.trim())+'</option>';
   });
-  // the site's own "Mans profils" button
-  var mp = document.getElementById('notifyBtn');
+  return out;
+}
+function combo(id, kind, ph){
+  return '<input class="br2i" id="'+id+'" list="brdl-'+kind+'" inputmode="decimal" autocomplete="off" placeholder="'+ph+'">';
+}
+BRProfile.newFilter = function(){ EDIT_ID=null; PICKED=[]; showForm(); };
+BRProfile.editFilter = async function(id){
+  var r = await supa.from('saved_filters').select('*').eq('id',id).maybeSingle();
+  if(r.error||!r.data) return;
+  EDIT_ID = id;
+  var c = r.data.criteria||{};
+  PICKED = (c.models||[]).slice();
+  showForm(r.data.name, c, r.data.notify_email);
+};
+async function showForm(name, c, notify){
+  ensureDatalists();
+  c = c||{};
+  var box = $('br2FltForm'); if(!box) return;
+  box.innerHTML =
+    '<div class="br2sec" id="br2FormSec">'
+    + '<button class="br2back" onclick="BRProfile.cancelForm()">← Atpakaļ uz filtriem</button>'
+    + '<h3>'+(EDIT_ID?'Labot filtru':'Jauns filtrs')+'</h3>'
+    + '<div class="s">Marka un modelis ir obligāti. Pārējie lauki nav obligāti.</div>'
+    + '<div class="br2msg" id="br2m-flt"></div>'
+    + '<label class="br2l">Nosaukums</label><input class="br2i" id="f_name" placeholder="Piem. Lēts dīzeļa universālis">'
+    + '<div class="br2row3">'
+    +  '<div><label class="br2l">Valsts</label><select class="br2s" id="f_country">'
+    +    '<option value="">Visas</option><option value="LV">LV</option><option value="LT">LT</option><option value="EE">EE</option></select></div>'
+    +  '<div><label class="br2l">Marka *</label><select class="br2s" id="f_make">'+selOpts('make','Izvēlies marku')+'</select></div>'
+    +  '<div><label class="br2l">Virsbūve</label><select class="br2s" id="f_body">'+selOpts('bodyf','Visas')+'</select></div>'
+    + '</div>'
+    + '<label class="br2l">Modeļi *</label>'
+    + '<div class="br2chipbox">'
+    +  '<div class="br2picked" id="f_picked"></div>'
+    +  '<div class="br2chips" id="f_chips"><div class="br2hint">Vispirms izvēlies marku.</div></div>'
+    +  '<div style="margin-top:10px"><button class="br2btn g" id="f_confirm" onclick="BRProfile.confirmModels()">Apstiprināt modeļus</button></div>'
+    + '</div>'
+    + '<div class="br2row3">'
+    +  '<div><label class="br2l">Degviela</label><select class="br2s" id="f_fuel">'+selOpts('fuel','Visas')+'</select></div>'
+    +  '<div><label class="br2l">Ātrumkārba</label><select class="br2s" id="f_gear">'+selOpts('gear','Visas')+'</select></div>'
+    +  '<div><label class="br2l">Piedziņa</label><select class="br2s" id="f_drive">'+selOpts('drive','Visas')+'</select></div>'
+    + '</div>'
+    + '<div class="br2row"><div><label class="br2l">Cena no</label>'+combo('f_pmin','price','0')+'</div>'
+    +  '<div><label class="br2l">Cena līdz</label>'+combo('f_pmax','price','—')+'</div></div>'
+    + '<div class="br2row"><div><label class="br2l">Gads no</label>'+combo('f_ymin','year','—')+'</div>'
+    +  '<div><label class="br2l">Gads līdz</label>'+combo('f_ymax','year','—')+'</div></div>'
+    + '<div class="br2row"><div><label class="br2l">Nobraukums no</label>'+combo('f_mmin','km','0')+'</div>'
+    +  '<div><label class="br2l">Nobraukums līdz</label>'+combo('f_mmax','km','—')+'</div></div>'
+    + '<div class="br2row"><div><label class="br2l">Tilpums no</label>'+combo('f_emin','engine','—')+'</div>'
+    +  '<div><label class="br2l">Tilpums līdz</label>'+combo('f_emax','engine','—')+'</div></div>'
+    + '<label class="br2l">Paziņojumi</label><select class="br2s" id="f_notify">'
+    +  '<option value="1">Ieslēgti</option><option value="0">Izslēgti</option></select>'
+    + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">'
+    +  '<button class="br2btn g" onclick="BRProfile.saveFilter()">Saglabāt filtru</button>'
+    +  '<button class="br2btn o" onclick="BRProfile.cancelForm()">Atcelt</button>'
+    + '</div></div>';
+
+  var list = $('br2FltList'); if(list) list.style.display='none';
+
+  // prefill
+  if(name) $('f_name').value = name;
+  ['country','body','fuel','gear','drive'].forEach(function(k){
+    var map = {country:'country', body:'body', fuel:'fuel', gear:'gearbox', drive:'drivetrain'};
+    var el = $('f_'+k); if(el && c[map[k]]) el.value = c[map[k]];
+  });
+  [['f_pmin','price_min'],['f_pmax','price_max'],['f_ymin','year_min'],['f_ymax','year_max'],
+   ['f_mmin','km_min'],['f_mmax','km_max'],['f_emin','eng_min'],['f_emax','eng_max']].forEach(function(p){
+    if(c[p[1]] != null) $(p[0]).value = c[p[1]];
+  });
+  $('f_notify').value = (notify===false) ? '0' : '1';
+
+  var fm = $('f_make');
+  fm.onchange = function(){ PICKED = []; paintChips(); };
+  if(c.make){ fm.value = c.make; }
+  await paintChips();
+}
+async function paintChips(){
+  var make = $('f_make') ? $('f_make').value : '';
+  var chips = $('f_chips');
+  if(!chips) return;
+  if(!make){
+    chips.innerHTML = '<div class="br2hint">Vispirms izvēlies marku.</div>';
+    paintPicked(); return;
+  }
+  chips.innerHTML = '<div class="br2hint">Ielādē modeļus…</div>';
+  var list = await modelsFor(make);
+  if(!list.length){ chips.innerHTML='<div class="br2hint">Šai markai nav modeļu.</div>'; return; }
+  chips.innerHTML = list.map(function(mm){
+    var on = PICKED.indexOf(mm)!==-1;
+    return '<button type="button" class="br2chip'+(on?' on':'')+'" data-m="'+esc(mm)+'">'+esc(mm)+'</button>';
+  }).join('');
+  chips.querySelectorAll('.br2chip').forEach(function(b){
+    b.onclick = function(){
+      var v = b.dataset.m;
+      var i = PICKED.indexOf(v);
+      if(i===-1) PICKED.push(v); else PICKED.splice(i,1);
+      b.classList.toggle('on', PICKED.indexOf(v)!==-1);
+    };
+  });
+  paintPicked();
+}
+function paintPicked(){
+  var p = $('f_picked'); if(!p) return;
+  p.innerHTML = PICKED.length
+    ? PICKED.map(function(mm){ return '<span class="br2pick">'+esc(mm)
+        +'<b onclick="BRProfile.dropModel(\''+esc(mm)+'\')">✕</b></span>'; }).join('')
+    : '';
+}
+BRProfile.dropModel = function(mm){
+  var i=PICKED.indexOf(mm); if(i!==-1) PICKED.splice(i,1);
+  paintPicked();
+  var c=$('f_chips'); if(c){ var b=c.querySelector('.br2chip[data-m="'+CSS.escape(mm)+'"]'); if(b) b.classList.remove('on'); }
+};
+BRProfile.confirmModels = function(){
+  paintPicked();
+  m('br2m-flt', PICKED.length ? ('Izvēlēti '+PICKED.length+' modeļi.') : 'Nav izvēlēts neviens modelis.', PICKED.length?'ok':'err');
+};
+BRProfile.cancelForm = function(){
+  $('br2FltForm').innerHTML='';
+  var l=$('br2FltList'); if(l) l.style.display='';
+  EDIT_ID=null; PICKED=[];
+};
+function num(id){ var v=($(id).value||'').replace(/\s/g,'').replace(',','.'); return v===''?null:(isNaN(Number(v))?null:Number(v)); }
+BRProfile.saveFilter = async function(){
+  m('br2m-flt','');
+  var make = $('f_make').value;
+  if(!make) return m('br2m-flt','Marka ir obligāta.');
+  if(!PICKED.length) return m('br2m-flt','Jāizvēlas vismaz viens modelis.');
+  var crit = {
+    country:$('f_country').value||null, make:make, models:PICKED.slice(),
+    body:$('f_body').value||null, fuel:$('f_fuel').value||null,
+    gearbox:$('f_gear').value||null, drivetrain:$('f_drive').value||null,
+    price_min:num('f_pmin'), price_max:num('f_pmax'),
+    year_min:num('f_ymin'),  year_max:num('f_ymax'),
+    km_min:num('f_mmin'),    km_max:num('f_mmax'),
+    eng_min:num('f_emin'),   eng_max:num('f_emax')
+  };
+  var payload = { user_id:BR.user.id, name:($('f_name').value.trim() || (make+' '+PICKED.join(', ')).slice(0,60)),
+    criteria:crit, notify_email:$('f_notify').value==='1', updated_at:new Date().toISOString() };
+  var r = EDIT_ID
+    ? await supa.from('saved_filters').update(payload).eq('id',EDIT_ID).select()
+    : await supa.from('saved_filters').insert(payload).select();
+  if(r.error) return m('br2m-flt', r.error.message);
+  BRProfile.cancelForm();
+  renderFiltersHome();
+};
+BRProfile.delFilter = async function(id){
+  await supa.from('saved_filters').delete().eq('id',id);
+  renderFiltersHome();
+};
+
+/* ---- run a saved filter: show matching cars ---- */
+BRProfile.runFilter = async function(id){
+  var w = $('br2FltWrap');
+  var r = await supa.from('saved_filters').select('*').eq('id',id).maybeSingle();
+  if(r.error||!r.data) return;
+  var f = r.data, c = f.criteria||{};
+  w.innerHTML = '<button class="br2back" onclick="BRProfile.tab(\'filters\')">← Atpakaļ uz filtriem</button>'
+    + '<div style="font-weight:800;font-size:17px;margin-bottom:3px">'+esc(f.name)+'</div>'
+    + '<div style="font-size:12px;color:#86868b;font-weight:500;margin-bottom:16px">'+esc(describe(c))+'</div>'
+    + '<div id="br2Res"><div class="br2empty">Meklē…</div></div>';
+
+  var q = supa.from('v_listings')
+    .select('car_id,make,model,year,last_price,last_mileage,fuel,photos')
+    .eq('make', c.make);
+  if(c.models && c.models.length) q = q.in('model', c.models);
+  if(c.country)    q = q.eq('country', c.country);
+  if(c.body)       q = q.eq('body', c.body);
+  if(c.fuel)       q = q.eq('fuel', c.fuel);
+  if(c.gearbox)    q = q.eq('gearbox', c.gearbox);
+  if(c.drivetrain) q = q.eq('drivetrain', c.drivetrain);
+  if(c.price_min!=null) q = q.gte('last_price', c.price_min);
+  if(c.price_max!=null) q = q.lte('last_price', c.price_max);
+  if(c.year_min!=null)  q = q.gte('year', c.year_min);
+  if(c.year_max!=null)  q = q.lte('year', c.year_max);
+  if(c.km_min!=null)    q = q.gte('last_mileage', c.km_min);
+  if(c.km_max!=null)    q = q.lte('last_mileage', c.km_max);
+  var res = await q.order('last_price',{ascending:true}).limit(60);
+
+  var box = $('br2Res'); if(!box) return;
+  if(res.error){ box.innerHTML='<div class="br2empty">Kļūda: '+esc(res.error.message)+'</div>'; return; }
+  var rows = res.data||[];
+  box.innerHTML = '<div style="font-size:12.5px;font-weight:700;color:#86868b;margin-bottom:12px">'
+    + rows.length + ' atbilstoši auto</div>' + cardsHtml(rows, false);
+};
+
+/* ---- boot ---- */
+window.addEventListener('br:auth', function(){
   loadFavs().then(decorate);
-  });
+  fillAcct();
+  if(!BR.user) BRProfile.close();
+});
+loadFavs().then(decorate);
+wireMainPanel();
+setTimeout(wireMainPanel, 1500);
+setTimeout(wireMainPanel, 4000);
+
+});
 })();
 </script>
-<!-- ================== END STAGE 2 ================== -->
+<!-- ============ END STAGE 3-5 ============ -->
+
 
 </body>
 </html>
