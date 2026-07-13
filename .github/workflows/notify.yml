@@ -1,12 +1,29 @@
-name: BalticRadar alerts (2x daily digest)
+name: BalticRadar alerts (every 20 min)
 
-# Sends subscriber alert emails twice a day (digest of the newest matching cars).
-# Kept separate from the 5-min collector so subscribers get at most 2 emails/day
-# and we stay inside Resend's free 100 emails/day limit.
+# TIMELINESS IS THE PRODUCT: the collector ingests every ~5-15 min, so alerts run on a
+# similar cadence. Each run only looks at cars INGESTED SINCE THE LAST RUN, and every
+# (filter, car) pair is recorded in filter_notifications -> the same car is never sent twice.
 on:
   schedule:
-    - cron: "0 7,17 * * *"   # 07:00 and 17:00 UTC (~10:00 and 20:00 Latvia)
-  workflow_dispatch: {}        # also runnable manually to test
+    - cron: "*/20 * * * *"     # every 20 minutes
+  workflow_dispatch:
+    inputs:
+      test_to:
+        description: "Redirect ALL alert emails to this address (end-to-end test). Leave empty for real sends."
+        required: false
+        default: ""
+      lookback_min:
+        description: "Look back this many minutes for newly-ingested cars"
+        required: false
+        default: "45"
+      dry_run:
+        description: "1 = match + render but send nothing"
+        required: false
+        default: "0"
+
+concurrency:
+  group: balticradar-alerts     # never let two runs overlap and double-send
+  cancel-in-progress: false
 
 jobs:
   notify:
@@ -19,12 +36,19 @@ jobs:
           python-version: "3.12"
       - name: Install deps
         run: pip install requests
-      - name: Send alert digest
+      - name: Send alerts
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          LOOKBACK_H: "13"          # covers the ~12h gap between digests (dedup avoids repeats)
-          MAX_PER_EMAIL: "40"       # newest N per email; older matches shown only on the site
-          SITE_URL: "https://starlit-tulumba-bd46fb.netlify.app"
+          # Set the ALERT_FROM secret to "BalticRadar <alerts@yourdomain.lv>" once the domain is
+          # verified in Resend. Until then the default onboarding@resend.dev ONLY delivers to the
+          # Resend account owner - every other recipient is rejected with 403.
+          ALERT_FROM: ${{ secrets.ALERT_FROM }}
+          SITE_URL: "https://balticradar.meowlybusiness.workers.dev"
+          LOOKBACK_MIN: ${{ github.event.inputs.lookback_min || '45' }}
+          TEST_TO: ${{ github.event.inputs.test_to }}
+          DRY_RUN: ${{ github.event.inputs.dry_run }}
+          MAX_PER_EMAIL: "12"
+          MAX_EMAILS: "80"
         run: python notify.py
