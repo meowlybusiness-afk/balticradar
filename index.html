@@ -234,6 +234,36 @@
 </style>
 </head>
 <body>
+<script>
+/* One-time defensive reset of persisted filters.
+   The broken multi-select build could leave a stuck value in br_filters
+   (e.g. make:"BMW"), and the site restores it on every load - so users kept
+   seeing a reduced catalogue. Clear it ONCE, then normal persistence resumes.
+   Also guards against non-string / array values from the multi-select era. */
+(function(){
+  try{
+    var KEY='br_filters', MARK='br_filters_v2';
+    if(!localStorage.getItem(MARK)){
+      localStorage.removeItem(KEY);
+      localStorage.removeItem('br_modelmap_v1');
+      localStorage.setItem(MARK,'1');
+    } else {
+      // sanitise: every persisted filter value must be a plain string
+      var raw=localStorage.getItem(KEY);
+      if(raw){
+        var f=JSON.parse(raw), dirty=false;
+        Object.keys(f).forEach(function(k){
+          var v=f[k];
+          if(v===null||v===undefined){ f[k]=''; dirty=true; }
+          else if(typeof v!=='string'){ f[k]=Array.isArray(v)?(v[0]!=null?String(v[0]):''):''; dirty=true; }
+        });
+        if(dirty) localStorage.setItem(KEY, JSON.stringify(f));
+      }
+    }
+  }catch(e){ try{ localStorage.removeItem('br_filters'); }catch(_){} }
+})();
+</script>
+
 <header>
   <div class="bar">
     <div class="logo" onclick="goHome()" title="BalticRadar"><span class="ic">◎</span>Baltic<b>Radar</b></div>
