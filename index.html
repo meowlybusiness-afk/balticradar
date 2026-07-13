@@ -2956,9 +2956,17 @@ function mount(){
 }
 
 mount();
-setTimeout(mount, 1200);
-setTimeout(fixDatalists, 2000);
-setTimeout(fixDatalists, 5000);
+function remountAll(){
+  mount();
+  FIELDS.forEach(function(f){ if($('br6_'+f.key)) render(f.key); });
+  fixDatalists();
+}
+[600,1500,3000,6000,9000].forEach(function(ms){ setTimeout(remountAll, ms); });
+var mk = $('make');
+if(mk){
+  var mo = new MutationObserver(function(){ FIELDS.forEach(function(f){ if(f.sel && $('br6_'+f.key)) render(f.key); }); });
+  ['make','fuel','gear','bodyf','drive'].forEach(function(id){ var e=$(id); if(e) mo.observe(e,{childList:true}); });
+}
 
 });
 })();
