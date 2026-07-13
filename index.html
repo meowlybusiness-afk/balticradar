@@ -1763,6 +1763,8 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
   background:rgba(255,255,255,.94);cursor:pointer;font-size:13px;display:grid;place-items:center}
 /* ---- model chips ---- */
 .br2chipbox{border:1px solid var(--ln2);border-radius:14px;padding:12px;margin-bottom:12px;background:var(--bg2)}
+.msgrp{font-size:11px;font-weight:800;color:#1d1d1f;text-transform:uppercase;letter-spacing:.05em;margin:10px 0 6px;width:100%}
+.msgrp i{font-style:normal;color:#86868b;font-weight:600}
 .br2chips{display:flex;flex-wrap:wrap;gap:7px;max-height:260px;overflow-y:auto;align-content:flex-start}
 .br2chip{border:1px solid var(--ln2);background:#fff;border-radius:999px;padding:7px 14px;font-size:12.5px;font-weight:600;
   cursor:pointer;font-family:Manrope,sans-serif;color:var(--ink);transition:.12s;user-select:none}
@@ -2225,74 +2227,165 @@ function filterRow(f){
 }
 function describe(c){
   var p=[];
-  if(c.country) p.push(c.country);
-  if(c.make) p.push(c.make);
-  if(c.models&&c.models.length) p.push(c.models.join(', '));
-  if(c.body) p.push(c.body);
-  if(c.fuel) p.push(c.fuel);
-  if(c.gearbox) p.push(c.gearbox);
-  if(c.drivetrain) p.push(c.drivetrain);
+  var L=function(a,one){ return (a&&a.length)?a:(one?[one]:[]); };
+  var add=function(a){ if(a.length) p.push(a.join(', ')); };
+  add(L(c.countries,c.country));
+  add(L(c.makes,c.make));
+  add(L(c.models,null));
+  add(L(c.bodies,c.body));
+  add(L(c.fuels,c.fuel));
+  add(L(c.gearboxes,c.gearbox));
+  add(L(c.drivetrains,c.drivetrain));
   if(c.price_min!=null||c.price_max!=null) p.push((c.price_min!=null?nf(c.price_min):'0')+'–'+(c.price_max!=null?nf(c.price_max):'∞')+' €');
   if(c.year_min!=null||c.year_max!=null) p.push((c.year_min||'')+'–'+(c.year_max||''));
   if(c.km_min!=null||c.km_max!=null) p.push((c.km_min!=null?nf(c.km_min):0)+'–'+(c.km_max!=null?nf(c.km_max):'∞')+' km');
-  if(c.eng_min!=null||c.eng_max!=null) p.push((c.eng_min||'')+'–'+(c.eng_max||'')+' l');
   return p.length? p.join(' · ') : 'Visi auto';
 }
 
-/* ---- the form ---- */
-function selOpts(id, label){
-  var src = document.getElementById(id);
-  var out = '<option value="">'+label+'</option>';
-  if(!src) return out;
-  var seen={};
-  [...src.options].forEach(function(o){
+/* ================= MULTI-SELECT CHIPS: every option filter ================= */
+var MS = { country:[], make:[], model:[], fuel:[], gearbox:[], body:[], drivetrain:[] };
+var MS_FIELDS = [
+  { key:'country',    label:'Valsts',     opts:['LV','LT','EE'] },
+  { key:'make',       label:'Marka *',    src:'make'  },
+  { key:'model',      label:'Modeļi *'                },
+  { key:'fuel',       label:'Degviela',   src:'fuel'  },
+  { key:'gearbox',    label:'Ātrumkārba', src:'gear'  },
+  { key:'body',       label:'Virsbūve',   src:'bodyf' },
+  { key:'drivetrain', label:'Piedziņa',   src:'drive' }
+];
+function msOptions(f){
+  if(f.opts) return f.opts.slice();
+  var s = document.getElementById(f.src);
+  if(!s) return [];
+  var seen={}, out=[];
+  [].forEach.call(s.options, function(o){
     var v=(o.value||'').trim(); if(!v) return;
-    var k=v.toLowerCase(); if(seen[k]) return; seen[k]=1;
-    out += '<option value="'+esc(v)+'">'+esc(o.textContent.trim())+'</option>';
+    var k=v.toLowerCase(); if(seen[k]) return; seen[k]=1; out.push(v);
   });
-  return out;
+  return out.sort(sortModels);
 }
+async function msModelGroups(){
+  var g=[];
+  for(var i=0;i<MS.make.length;i++){
+    var mk=MS.make[i], list=await modelsFor(mk);
+    if(list.length) g.push({make:mk, models:list});
+  }
+  return g;
+}
+function msPickedHtml(key){
+  if(!MS[key].length) return '';
+  return MS[key].map(function(v){
+    var lbl = (key==='model') ? v.replace('|',' ') : v;
+    return '<span class="br2pick">'+esc(lbl)+'<b onclick="BRProfile.msDrop(\''+key+'\',\''+esc(v)+'\')">✕</b></span>';
+  }).join('');
+}
+function msWire(box){
+  box.querySelectorAll('.br2chip').forEach(function(b){
+    b.onclick=function(){
+      var k=b.dataset.k, v=b.dataset.v, i=MS[k].indexOf(v);
+      if(i===-1) MS[k].push(v); else MS[k].splice(i,1);
+      if(k==='make'){
+        MS.model = MS.model.filter(function(mm){ return MS.make.indexOf(mm.split('|')[0])!==-1; });
+        msRender('make'); msRender('model');
+      } else msRender(k);
+    };
+  });
+}
+async function msRender(key){
+  var f = MS_FIELDS.filter(function(x){return x.key===key;})[0];
+  var box = $('ms_'+key); if(!box||!f) return;
+  var pick = '<div class="br2picked">'+msPickedHtml(key)+'</div>';
+
+  if(key==='model'){
+    if(!MS.make.length){
+      box.innerHTML = pick + '<div class="br2hint">Vispirms izvēlies vismaz vienu marku.</div>';
+      return;
+    }
+    var q = (($('ms_q_model')||{}).value||'').trim().toLowerCase();
+    var groups = await msModelGroups();
+    var total=0, shown=0, html='';
+    groups.forEach(function(g){
+      var list = q ? g.models.filter(function(m){return m.toLowerCase().indexOf(q)!==-1;}) : g.models;
+      total += g.models.length; shown += list.length;
+      if(!list.length) return;
+      html += '<div class="msgrp">'+esc(g.make)+' <i>'+list.length+'</i></div><div class="br2chips" style="max-height:none">'
+            + list.map(function(m){
+                var v=g.make+'|'+m;
+                return '<button type="button" class="br2chip'+(MS.model.indexOf(v)!==-1?' on':'')+'" data-k="model" data-v="'+esc(v)+'">'+esc(m)+'</button>';
+              }).join('') + '</div>';
+    });
+    box.innerHTML = pick
+      + '<input class="br2i" id="ms_q_model" placeholder="Meklēt modeli (piem. X5)" autocomplete="off" value="'+esc(q)+'">'
+      + '<div class="br2hint">'+shown+' no '+total+' modeļiem · '+MS.make.length+' marka(s)</div>'
+      + (html||'<div class="br2hint">Nav atbilstošu modeļu.</div>')
+      + '<div style="margin-top:10px"><button class="br2btn g" onclick="BRProfile.msConfirm(\'model\')">Apstiprināt modeļus</button></div>';
+    var qi=$('ms_q_model');
+    if(qi){ qi.oninput=function(){ msRender('model'); }; if(q){ qi.focus(); qi.setSelectionRange(q.length,q.length);} }
+    msWire(box); return;
+  }
+
+  var opts = msOptions(f);
+  var long = opts.length > 18;
+  var qv = (($('ms_q_'+key)||{}).value||'').trim().toLowerCase();
+  var list = qv ? opts.filter(function(o){return o.toLowerCase().indexOf(qv)!==-1;}) : opts;
+  box.innerHTML = pick
+    + (long ? '<input class="br2i" id="ms_q_'+key+'" placeholder="Meklēt…" autocomplete="off" value="'+esc(qv)+'"><div class="br2hint">'+list.length+' no '+opts.length+'</div>' : '')
+    + '<div class="br2chips">'
+    + list.map(function(o){
+        return '<button type="button" class="br2chip'+(MS[key].indexOf(o)!==-1?' on':'')+'" data-k="'+key+'" data-v="'+esc(o)+'">'+esc(o)+'</button>';
+      }).join('')
+    + '</div>'
+    + '<div style="margin-top:10px"><button class="br2btn g" onclick="BRProfile.msConfirm(\''+key+'\')">Apstiprināt</button></div>';
+  if(long){ var q2=$('ms_q_'+key); if(q2){ q2.oninput=function(){ msRender(key); }; if(qv){ q2.focus(); q2.setSelectionRange(qv.length,qv.length);} } }
+  msWire(box);
+}
+BRProfile.msDrop = function(key,val){
+  var i=MS[key].indexOf(val); if(i!==-1) MS[key].splice(i,1);
+  if(key==='make'){
+    MS.model = MS.model.filter(function(mm){ return MS.make.indexOf(mm.split('|')[0])!==-1; });
+    msRender('make'); msRender('model');
+  } else msRender(key);
+};
+BRProfile.msConfirm = function(key){
+  var n=MS[key].length;
+  m('br2m-flt', n ? ('Apstiprināts: '+n+' izvēle'+(n===1?'':'s')) : 'Nekas nav izvēlēts.', n?'ok':'err');
+};
+
 function combo(id, kind, ph){
   return '<input class="br2i" id="'+id+'" list="brdl-'+kind+'" inputmode="decimal" autocomplete="off" placeholder="'+ph+'">';
 }
-BRProfile.newFilter = function(){ EDIT_ID=null; PICKED=[]; showForm(); };
+BRProfile.newFilter = function(){ EDIT_ID=null; MS={country:[],make:[],model:[],fuel:[],gearbox:[],body:[],drivetrain:[]}; showForm(); };
 BRProfile.editFilter = async function(id){
   var r = await supa.from('saved_filters').select('*').eq('id',id).maybeSingle();
   if(r.error||!r.data) return;
   EDIT_ID = id;
   var c = r.data.criteria||{};
-  PICKED = (c.models||[]).slice();
+  MS = {
+    country: c.countries || (c.country?[c.country]:[]),
+    make:    c.makes     || (c.make?[c.make]:[]),
+    model:   c.models_q  || [],
+    fuel:    c.fuels     || (c.fuel?[c.fuel]:[]),
+    gearbox: c.gearboxes || (c.gearbox?[c.gearbox]:[]),
+    body:    c.bodies    || (c.body?[c.body]:[]),
+    drivetrain: c.drivetrains || (c.drivetrain?[c.drivetrain]:[])
+  };
   showForm(r.data.name, c, r.data.notify_email);
 };
 async function showForm(name, c, notify){
   ensureDatalists();
   c = c||{};
   var box = $('br2FltForm'); if(!box) return;
+  var fields = MS_FIELDS.map(function(f){
+    return '<label class="br2l">'+f.label+'</label><div class="br2chipbox" id="ms_'+f.key+'"></div>';
+  }).join('');
   box.innerHTML =
-    '<div class="br2sec" id="br2FormSec">'
+    '<div class="br2sec">'
     + '<button class="br2back" onclick="BRProfile.cancelForm()">← Atpakaļ uz filtriem</button>'
     + '<h3>'+(EDIT_ID?'Labot filtru':'Jauns filtrs')+'</h3>'
-    + '<div class="s">Marka un modelis ir obligāti. Pārējie lauki nav obligāti.</div>'
+    + '<div class="s">Marka un modelis ir obligāti. Katrā laukā vari izvēlēties vairākas vērtības.</div>'
     + '<div class="br2msg" id="br2m-flt"></div>'
     + '<label class="br2l">Nosaukums</label><input class="br2i" id="f_name" placeholder="Piem. Lēts dīzeļa universālis">'
-    + '<div class="br2row3">'
-    +  '<div><label class="br2l">Valsts</label><select class="br2s" id="f_country">'
-    +    '<option value="">Visas</option><option value="LV">LV</option><option value="LT">LT</option><option value="EE">EE</option></select></div>'
-    +  '<div><label class="br2l">Marka *</label><select class="br2s" id="f_make">'+selOpts('make','Izvēlies marku')+'</select></div>'
-    +  '<div><label class="br2l">Virsbūve</label><select class="br2s" id="f_body">'+selOpts('bodyf','Visas')+'</select></div>'
-    + '</div>'
-    + '<label class="br2l">Modeļi *</label>'
-    + '<div class="br2chipbox">'
-    +  '<div class="br2picked" id="f_picked"></div>'
-    +  '<input class="br2i" id="f_msearch" placeholder="Meklēt modeli (piem. X5)" autocomplete="off" style="margin-bottom:10px">'
-    +  '<div class="br2chips" id="f_chips"><div class="br2hint">Vispirms izvēlies marku.</div></div>'
-    +  '<div style="margin-top:10px"><button class="br2btn g" id="f_confirm" onclick="BRProfile.confirmModels()">Apstiprināt modeļus</button></div>'
-    + '</div>'
-    + '<div class="br2row3">'
-    +  '<div><label class="br2l">Degviela</label><select class="br2s" id="f_fuel">'+selOpts('fuel','Visas')+'</select></div>'
-    +  '<div><label class="br2l">Ātrumkārba</label><select class="br2s" id="f_gear">'+selOpts('gear','Visas')+'</select></div>'
-    +  '<div><label class="br2l">Piedziņa</label><select class="br2s" id="f_drive">'+selOpts('drive','Visas')+'</select></div>'
-    + '</div>'
+    + fields
     + '<div class="br2row"><div><label class="br2l">Cena no</label>'+combo('f_pmin','price','0')+'</div>'
     +  '<div><label class="br2l">Cena līdz</label>'+combo('f_pmax','price','—')+'</div></div>'
     + '<div class="br2row"><div><label class="br2l">Gads no</label>'+combo('f_ymin','year','—')+'</div>'
@@ -2301,113 +2394,46 @@ async function showForm(name, c, notify){
     +  '<div><label class="br2l">Nobraukums līdz</label>'+combo('f_mmax','km','—')+'</div></div>'
     + '<div class="br2row"><div><label class="br2l">Tilpums no</label>'+combo('f_emin','engine','—')+'</div>'
     +  '<div><label class="br2l">Tilpums līdz</label>'+combo('f_emax','engine','—')+'</div></div>'
-    + '<label class="br2l">Paziņojumi</label><select class="br2s" id="f_notify">'
-    +  '<option value="1">Ieslēgti</option><option value="0">Izslēgti</option></select>'
+    + '<label class="br2l">Paziņojumi</label><select class="br2s" id="f_notify"><option value="1">Ieslēgti</option><option value="0">Izslēgti</option></select>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">'
     +  '<button class="br2btn g" onclick="BRProfile.saveFilter()">Saglabāt filtru</button>'
     +  '<button class="br2btn o" onclick="BRProfile.cancelForm()">Atcelt</button>'
     + '</div></div>';
 
-  var list = $('br2FltList'); if(list) list.style.display='none';
-
-  // prefill
+  var list=$('br2FltList'); if(list) list.style.display='none';
   if(name) $('f_name').value = name;
-  ['country','body','fuel','gear','drive'].forEach(function(k){
-    var map = {country:'country', body:'body', fuel:'fuel', gear:'gearbox', drive:'drivetrain'};
-    var el = $('f_'+k); if(el && c[map[k]]) el.value = c[map[k]];
-  });
   [['f_pmin','price_min'],['f_pmax','price_max'],['f_ymin','year_min'],['f_ymax','year_max'],
    ['f_mmin','km_min'],['f_mmax','km_max'],['f_emin','eng_min'],['f_emax','eng_max']].forEach(function(p){
-    if(c[p[1]] != null) $(p[0]).value = c[p[1]];
+    if(c[p[1]]!=null && $(p[0])) $(p[0]).value = c[p[1]];
   });
   $('f_notify').value = (notify===false) ? '0' : '1';
-
-  var fm = $('f_make');
-  fm.onchange = function(){ PICKED = []; paintChips(); };
-  if(c.make){ fm.value = c.make; }
-  await paintChips();
+  for(var i=0;i<MS_FIELDS.length;i++){ await msRender(MS_FIELDS[i].key); }
 }
-var CHIPLIST = [];
-async function paintChips(){
-  var make = $('f_make') ? $('f_make').value : '';
-  var chips = $('f_chips');
-  if(!chips) return;
-  if(!make){
-    CHIPLIST = [];
-    chips.innerHTML = '<div class="br2hint">Vispirms izvēlies marku.</div>';
-    paintPicked(); return;
-  }
-  chips.innerHTML = '<div class="br2hint">Ielādē modeļus…</div>';
-  CHIPLIST = await modelsFor(make);
-  var s = $('f_msearch');
-  if(s && !s._wired){
-    s._wired = true;
-    s.oninput = function(){ renderChips(); };
-  }
-  if(s) s.value = '';
-  renderChips();
-}
-function renderChips(){
-  var chips = $('f_chips'); if(!chips) return;
-  var s = $('f_msearch');
-  var q = (s && s.value || '').trim().toLowerCase();
-  var list = q ? CHIPLIST.filter(function(m){ return m.toLowerCase().indexOf(q) !== -1; }) : CHIPLIST;
-  if(!CHIPLIST.length){ chips.innerHTML = '<div class="br2hint">Šai markai nav modeļu.</div>'; return; }
-  if(!list.length){ chips.innerHTML = '<div class="br2hint">Nav modeļa, kas satur “'+esc(q)+'”.</div>'; return; }
-  chips.innerHTML = '<div class="br2hint" style="width:100%">'+list.length+' no '+CHIPLIST.length+' modeļiem'
-    + (q ? '' : ' — raksti augšā, lai atrastu ātrāk') + '</div>'
-    + list.map(function(mm){
-        var on = PICKED.indexOf(mm)!==-1;
-        return '<button type="button" class="br2chip'+(on?' on':'')+'" data-m="'+esc(mm)+'">'+esc(mm)+'</button>';
-      }).join('');
-  chips.querySelectorAll('.br2chip').forEach(function(b){
-    b.onclick = function(){
-      var v = b.dataset.m;
-      var i = PICKED.indexOf(v);
-      if(i===-1) PICKED.push(v); else PICKED.splice(i,1);
-      b.classList.toggle('on', PICKED.indexOf(v)!==-1);
-      paintPicked();
-    };
-  });
-  paintPicked();
-}
-function paintPicked(){
-  var p = $('f_picked'); if(!p) return;
-  p.innerHTML = PICKED.length
-    ? PICKED.map(function(mm){ return '<span class="br2pick">'+esc(mm)
-        +'<b onclick="BRProfile.dropModel(\''+esc(mm)+'\')">✕</b></span>'; }).join('')
-    : '';
-}
-BRProfile.dropModel = function(mm){
-  var i=PICKED.indexOf(mm); if(i!==-1) PICKED.splice(i,1);
-  paintPicked();
-  var c=$('f_chips'); if(c){ var b=c.querySelector('.br2chip[data-m="'+CSS.escape(mm)+'"]'); if(b) b.classList.remove('on'); }
-};
-BRProfile.confirmModels = function(){
-  paintPicked();
-  m('br2m-flt', PICKED.length ? ('Izvēlēti '+PICKED.length+' modeļi.') : 'Nav izvēlēts neviens modelis.', PICKED.length?'ok':'err');
-};
 BRProfile.cancelForm = function(){
   $('br2FltForm').innerHTML='';
   var l=$('br2FltList'); if(l) l.style.display='';
-  EDIT_ID=null; PICKED=[];
+  EDIT_ID=null;
+  MS={country:[],make:[],model:[],fuel:[],gearbox:[],body:[],drivetrain:[]};
 };
-function num(id){ var v=($(id).value||'').replace(/\s/g,'').replace(',','.'); return v===''?null:(isNaN(Number(v))?null:Number(v)); }
+function num(id){ var e=$(id); if(!e) return null; var v=(e.value||'').replace(/\s/g,'').replace(',','.'); return v===''?null:(isNaN(Number(v))?null:Number(v)); }
+
 BRProfile.saveFilter = async function(){
   m('br2m-flt','');
-  var make = $('f_make').value;
-  if(!make) return m('br2m-flt','Marka ir obligāta.');
-  if(!PICKED.length) return m('br2m-flt','Jāizvēlas vismaz viens modelis.');
+  if(!MS.make.length)  return m('br2m-flt','Jāizvēlas vismaz viena marka.');
+  if(!MS.model.length) return m('br2m-flt','Jāizvēlas vismaz viens modelis.');
   var crit = {
-    country:$('f_country').value||null, make:make, models:PICKED.slice(),
-    body:$('f_body').value||null, fuel:$('f_fuel').value||null,
-    gearbox:$('f_gear').value||null, drivetrain:$('f_drive').value||null,
+    countries: MS.country.slice(), makes: MS.make.slice(),
+    models_q:  MS.model.slice(),                                  // "Make|Model"
+    models:    MS.model.map(function(x){ return x.split('|')[1]; }),
+    fuels: MS.fuel.slice(), gearboxes: MS.gearbox.slice(),
+    bodies: MS.body.slice(), drivetrains: MS.drivetrain.slice(),
     price_min:num('f_pmin'), price_max:num('f_pmax'),
     year_min:num('f_ymin'),  year_max:num('f_ymax'),
     km_min:num('f_mmin'),    km_max:num('f_mmax'),
     eng_min:num('f_emin'),   eng_max:num('f_emax')
   };
-  var payload = { user_id:BR.user.id, name:($('f_name').value.trim() || (make+' '+PICKED.join(', ')).slice(0,60)),
+  var auto = MS.make.join(', ') + ' ' + crit.models.slice(0,3).join(', ');
+  var payload = { user_id:BR.user.id, name:($('f_name').value.trim()||auto).slice(0,70),
     criteria:crit, notify_email:$('f_notify').value==='1', updated_at:new Date().toISOString() };
   var r = EDIT_ID
     ? await supa.from('saved_filters').update(payload).eq('id',EDIT_ID).select()
@@ -2421,39 +2447,44 @@ BRProfile.delFilter = async function(id){
   renderFiltersHome();
 };
 
-/* ---- run a saved filter: show matching cars ---- */
 BRProfile.runFilter = async function(id){
-  var w = $('br2FltWrap');
+  var w=$('br2FltWrap');
   var r = await supa.from('saved_filters').select('*').eq('id',id).maybeSingle();
   if(r.error||!r.data) return;
-  var f = r.data, c = f.criteria||{};
+  var f=r.data, c=f.criteria||{};
   w.innerHTML = '<button class="br2back" onclick="BRProfile.tab(\'filters\')">← Atpakaļ uz filtriem</button>'
     + '<div style="font-weight:800;font-size:17px;margin-bottom:3px">'+esc(f.name)+'</div>'
     + '<div style="font-size:12px;color:#86868b;font-weight:500;margin-bottom:16px">'+esc(describe(c))+'</div>'
     + '<div id="br2Res"><div class="br2empty">Meklē…</div></div>';
 
-  var q = supa.from('v_listings')
-    .select('car_id,make,model,year,last_price,last_mileage,fuel,photos')
-    .eq('make', c.make);
-  if(c.models && c.models.length) q = q.in('model', c.models);
-  if(c.country)    q = q.eq('country', c.country);
-  if(c.body)       q = q.eq('body', c.body);
-  if(c.fuel)       q = q.eq('fuel', c.fuel);
-  if(c.gearbox)    q = q.eq('gearbox', c.gearbox);
-  if(c.drivetrain) q = q.eq('drivetrain', c.drivetrain);
-  if(c.price_min!=null) q = q.gte('last_price', c.price_min);
-  if(c.price_max!=null) q = q.lte('last_price', c.price_max);
-  if(c.year_min!=null)  q = q.gte('year', c.year_min);
-  if(c.year_max!=null)  q = q.lte('year', c.year_max);
-  if(c.km_min!=null)    q = q.gte('last_mileage', c.km_min);
-  if(c.km_max!=null)    q = q.lte('last_mileage', c.km_max);
+  var q = supa.from('v_listings').select('car_id,make,model,year,last_price,last_mileage,fuel,photos');
+  var arr = function(a, one){ return (a && a.length) ? a : (one ? [one] : []); };
+  var IN = function(col, vals){ if(vals.length) q = q.in(col, vals); };
+  IN('make',       arr(c.makes, c.make));
+  IN('model',      arr(c.models, null));
+  IN('country',    arr(c.countries, c.country));
+  IN('fuel',       arr(c.fuels, c.fuel));
+  IN('gearbox',    arr(c.gearboxes, c.gearbox));
+  IN('body',       arr(c.bodies, c.body));
+  IN('drivetrain', arr(c.drivetrains, c.drivetrain));
+  if(c.price_min!=null) q=q.gte('last_price',c.price_min);
+  if(c.price_max!=null) q=q.lte('last_price',c.price_max);
+  if(c.year_min!=null)  q=q.gte('year',c.year_min);
+  if(c.year_max!=null)  q=q.lte('year',c.year_max);
+  if(c.km_min!=null)    q=q.gte('last_mileage',c.km_min);
+  if(c.km_max!=null)    q=q.lte('last_mileage',c.km_max);
   var res = await q.order('last_price',{ascending:true}).limit(60);
 
-  var box = $('br2Res'); if(!box) return;
+  var box=$('br2Res'); if(!box) return;
   if(res.error){ box.innerHTML='<div class="br2empty">Kļūda: '+esc(res.error.message)+'</div>'; return; }
   var rows = res.data||[];
+  // "Make|Model" pairs -> only keep rows whose make+model combo was actually picked
+  if(c.models_q && c.models_q.length){
+    var okset = {}; c.models_q.forEach(function(x){ okset[x.toLowerCase()]=1; });
+    rows = rows.filter(function(r2){ return okset[(r2.make+'|'+r2.model).toLowerCase()]; });
+  }
   box.innerHTML = '<div style="font-size:12.5px;font-weight:700;color:#86868b;margin-bottom:12px">'
-    + rows.length + ' atbilstoši auto</div>' + cardsHtml(rows, false);
+    + rows.length + ' atbilstoši auto</div>' + cardsHtml(rows,false);
 };
 
 /* ---- boot ---- */
