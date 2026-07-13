@@ -2697,5 +2697,273 @@ footer{background:var(--card2);color:var(--mut);border-top:.5px solid var(--line
 /* hero stat: mirrors the real live catalogue count (read-only). */
 (function(){setInterval(function(){var el=document.getElementById("heroStat");if(!el)return;var n=(typeof catalogTotal!=="undefined"&&catalogTotal)?catalogTotal:null;if(!n)return;var w="";try{w=T().results;}catch(e){}el.innerHTML="<b>"+n.toLocaleString("lv-LV")+"</b> "+w+" \u00B7 LV \u00B7 EE \u00B7 LT";},700);})();
 </script>
+<!-- ============ STAGE 6: main-panel multi-select + datalist dedupe (JS ONLY) ============ -->
+<style id="br6css">
+/* namespaced; does not touch the design task's <style> block */
+.br6box{border:1px solid var(--line2,#dfdfe4);border-radius:14px;padding:10px;margin-bottom:10px;
+  background:var(--bg2,#fbfbfd);font-family:Manrope,system-ui,sans-serif}
+.br6chips{display:flex;flex-wrap:wrap;gap:6px;max-height:190px;overflow-y:auto;align-content:flex-start}
+.br6chip{border:1px solid var(--line2,#dfdfe4);background:var(--bg,#fff);border-radius:999px;padding:6px 12px;
+  font-size:12px;font-weight:600;cursor:pointer;font-family:Manrope,sans-serif;color:var(--ink,#1d1d1f);user-select:none}
+.br6chip:hover{border-color:var(--ink,#1d1d1f)}
+.br6chip.on{background:#16a06a;color:#fff;border-color:#16a06a}
+.br6chip.on:before{content:"\2713  "}
+.br6picked{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.br6pick{display:inline-flex;align-items:center;gap:5px;background:var(--ink,#1d1d1f);color:#fff;border-radius:999px;
+  padding:5px 7px 5px 11px;font-size:11.5px;font-weight:700}
+.br6pick b{cursor:pointer;background:rgba(255,255,255,.22);width:15px;height:15px;border-radius:50%;
+  display:grid;place-items:center;font-size:9px}
+.br6hint{font-size:11px;color:var(--mut,#86868b);font-weight:600;margin:6px 0;width:100%}
+.br6grp{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--ink,#1d1d1f);margin:8px 0 5px;width:100%}
+.br6grp i{font-style:normal;color:var(--mut,#86868b)}
+.br6q{width:100%;border:1px solid var(--line2,#dfdfe4);border-radius:10px;padding:8px 10px;font-size:12px;
+  margin-bottom:8px;font-family:Manrope,sans-serif;background:var(--bg,#fff);color:var(--ink,#1d1d1f)}
+.br6ok{background:#16a06a;color:#fff;border:none;border-radius:999px;padding:8px 16px;font-size:12px;
+  font-weight:700;cursor:pointer;font-family:Manrope,sans-serif;margin-top:8px}
+.br6lab{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--mut,#86868b);display:block;margin:10px 0 5px}
+</style>
+<script>
+(function(){
+"use strict";
+function ready(fn){
+  if(window.BR && window.BR.supa && document.getElementById('make')) fn();
+  else setTimeout(function(){ ready(fn); }, 150);
+}
+ready(function(){
+
+var $ = function(i){ return document.getElementById(i); };
+var esc = function(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); };
+
+/* ---------------------------------------------------------------
+   BUG 1 — "duplicate" values in the numeric dropdowns.
+   Not duplicates: Chrome renders a <option value> AND its differing
+   <label> as two columns, so value="10000" label="10 000" LOOKS like
+   two rows. Below 10 000 there's no space so they matched and looked
+   fine. Fix = label must equal value. One clean list per field.
+---------------------------------------------------------------- */
+function fixDatalists(){
+  document.querySelectorAll('datalist[id^="brdl-"]').forEach(function(dl){
+    var seen = {}, keep = [];
+    [].forEach.call(dl.options, function(o){
+      var v = (o.value||'').trim();
+      if(!v || seen[v]) return;
+      seen[v] = 1; keep.push(v);
+    });
+    dl.innerHTML = keep.map(function(v){
+      return '<option value="'+esc(v)+'"></option>';   // no label -> no phantom column
+    }).join('');
+  });
+}
+
+/* ---------------------------------------------------------------
+   BUG 2 — main panel multi-select.
+   The site's own query builder emits `make=eq.X`. We leave its code
+   completely alone: the native <select>s are emptied (so it emits no
+   eq clause) and we rewrite the PostgREST URL in the fetch layer to
+   an IN-list. Pagination over 94k is never touched.
+---------------------------------------------------------------- */
+var FIELDS = [
+  { key:'country',    col:'country',    label:'Valsts',      sel:null,    fixed:['LV','LT','EE'] },
+  { key:'make',       col:'make',       label:'Marka',       sel:'make'   },
+  { key:'model',      col:'model',      label:'Modeļi',      sel:'model'  },
+  { key:'fuel',       col:'fuel',       label:'Degviela',    sel:'fuel'   },
+  { key:'gearbox',    col:'gearbox',    label:'Ātrumkārba',  sel:'gear'   },
+  { key:'body',       col:'body',       label:'Virsbūve',    sel:'bodyf'  },
+  { key:'drivetrain', col:'drivetrain', label:'Piedziņa',    sel:'drive'  }
+];
+var SEL = { country:[], make:[], model:[], fuel:[], gearbox:[], body:[], drivetrain:[] };
+window.BR6 = { sel: SEL };
+
+function optsOf(f){
+  if(f.fixed) return f.fixed.slice();
+  var s = $(f.sel);
+  if(!s) return [];
+  var seen={}, out=[];
+  [].forEach.call(s.options, function(o){
+    var v=(o.value||'').trim(); if(!v) return;
+    var k=v.toLowerCase(); if(seen[k]) return; seen[k]=1; out.push(v);
+  });
+  return out.sort(function(a,b){
+    var an=/^[0-9]/.test(a), bn=/^[0-9]/.test(b);
+    if(an&&bn){ var d=parseFloat(a)-parseFloat(b); if(d) return d; }
+    if(an&&!bn) return -1;
+    if(!an&&bn) return 1;
+    return a.localeCompare(b,'lv',{numeric:true,sensitivity:'base'});
+  });
+}
+
+/* models for ALL selected makes, grouped */
+async function modelGroups(){
+  var out=[];
+  for(var i=0;i<SEL.make.length;i++){
+    var mk=SEL.make[i];
+    var list = (typeof modelsFor==='function') ? await modelsFor(mk) : [];
+    if(list.length) out.push({make:mk, models:list});
+  }
+  return out;
+}
+
+function pickedHtml(key){
+  if(!SEL[key].length) return '';
+  return SEL[key].map(function(v){
+    var lbl = (key==='model') ? v.replace('|',' ') : v;
+    return '<span class="br6pick">'+esc(lbl)+'<b onclick="BR6.drop(\''+key+'\',\''+esc(v)+'\')">✕</b></span>';
+  }).join('');
+}
+
+async function render(key){
+  var f = FIELDS.filter(function(x){return x.key===key;})[0];
+  var box = $('br6_'+key); if(!box||!f) return;
+  var pick = '<div class="br6picked">'+pickedHtml(key)+'</div>';
+
+  if(key==='model'){
+    if(!SEL.make.length){
+      box.innerHTML = pick + '<div class="br6hint">Vispirms izvēlies marku.</div>';
+      return;
+    }
+    var q = (($('br6q_model')||{}).value||'').trim().toLowerCase();
+    var groups = await modelGroups();
+    var html='', tot=0, shown=0;
+    groups.forEach(function(g){
+      var list = q ? g.models.filter(function(m){return m.toLowerCase().indexOf(q)!==-1;}) : g.models;
+      tot += g.models.length; shown += list.length;
+      if(!list.length) return;
+      html += '<div class="br6grp">'+esc(g.make)+' <i>'+list.length+'</i></div><div class="br6chips" style="max-height:none">'
+           + list.map(function(m){
+               var v = g.make+'|'+m;
+               return '<button type="button" class="br6chip'+(SEL.model.indexOf(v)!==-1?' on':'')+'" data-k="model" data-v="'+esc(v)+'">'+esc(m)+'</button>';
+             }).join('') + '</div>';
+    });
+    box.innerHTML = pick
+      + '<input class="br6q" id="br6q_model" placeholder="Meklēt modeli (piem. X5)" autocomplete="off" value="'+esc(q)+'">'
+      + '<div class="br6hint">'+shown+' no '+tot+' modeļiem</div>'
+      + (html || '<div class="br6hint">Nav atbilstošu modeļu.</div>')
+      + '<button class="br6ok" onclick="BR6.confirm()">Apstiprināt</button>';
+    var qi=$('br6q_model');
+    if(qi){ qi.oninput=function(){ render('model'); }; if(q){ qi.focus(); qi.setSelectionRange(q.length,q.length); } }
+    wire(box); return;
+  }
+
+  var opts = optsOf(f), long = opts.length > 18;
+  var qv = (($('br6q_'+key)||{}).value||'').trim().toLowerCase();
+  var list = qv ? opts.filter(function(o){return o.toLowerCase().indexOf(qv)!==-1;}) : opts;
+  box.innerHTML = pick
+    + (long ? '<input class="br6q" id="br6q_'+key+'" placeholder="Meklēt…" autocomplete="off" value="'+esc(qv)+'"><div class="br6hint">'+list.length+' no '+opts.length+'</div>' : '')
+    + '<div class="br6chips">'
+    + list.map(function(o){
+        return '<button type="button" class="br6chip'+(SEL[key].indexOf(o)!==-1?' on':'')+'" data-k="'+key+'" data-v="'+esc(o)+'">'+esc(o)+'</button>';
+      }).join('')
+    + '</div>'
+    + '<button class="br6ok" onclick="BR6.confirm()">Apstiprināt</button>';
+  if(long){ var q2=$('br6q_'+key); if(q2){ q2.oninput=function(){ render(key); }; if(qv){ q2.focus(); q2.setSelectionRange(qv.length,qv.length);} } }
+  wire(box);
+}
+
+function wire(box){
+  box.querySelectorAll('.br6chip').forEach(function(b){
+    b.onclick=function(){
+      var k=b.dataset.k, v=b.dataset.v, i=SEL[k].indexOf(v);
+      if(i===-1) SEL[k].push(v); else SEL[k].splice(i,1);
+      if(k==='make'){
+        SEL.model = SEL.model.filter(function(mm){ return SEL.make.indexOf(mm.split('|')[0])!==-1; });
+        render('make'); render('model');
+      } else render(k);
+      syncNative();
+    };
+  });
+}
+
+BR6.drop = function(key,val){
+  var i=SEL[key].indexOf(val); if(i!==-1) SEL[key].splice(i,1);
+  if(key==='make'){
+    SEL.model = SEL.model.filter(function(mm){ return SEL.make.indexOf(mm.split('|')[0])!==-1; });
+    render('make'); render('model');
+  } else render(key);
+  syncNative();
+};
+
+/* Keep the site's own <select>s EMPTY so its query builder emits no eq clause.
+   Our IN-lists are injected in the fetch layer instead. */
+function syncNative(){
+  FIELDS.forEach(function(f){
+    if(!f.sel) return;
+    var s=$(f.sel); if(!s) return;
+    s.value = '';
+  });
+}
+
+BR6.confirm = function(){
+  syncNative();
+  var btn = $('doSearchBtn');
+  if(btn) btn.click();       // run the search with the new IN-lists
+};
+
+/* ---- the actual multi-value query: rewrite the PostgREST URL ---- */
+function rewrite(url){
+  try{
+    if(url.indexOf('/rest/v1/v_listings') === -1) return url;
+    FIELDS.forEach(function(f){
+      var vals = SEL[f.key];
+      if(f.key === 'model'){
+        vals = SEL.model.map(function(x){ return x.split('|')[1]; });
+      }
+      if(!vals || !vals.length) return;
+      var enc = vals.map(function(v){ return '"'+String(v).replace(/"/g,'\\"')+'"'; }).join(',');
+      var clause = f.col + '=in.(' + encodeURIComponent('') + enc + ')';
+      var re = new RegExp('(^|[?&])'+f.col+'=eq\\.[^&]*');
+      if(re.test(url)) url = url.replace(re, function(_m,p1){ return p1 + clause; });
+      else url += (url.indexOf('?')===-1 ? '?' : '&') + clause;
+    });
+  }catch(e){}
+  return url;
+}
+var _fetch = window.fetch;
+window.fetch = function(input, init){
+  try{
+    if(typeof input === 'string'){ input = rewrite(input); }
+    else if(input && input.url){ input = new Request(rewrite(input.url), input); }
+  }catch(e){}
+  return _fetch.call(this, input, init);
+};
+
+/* ---- mount the chip UI above the native selects, and hide them ---- */
+function mount(){
+  if($('br6_make')) return;
+  var anchor = $('make');
+  if(!anchor) return;
+  var host = document.createElement('div');
+  host.id = 'br6host';
+  host.innerHTML = FIELDS.map(function(f){
+    return '<label class="br6lab">'+esc(f.label)+(f.key==='make'||f.key==='model'?'':'')+'</label>'
+         + '<div class="br6box" id="br6_'+f.key+'"></div>';
+  }).join('');
+  anchor.parentNode.insertBefore(host, anchor);
+
+  // hide the originals (keep them in the DOM: the site's code still reads them)
+  FIELDS.forEach(function(f){
+    if(!f.sel) return;
+    var s=$(f.sel); if(!s) return;
+    s.style.display='none';
+    var lab = s.previousElementSibling;
+    if(lab && lab.tagName==='LABEL') lab.style.display='none';
+  });
+
+  FIELDS.forEach(function(f){ render(f.key); });
+  fixDatalists();
+}
+
+mount();
+setTimeout(mount, 1200);
+setTimeout(fixDatalists, 2000);
+setTimeout(fixDatalists, 5000);
+
+});
+})();
+</script>
+<!-- ============ END STAGE 6 ============ -->
+
 </body>
 </html>
