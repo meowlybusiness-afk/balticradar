@@ -248,12 +248,15 @@
     font-weight:800;padding:1px 7px;line-height:16px}
   #msdd{position:fixed;z-index:10000;display:none;background:var(--card);border:1px solid var(--line);
     border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.38);padding:10px;
-    max-height:min(58vh,420px);display:none;flex-direction:column;font-family:inherit}
+    max-height:min(70vh,460px);display:none;flex-direction:column;font-family:inherit;overscroll-behavior:contain}
   #msdd.open{display:flex}
   #msdd .msdd-s{width:100%;background:#fff;color:#111;border:1px solid #d8d8de;border-radius:10px;
     padding:9px 11px;font-size:13.5px;font-family:inherit;outline:none;margin-bottom:8px}
   #msdd .msdd-s:focus{border-color:var(--accent)}
-  #msdd .msdd-body{overflow-y:auto;flex:1 1 auto;padding:2px}
+  #msdd .msdd-body{flex:1 1 auto;min-height:0;max-height:320px;overflow-y:auto;overscroll-behavior:contain;
+    -webkit-overflow-scrolling:touch;padding:2px 2px 2px 0;scrollbar-width:thin}
+  #msdd .msdd-s{flex:0 0 auto;position:sticky;top:0}
+  #msdd .msdd-foot{flex:0 0 auto}
   #msdd .msdd-g{font-size:11px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;
     color:var(--mut,#888);margin:8px 2px 6px}
   #msdd .msdd-g:first-child{margin-top:2px}
@@ -1455,6 +1458,19 @@ function msPaintBody(q){
   });
   body.innerHTML = any?html:'<div class="msdd-empty">'+esc(MST().none)+'</div>';
 }
+function msAnchor(){return _msOpen?document.querySelector("#msf-"+_msOpen+" .msf-btn"):null;}
+function msPosition(){                       // keep the panel glued to its control while the page scrolls
+  const dd=_msDD, btn=msAnchor(); if(!dd||!btn||!_msOpen)return;
+  const r=btn.getBoundingClientRect();
+  if(r.bottom<0||r.top>window.innerHeight){dd.style.visibility="hidden";return;}   // control scrolled off-screen
+  dd.style.visibility="";
+  const w=Math.min(Math.max(r.width,_msOpen==="model"?300:250), Math.max(240,window.innerWidth-24));
+  let left=Math.min(r.left, window.innerWidth-w-12); left=Math.max(12,left);
+  dd.style.width=w+"px"; dd.style.left=left+"px";
+  const below=window.innerHeight-r.bottom-14, above=r.top-14;
+  if(below<240 && above>below){ dd.style.top=""; dd.style.bottom=(window.innerHeight-r.top+6)+"px"; dd.style.maxHeight=Math.min(460,above)+"px"; }
+  else { dd.style.bottom=""; dd.style.top=(r.bottom+6)+"px"; dd.style.maxHeight=Math.min(460,below)+"px"; }
+}
 function msOpen(k,btn){
   if(_msOpen===k){msClose();return;}
   _msOpen=k; _msSel=_arr(F[k]).slice();
@@ -1465,17 +1481,11 @@ function msOpen(k,btn){
   si.style.display=MSDEF[k].search?"block":"none";
   msPaintBody("");
   dd.classList.add("open");
-  const r=btn.getBoundingClientRect();
-  const w=Math.min(Math.max(r.width,k==="model"?300:250), Math.max(240,window.innerWidth-24));
-  let left=Math.min(r.left, window.innerWidth-w-12); left=Math.max(12,left);
-  dd.style.width=w+"px"; dd.style.left=left+"px";
-  const below=window.innerHeight-r.bottom-14;
-  if(below<220 && r.top>below){ dd.style.top=""; dd.style.bottom=(window.innerHeight-r.top+6)+"px"; dd.style.maxHeight=Math.min(420,r.top-20)+"px"; }
-  else { dd.style.bottom=""; dd.style.top=(r.bottom+6)+"px"; dd.style.maxHeight=Math.min(420,below)+"px"; }
-  msRefreshAll();
+  msRefreshAll();          // re-renders the control buttons, so position AFTER it (the old node is gone)
+  msPosition();
   if(MSDEF[k].search)setTimeout(()=>si.focus(),20);
 }
-function msClose(){ _msOpen=null; if(_msDD)_msDD.classList.remove("open"); msRefreshAll(); }
+function msClose(){ _msOpen=null; if(_msDD){_msDD.classList.remove("open"); _msDD.style.visibility="";} msRefreshAll(); }
 function msCommit(){
   const k=_msOpen; if(!k){msClose();return;}
   const before=_arr(F[k]).join("|"), now=_msSel.slice();
@@ -1495,8 +1505,8 @@ document.addEventListener("click",e=>{
   if(_msOpen && !e.target.closest("#msdd")) msClose();
 });
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&_msOpen)msClose();});
-window.addEventListener("resize",()=>{if(_msOpen)msClose();});
-window.addEventListener("scroll",()=>{if(_msOpen)msClose();},true);
+window.addEventListener("resize",()=>{if(_msOpen)msPosition();});
+window.addEventListener("scroll",()=>{if(_msOpen)msPosition();},{passive:true});   // follow the page, never close
 msRefreshAll();
 
 function paintPills(){[...document.querySelectorAll(".pills button")].forEach(x=>{
@@ -2164,8 +2174,18 @@ function ensureDatalists(){
   var wrap = document.createElement('div');
   wrap.style.display='none';
   wrap.innerHTML = Object.keys(PRESETS).map(function(k){
-    return '<datalist id="brdl-'+k+'">' + PRESETS[k].map(function(v){
-      return '<option value="'+v+'">'+(k==='engine'? v+' l' : nf(v))+'</option>';
+    // Dedupe on the NUMBER, then render ONE option per value.
+    // The label must equal the value: a formatted label (nf(10000) -> "10 000") made the browser
+    // show value AND label, which read as duplicate entries for every 5-digit number.
+    var seen = {}, vals = [];
+    PRESETS[k].forEach(function(v){
+      var n = Number(v); if(!isFinite(n)) return;
+      var key = String(n); if(seen[key]) return;
+      seen[key] = 1; vals.push(n);
+    });
+    return '<datalist id="brdl-'+k+'">' + vals.map(function(n){
+      var s = (k==='engine') ? n.toFixed(1) : String(n);   // clean numeric value, parseable by the query builder
+      return '<option value="'+s+'">'+s+'</option>';
     }).join('') + '</datalist>';
   }).join('');
   document.body.appendChild(wrap);
