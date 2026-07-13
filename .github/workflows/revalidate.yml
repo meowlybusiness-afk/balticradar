@@ -1,8 +1,11 @@
 name: BalticRadar revalidate
 
-# Re-checks listings against the source and SOFT-HIDES the expired ones.
-# Never deletes. 420 checks/hour x 24 = ~10,000/day -> full 93k sweep in ~9-10 days,
-# then it loops round to the oldest again and keeps the catalogue fresh forever.
+# Re-checks listings against the source and SOFT-HIDES the expired ones. Never deletes.
+#
+# TRANSPORT (2026-07-13): there is NO proxy secret in this repo - the DataImpulse proxy
+# only exists on the owner's PC (proxy.txt next to balticradar.py). GitHub's datacenter IP
+# is hard-blocked by autoplius + auto24, so those two go through ScraperAPI. ss.lv answers
+# GitHub's IP directly and costs nothing.
 on:
   schedule:
     - cron: "17 * * * *"      # hourly, off the hour so it doesn't collide with collect
@@ -16,6 +19,12 @@ on:
         default: "420"
       only_source:
         description: "ss.lv | autoplius | auto24 (blank = all)"
+        default: ""
+      diag:
+        description: "1 = print http/title/marker evidence for every check"
+        default: "0"
+      selftest:
+        description: "comma-separated URLs to classify + dump evidence (writes nothing)"
         default: ""
 
 permissions:
@@ -49,10 +58,9 @@ jobs:
           # Scheduled runs apply changes. Manual runs default to a dry run.
           DRY_RUN:      ${{ github.event_name == 'schedule' && '0' || inputs.dry_run }}
           BATCH:        ${{ inputs.batch || '420' }}
-          # Scheduled runs stick to ss.lv for now: GitHub's datacenter IP is blocked by
-          # autoplius + auto24 (verified: 8/8 consecutive blocks each). Once PROXY_URL is
-          # set, change this to '' so LT/EE get revalidated too.
-          ONLY_SOURCE:  ${{ github.event_name == 'schedule' && 'ss.lv' || inputs.only_source }}
+          ONLY_SOURCE:  ${{ inputs.only_source }}
+          DIAG:         ${{ inputs.diag }}
+          SELFTEST:     ${{ inputs.selftest }}
         run: python revalidate.py
 
       # The user has been burned by silent failures - make a break loud.
