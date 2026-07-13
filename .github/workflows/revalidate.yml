@@ -49,7 +49,10 @@ jobs:
           # Scheduled runs apply changes. Manual runs default to a dry run.
           DRY_RUN:      ${{ github.event_name == 'schedule' && '0' || inputs.dry_run }}
           BATCH:        ${{ inputs.batch || '420' }}
-          ONLY_SOURCE:  ${{ inputs.only_source }}
+          # Scheduled runs stick to ss.lv for now: GitHub's datacenter IP is blocked by
+          # autoplius + auto24 (verified: 8/8 consecutive blocks each). Once PROXY_URL is
+          # set, change this to '' so LT/EE get revalidated too.
+          ONLY_SOURCE:  ${{ github.event_name == 'schedule' && 'ss.lv' || inputs.only_source }}
         run: python revalidate.py
 
       # The user has been burned by silent failures - make a break loud.
