@@ -1577,7 +1577,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
   // Flip to true ONLY after Google is enabled in Supabase > Auth > Providers.
   // While false the button is hidden, because signInWithOAuth navigates away and
   // Supabase renders its own raw JSON error page that JS cannot intercept.
-  var GOOGLE_ENABLED = false;
+  var GOOGLE_ENABLED = true;
 
   BR.google = async function(){
     if(!GOOGLE_ENABLED){
