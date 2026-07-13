@@ -509,26 +509,107 @@ function postedTxt(c){ const d=c.posted||c.first_seen; if(d){try{return new Date
 // Estimate a fair price from comparable cars already in the DB (same make+model,
 // year within +/-2). Needs >=5 comparables, else no rating shown (avoids noise on thin data).
 function median(a){const s=a.slice().sort((x,y)=>x-y);return s.length?s[Math.floor(s.length/2)]:null;}
-function rateprice(c){
-  if(c.last_price==null||!c.make||!c.model)return null;
-  const same=AGG().filter(x=>x.make===c.make&&x.model===c.model&&x.last_price!=null);
-  let grp=same.filter(x=>Math.abs((x.year||0)-(c.year||0))<=2);
-  if(grp.length<5)grp=same;
-  if(grp.length<5)return null;
-  // prefer comparables with similar mileage (like mobile.de factors mileage in)
-  if(c.last_mileage!=null){
-    const band=grp.filter(x=>x.last_mileage!=null&&Math.abs(x.last_mileage-c.last_mileage)<=Math.max(40000,c.last_mileage*0.35));
-    if(band.length>=4)grp=band;
+
+/* ============================ PRICE RATING (market valuation) ============================
+   The old rater was broken in three ways, which is why a 132k-km car could be flagged
+   "too expensive" while a 192k-km car of the same year was a "great price":
+     1. it rated against `sampleCars` - a ~1000-car browser SAMPLE (only ~25 BMW 320s),
+        not the real market (1000+ BMW 320s);
+     2. it lumped EVERY body type together - a coupe was priced against estates and
+        sedans - and never normalised "coupe" vs "Kupeja" / "automatic" vs "Automātiskā",
+        so the cohort was incoherent by construction;
+     3. it DOUBLE-COUNTED mileage: it narrowed to a similar-mileage band and then ALSO
+        shifted the median by mileage again, which punished low-mileage cars.
+
+   New model (the mobile.de approach: compare against genuinely comparable listings,
+   controlling for the things that actually drive value):
+     - comparables = the WHOLE market for that make+model, pulled from the DB and cached;
+     - cohort narrowed by NORMALISED body -> fuel -> gearbox (relaxing only if too thin);
+     - expected price from a least-squares fit of  ln(price) ~ age + mileage, so age and
+       mileage are each priced ONCE, from the market's own depreciation curve;
+     - no badge at all when the data is too thin (a wrong badge is worse than none).
+========================================================================================= */
+const _COMP={};                      // "make|model" -> full market rows (cached)
+async function compPool(make,model){
+  const k=make+"|"+model;
+  if(_COMP[k])return _COMP[k];
+  try{
+    const u=`${SB_URL}/rest/v1/v_listings?select=year,last_price,last_mileage,body,fuel,gearbox`
+      +`&make=eq.${encodeURIComponent(make)}&model=eq.${encodeURIComponent(model)}`
+      +`&last_price=gte.300&limit=800`;   // >=300: keep parse artefacts (1 EUR cars) out of the valuation
+    const r=await fetch(u,{headers:SBH,cache:"no-store"});
+    const rows=r.ok?await r.json():[];
+    _COMP[k]=Array.isArray(rows)?rows:[];
+  }catch(e){_COMP[k]=[];}
+  return _COMP[k];
+}
+// least squares for ln(price) = b0 + b1*age + b2*(km/100k)
+function _ols(rows){
+  const S=[[0,0,0],[0,0,0],[0,0,0]],T=[0,0,0];
+  for(const r of rows){const x=[1,r.a,r.m];
+    for(let i=0;i<3;i++){T[i]+=x[i]*r.y;for(let j=0;j<3;j++)S[i][j]+=x[i]*x[j];}}
+  const A=[[S[0][0],S[0][1],S[0][2],T[0]],[S[1][0],S[1][1],S[1][2],T[1]],[S[2][0],S[2][1],S[2][2],T[2]]];
+  for(let i=0;i<3;i++){
+    let p=i;for(let k=i+1;k<3;k++)if(Math.abs(A[k][i])>Math.abs(A[p][i]))p=k;
+    if(Math.abs(A[p][i])<1e-9)return null;
+    const t=A[i];A[i]=A[p];A[p]=t;
+    for(let k=i+1;k<3;k++){const f=A[k][i]/A[i][i];for(let j=i;j<4;j++)A[k][j]-=f*A[i][j];}
   }
-  let med=median(grp.map(x=>x.last_price)); if(!med)return null;
-  // nudge expected price by how this car's mileage compares to the group (lower km -> worth more)
-  if(c.last_mileage!=null){
-    const mmed=median(grp.map(x=>x.last_mileage).filter(m=>m!=null));
-    if(mmed>0){const adj=Math.max(-0.25,Math.min(0.25,(mmed-c.last_mileage)/mmed*0.6));med=med*(1+adj);}
+  const b=[0,0,0];
+  for(let i=2;i>=0;i--){let s=A[i][3];for(let j=i+1;j<3;j++)s-=A[i][j]*b[j];b[i]=s/A[i][i];}
+  return b.every(v=>isFinite(v))?b:null;
+}
+const MINCOMP=8;
+function rateWithPool(c,pool){
+  if(c.last_price==null||!pool||pool.length<MINCOMP)return null;
+  // narrow by the attributes that actually move price - NORMALISED across sources
+  const keep=(arr,fn,val)=>{if(!val)return arr;const t=arr.filter(x=>fn(x)===val);return t.length>=MINCOMP?t:arr;};
+  let g=pool.filter(x=>x.last_price>0);
+  g=keep(g,x=>norm("body",x.body),norm("body",c.body));
+  g=keep(g,x=>norm("fuel",x.fuel),norm("fuel",c.fuel));
+  g=keep(g,x=>norm("gear",x.gearbox),norm("gear",c.gearbox));
+  if(g.length<MINCOMP)return null;
+  const Y=new Date().getFullYear();
+  let exp=null;
+  let rows=g.filter(x=>x.last_price>0&&x.year&&x.last_mileage!=null)
+            .map(x=>({a:Y-x.year,m:x.last_mileage/1e5,y:Math.log(x.last_price)}));
+  if(rows.length>=MINCOMP&&c.year&&c.last_mileage!=null){
+    // trim the extreme 5% at each end so one freak listing can't bend the curve
+    const ys=rows.map(r=>r.y).sort((a,b)=>a-b);
+    const lo=ys[Math.floor(ys.length*0.05)], hi=ys[Math.ceil(ys.length*0.95)-1];
+    const tr=rows.filter(r=>r.y>=lo&&r.y<=hi); if(tr.length>=MINCOMP)rows=tr;
+    const b=_ols(rows)||[0,0,0];
+    // Clamp to economically possible depreciation. On a small, noisy cohort a free fit can
+    // produce a POSITIVE mileage coefficient (more km -> dearer), which is what made the old
+    // rater punish low-mileage cars. Older and higher-mileage must never raise the value.
+    const b1=Math.min(-0.02,Math.max(-0.25,b[1]));     // per year of age
+    const b2=Math.min(-0.03,Math.max(-0.45,b[2]));     // per 100k km
+    // robust intercept (median residual) -> pins the market LEVEL without chasing outliers
+    const b0=median(rows.map(r=>r.y-b1*r.a-b2*r.m));
+    if(b0!=null)exp=Math.exp(b0+b1*(Y-c.year)+b2*(c.last_mileage/1e5));
   }
-  const dev=(c.last_price-med)/med;
-  const k = dev<=-0.18?"vg":dev<=-0.07?"g":dev<0.07?"f":dev<0.18?"h":"op";
-  return {k,label:(RATEL[lang]||RATEL.en)[k]};
+  if(!(exp>0)){const px=g.map(x=>x.last_price).filter(p=>p>0);if(px.length<MINCOMP)return null;exp=median(px);}
+  if(!(exp>=300&&exp<=500000))return null;             // model blew up -> show nothing
+  const dev=(c.last_price-exp)/exp;
+  const k=dev<=-0.15?"vg":dev<=-0.05?"g":dev<0.05?"f":dev<0.15?"h":"op";
+  return {k,label:(RATEL[lang]||RATEL.en)[k],exp:Math.round(exp),n:g.length};
+}
+// Ratings are painted AFTER the cards render, so the grid never waits on them.
+async function paintRatings(cars){
+  const list=(cars||[]).filter(c=>c&&c.make&&c.model&&c.last_price!=null);
+  const keys=[...new Set(list.map(c=>c.make+"|"+c.model))];
+  await Promise.all(keys.map(k=>{const i=k.indexOf("|");return compPool(k.slice(0,i),k.slice(i+1));}));
+  for(const c of list){
+    const sel=`[data-prate="${(window.CSS&&CSS.escape)?CSS.escape(c.car_id):c.car_id}"]`;
+    for(const el of document.querySelectorAll(sel)){
+    const r=rateWithPool(c,_COMP[c.make+"|"+c.model]);
+    if(!r){el.className="prate";el.innerHTML="";continue;}
+    const lvl={vg:1,g:2,f:3,h:4,op:5}[r.k];
+    el.className="prate "+r.k;
+    el.innerHTML=`<span class="pbar">${[0,1,2,3,4].map(i=>`<i class="${i<lvl?'on':''}"></i>`).join("")}</span>${r.label}`;
+    el.title=`Tirgus cena ~ ${eur(r.exp)} (${r.n} salīdzināmi auto)`;
+    }
+  }
 }
 function deent(s){return s==null?"":String(s).replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&#0?39;/g,"'").replace(/&nbsp;/g,' ').replace(/&amp;/g,'&');}
 function esc(s){if(s==null)return"";return deent(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));}
@@ -559,12 +640,9 @@ function isCar(c){
   if(b&&CARBODY.has(b))return true;                 // has a real car body -> car
   return CARMAKES.has(mk);                          // no car body -> require a known car make
 }
-function ratePill(c){
-  const r=rateprice(c); if(!r)return"";
-  const lvl={vg:1,g:2,f:3,h:4,op:5}[r.k];
-  const bars=[0,1,2,3,4].map(i=>`<i class="${i<lvl?'on':''}"></i>`).join("");
-  return `<div class="prate ${r.k}"><span class="pbar">${bars}</span>${r.label}</div>`;
-}
+// Placeholder only — paintRatings() fills this in once the real market comparables land,
+// so the grid renders immediately instead of blocking on the valuation.
+function ratePill(c){ return `<div class="prate" data-prate="${esc(c.car_id)}"></div>`; }
 function innerCard(c,fresh){
   const ph=uniqPhotos((c.photos&&c.photos.length)?c.photos:[]).map(hq);
   const imgs=ph.length
@@ -604,6 +682,7 @@ function render(cars){
     else{const p=el.querySelector(".bigprice");if(p&&p.textContent!==eur(c.last_price))p.textContent=eur(c.last_price);}});
   if(sig!==lastSig){let prev=null;cars.forEach(c=>{const el=rendered.get(c.car_id);if(!el)return;
     const want=prev?prev.nextSibling:grid.firstChild;if(el!==want)grid.insertBefore(el,want);prev=el;});lastSig=sig;}
+  paintRatings(cars);   // valuation runs against the real market, after the cards are on screen
 }
 
 // auto24 gives English values, ss.lv/autoplius give Latvian -> collapse to one label so
@@ -1127,6 +1206,7 @@ function openModal(c){
       ${simHtml}
     </div>`;
   document.getElementById("ov").classList.add("show");
+  paintRatings([c]);          // market valuation for the badge inside the modal too
   loadHistory(c.car_id);
   loadDesc(c);
   loadModalPhotos(c,sim);
