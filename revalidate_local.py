@@ -116,6 +116,11 @@ def main():
 
             if verdict == "unknown":
                 st["unknown"] += 1
+                # only a TRANSPORT failure counts as a block; a benign "not a sale listing"
+                # must never trip the breaker
+                if not (reason.startswith("http ") or reason.startswith("blocked")):
+                    consec_unknown = 0
+                    continue
                 consec_unknown += 1
                 if consec_unknown >= 8:
                     log("  !! 8 consecutive UNKNOWNs -> the source is blocking us. ABORTING "

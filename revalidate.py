@@ -429,6 +429,15 @@ def main():
 
         if verdict == "unknown":
             st["unknown"] += 1
+            # A benign UNKNOWN (e.g. an ss.lv "Perkam" buy-ad, which has no price and no spec
+            # table) is NOT a block. Only transport failures may trip the circuit breaker -
+            # otherwise a run through the stale tail, which is full of buy-ads, aborts itself.
+            transport_fail = reason.startswith("http ") or reason.startswith("blocked")
+            if not transport_fail:
+                consec_blocks[src] = 0
+                st.setdefault("not_a_listing", 0)
+                st["not_a_listing"] += 1
+                continue
             consec_blocks[src] = consec_blocks.get(src, 0) + 1
             n = consec_blocks[src]
             if n in (3, 5):
