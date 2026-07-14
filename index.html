@@ -915,6 +915,7 @@ function applyFilters(cars){
   if(F.emin)r=r.filter(c=>(parseFloat(c.engine_l)||0)>=+F.emin);
   if(F.emax)r=r.filter(c=>(parseFloat(c.engine_l)||1e9)<=+F.emax);
   const s=F.sort;
+  if(s==="ma")r=r.filter(c=>c.last_mileage!=null);        // same rule as the server: unknown km cannot be ranked
   r.sort((a,b)=>s==="pa"?(a.last_price||1e15)-(b.last_price||1e15):s==="pd"?(b.last_price||0)-(a.last_price||0)
     :s==="yd"?(b.year||0)-(a.year||0)
     :s==="ma"?((a.last_mileage==null?1e15:a.last_mileage)-(b.last_mileage==null?1e15:b.last_mileage))
@@ -1082,7 +1083,7 @@ async function scanFacets(){                      // one keyset pass over the wh
   }catch(e){} finally{_facetScan=false;}
 }
 // ---- SERVER-SIDE PAGINATION: one page at a time from Supabase; scales to the whole ~83k catalogue ----
-function serverFilterActive(){return !!(_arr(countryFilter).length||_arr(F.make).length||F.q||F.pmin||F.pmax||F.ymin||F.ymax||F.mmin||F.mmax);}
+function serverFilterActive(){return !!(_arr(countryFilter).length||_arr(F.make).length||F.q||F.pmin||F.pmax||F.ymin||F.ymax||F.mmin||F.mmax||F.sort==="ma");}
 function clientOnlyActive(){return !!(_arr(F.fuel).length||_arr(F.gear).length||_arr(F.bodyf).length||_arr(F.drive).length||F.emin||F.emax||_arr(F.model).length);}
 function qPred(){const qq=String(F.q||"").trim().replace(/[(),*]/g," ").trim(); return qq?`or=(make.ilike.*${encodeURIComponent(qq)}*,model.ilike.*${encodeURIComponent(qq)}*)`:"";}
 function buildServerQ(){
@@ -1094,12 +1095,14 @@ function buildServerQ(){
   if(F.pmin)p.push("last_price=gte."+(+F.pmin)); if(F.pmax)p.push("last_price=lte."+(+F.pmax));
   if(F.mmin)p.push("last_mileage=gte."+(+F.mmin)); if(F.mmax)p.push("last_mileage=lte."+(+F.mmax));
   const s=F.sort;
+  if(s==="ma")p.push("last_mileage=not.is.null");        // see note above: keeps the sort off the timeout path
   p.push("order="+(s==="pa"?"last_price.asc.nullslast":s==="pd"?"last_price.desc.nullslast"
-    :s==="yd"?"year.desc.nullslast":s==="ma"?"last_mileage.asc.nullslast":"first_seen.desc"));
+    :s==="yd"?"year.desc.nullslast":s==="ma"?"last_mileage.asc":"first_seen.desc"));
   return p.join("&");
 }
 function buildFilterPreds(){   // server-safe filter predicates ONLY (no order) for the full-brand fetch
   const p=[];
+  if(F.sort==="ma")p.push("last_mileage=not.is.null");   // mirror buildServerQ -> count/pager/grid agree
   {const cp=inPred("country",countryFilter); if(cp)p.push(cp);}
   {const mp=inPred("make",F.make); if(mp)p.push(mp);}
   {const qp=qPred(); if(qp)p.push(qp);}
