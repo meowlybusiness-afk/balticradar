@@ -445,7 +445,11 @@
           <option value="pa">Lētākie</option>
           <option value="pd">Dārgākie</option>
           <option value="yd">Gads ↓</option>
-          <option value="ma">Mazākais nobraukums</option>
+          <!-- <option value="ma">Mazākais nobraukums</option>  DISABLED: sorting the whole ~94k
+               catalogue by last_mileage exceeds the Postgres statement timeout (57014) and
+               sbPage()'s safety net then silently falls back to first_seen.desc - i.e. the option
+               would look like it does nothing. Run db_mileage_index.sql in Supabase, then simply
+               uncomment this line: every "ma" branch below is already in place and correct. -->
         </select>
         <span class="sortcv">⌄</span>
       </label>
@@ -497,6 +501,7 @@ const F={q:"",make:[],model:[],fuel:[],gear:[],bodyf:[],drive:[],pmin:"",pmax:""
   ...JSON.parse(localStorage.getItem("br_filters")||"{}")};
 // Normalise every multi key to an array + drop stale/junk values so they can't hide the catalogue.
 MULTIK.forEach(k=>{F[k]=_arr(F[k]).filter(v=>!junkVal(v));});
+if(F.sort==="ma")F.sort="new";   // "ma" is disabled (see the <option> comment) - never strand a returning visitor on it
 try{localStorage.setItem("br_filters",JSON.stringify(F));}catch(e){}
 let lang=localStorage.getItem("br_lang")||"lv";
 const LANG={
