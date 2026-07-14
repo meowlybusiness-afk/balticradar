@@ -655,13 +655,13 @@ def main():
         print(f"filter {f['id']} '{name}' ({email}) premium={premium} cadence={freq}")
 
         # 1) cadence: has this filter e-mailed too recently? (its cars roll into the next batch)
-        if not IGNORE_SENT and cooling_down(f, freq):
+        if not (IGNORE_SENT or DRY_RUN) and cooling_down(f, freq):
             continue
 
         # 2) hard per-user daily ceiling, whatever the cadence says
         if uid not in today:
             today[uid] = sends_today(uid)
-        if not IGNORE_SENT and today[uid] >= DAILY_CAP:
+        if not (IGNORE_SENT or DRY_RUN) and today[uid] >= DAILY_CAP:
             print(f"  daily cap: {today[uid]}/{DAILY_CAP} e-mails already sent today -> hold")
             continue
 
@@ -693,8 +693,11 @@ def main():
         if send(email, subject, html, text):
             sent_emails += 1
             today[uid] = today.get(uid, 0) + 1
-            if IGNORE_SENT:
-                print(f"  -> TEST send (IGNORE_SENT=1, NOT recorded)")
+            # A DRY_RUN must not consume the backlog: send() returns True without sending anything,
+            # so recording here would mark cars as "already alerted" and the user would NEVER get
+            # them. Same for IGNORE_SENT. Neither may touch the dedupe tables.
+            if IGNORE_SENT or DRY_RUN:
+                print("  -> TEST send (DRY_RUN/IGNORE_SENT: nothing sent, nothing recorded)")
                 continue
             # mark ALL hits (not just the shown ones) so the backlog is never re-sent later
             post("filter_notifications",
@@ -739,7 +742,7 @@ def main():
         text = build_text("Tavi kritēriji", shown, len(hits) - len(shown))
         if send(sub["email"], f"{len(hits)} jauni auto | BalticRadar", html, text):
             sent_emails += 1
-            if IGNORE_SENT:
+            if IGNORE_SENT or DRY_RUN:
                 continue
             post("notifications", [{"subscription_id": sub["id"], "car_id": c["car_id"]} for c in hits],
                  prefer="resolution=ignore-duplicates")
