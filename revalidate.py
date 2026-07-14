@@ -43,6 +43,7 @@ DIAG         = os.environ.get("DIAG", "0") == "1"      # print evidence for ever
 SELFTEST     = os.environ.get("SELFTEST", "").strip()  # comma-separated URLs to classify and dump
 BATCH        = int(os.environ.get("BATCH", "420"))   # ~10k/day over 24 hourly runs
 ONLY_SOURCE  = os.environ.get("ONLY_SOURCE", "")     # optional: ss.lv | autoplius | auto24
+SAMPLE       = os.environ.get("SAMPLE", "oldest")    # "oldest" (stale tail) | "random" (whole catalogue)
 
 SB = {
     "apikey": SUPABASE_KEY,
@@ -73,6 +74,14 @@ SOURCES = {
         ],
         # a live ss.lv car page always shows a price line
         "alive_markers": ["cena:"],
+        # ss.lv NEVER 404s a dead ad: it re-serves the page with the price row and the
+        # seller contact STRIPPED OUT, keeping the spec table. Verified by hand (2026-07-14)
+        # against .../volvo/xc60/cxdxhi.html (DB price 28000, page now shows no price).
+        #   live sell ad  -> breadcrumb "Pardod" + spec table + "Cena:"      -> ALIVE
+        #   dead sell ad  -> breadcrumb "Pardod" + spec table + NO "Cena:"   -> EXPIRED
+        #   "Perkam" ad   -> buy section, NO spec table, no price           -> UNKNOWN (never expired)
+        # The spec-table token is pure ASCII, so it survives any charset weirdness.
+        "spec_table": "izlaiduma gads",
     },
     "autoplius": {
         "delay": 2.2,                 # slowest: this is the one that IP-blocked us
@@ -140,6 +149,31 @@ def fetch_batch(limit):
     base = f"{SUPABASE_URL}/rest/v1/cars?select={SEL}&active=is.true"
     if ONLY_SOURCE:
         base += f"&source=eq.{ONLY_SOURCE}"
+
+    if SAMPLE == "random":
+        # The stale tail is NOT representative (it is where the rot concentrates). To measure the
+        # catalogue-wide expiry rate, take rows from random windows of the id space.
+        out, seen = [], set()
+        for _ in range(24):
+            if len(out) >= limit:
+                break
+            off = random.randint(0, 60) * 500
+            rr = requests.get(f"{base}&order=car_id.asc&limit=500&offset={off}", headers=SB, timeout=90)
+            if rr.status_code != 200:
+                continue
+            page = rr.json()
+            if not page:
+                continue
+            random.shuffle(page)
+            for row in page:
+                if row["car_id"] in seen:
+                    continue
+                seen.add(row["car_id"])
+                out.append(row)
+                if len(out) >= limit:
+                    break
+        log(f"  SAMPLE=random -> {len(out)} rows drawn from across the catalogue")
+        return out
 
     r = requests.get(f"{base}&order=last_seen.asc&limit={limit}", headers=SB, timeout=90)
     if r.status_code == 200:
@@ -287,6 +321,15 @@ def classify(status, html, cfg):
     for m in cfg["alive_markers"]:
         if m in low:
             return "alive", "alive marker"
+
+    # ss.lv: no price line. Distinguish a DEAD sell-ad (spec table still there, price stripped)
+    # from a "Perkam" buy-ad (no spec table at all -> not a sale listing -> never expire it).
+    tbl = cfg.get("spec_table")
+    if tbl:
+        if tbl in low:
+            return "expired", "sell-ad spec table present but price row stripped"
+        return "unknown", "no price and no spec table (buy-ad / not a sale listing)"
+
     if cfg["alive_markers"]:
         # source has a reliable alive marker and it is missing -> suspicious,
         # but we refuse to guess. Never deactivate on absence alone.
