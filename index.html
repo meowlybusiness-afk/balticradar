@@ -1252,8 +1252,11 @@ async function _cnt(mode){
 async function sbCount(){
   try{
     const est=await _cnt("estimated");
-    if(est==null)return null;
-    if(est<=25000){ const ex=await _cnt("exact"); if(ex!=null)return ex; }
+    // The ESTIMATE itself can time out on a multi-column filter (SUV + automatic + 2.0 L: the
+    // planner 500s while the exact count comes back in 2.7 s). Giving up there left the grid with
+    // tot = rows-on-this-page, i.e. "30 sludinājumi" for a 3 616-car result. So: no estimate, or a
+    // small estimate -> go and get the real number. Only a big, trustworthy estimate is used as-is.
+    if(est==null||est<=25000){ const ex=await _cnt("exact"); if(ex!=null)return ex; }
     return est;
   }catch(e){return null;}
 }
