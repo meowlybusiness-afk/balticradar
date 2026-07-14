@@ -114,7 +114,16 @@
   .sidebar input,.sidebar select{background:var(--card);border:1px solid var(--line);color:var(--ink);padding:9px 11px;border-radius:9px;font-size:13.5px;outline:none;width:100%}
   .sidebar input:focus,.sidebar select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(31,111,235,.12)}
   .row2{display:flex;gap:9px}.row2 input{flex:1;min-width:0}
-  .mainbar{margin-bottom:14px}
+  .mainbar{margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  /* SORT: one canonical control, top-right of the results header (mobile.de / autoplius convention) */
+  .sortpill{position:relative;display:inline-flex;align-items:center;flex:0 0 auto}
+  .sortpill select{appearance:none;-webkit-appearance:none;-moz-appearance:none;
+    background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:999px;
+    font-family:Manrope,inherit;font-weight:700;font-size:13px;letter-spacing:-.01em;
+    padding:9px 30px 9px 14px;cursor:pointer;outline:none;min-width:150px}
+  .sortpill select:hover{border-color:var(--accent)}
+  .sortpill select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(22,160,106,.14)}
+  .sortpill .sortcv{position:absolute;right:12px;font-size:11px;opacity:.65;pointer-events:none}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:16px}
   @media(max-width:860px){
     .layout{grid-template-columns:1fr;padding:16px 14px 70px;gap:14px}
@@ -421,10 +430,6 @@
     <div class="row2"><input id="ymin" type="number" placeholder="Gads no"><input id="ymax" type="number" placeholder="Gads līdz"></div>
     <div class="row2"><input id="mmin" type="number" placeholder="Nobrauk. no"><input id="mmax" type="number" placeholder="Nobrauk. līdz"></div>
     <div class="row2"><input id="emin" type="number" step="0.1" placeholder="Tilpums no (L)"><input id="emax" type="number" step="0.1" placeholder="Tilpums līdz (L)"></div>
-    <select id="sort">
-      <option value="new">Jaunākie</option><option value="pa">Cena ↑</option>
-      <option value="pd">Cena ↓</option><option value="yd">Gads ↓</option>
-    </select>
     <div style="display:flex;gap:8px;margin-top:2px">
       <button id="doSearchBtn" onclick="doSearch()" style="flex:2;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:11px 8px;font-weight:800;font-size:14.5px;cursor:pointer">Meklēt</button>
       <button id="doResetBtn" onclick="doReset()" style="flex:1;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:11px 8px;font-weight:700;font-size:13.5px;cursor:pointer">Atiestatīt</button>
@@ -432,7 +437,19 @@
   </aside>
   <main>
     <button class="filtbtn" id="filtbtn" onclick="toggleFilters()">Filtri</button>
-    <div class="mainbar"><span class="count" id="count"></span></div>
+    <div class="mainbar">
+      <span class="count" id="count"></span>
+      <label class="sortpill" for="sort">
+        <select id="sort">
+          <option value="new">Jaunākie</option>
+          <option value="pa">Lētākie</option>
+          <option value="pd">Dārgākie</option>
+          <option value="yd">Gads ↓</option>
+          <option value="ma">Mazākais nobraukums</option>
+        </select>
+        <span class="sortcv">⌄</span>
+      </label>
+    </div>
     <div id="pagerTop"></div>
     <div class="grid" id="grid"></div>
     <div id="pagerBot"></div>
@@ -483,11 +500,11 @@ MULTIK.forEach(k=>{F[k]=_arr(F[k]).filter(v=>!junkVal(v));});
 try{localStorage.setItem("br_filters",JSON.stringify(F));}catch(e){}
 let lang=localStorage.getItem("br_lang")||"lv";
 const LANG={
- lv:{search:"Meklēt marku vai modeli…",allMakes:"Visas markas",allFuels:"Visas degvielas",pFrom:"Cena no",pTo:"Cena līdz",yFrom:"Gads no",yTo:"Gads līdz",sNew:"Jaunākie",sPa:"Cena ↑",sPd:"Cena ↓",sYd:"Gads ↓",all:"Visi",results:"sludinājumi",noPhoto:"Bez foto",noResults:"Nav rezultātu.",min:"pirms %s min",hour:"pirms %s h",day:"pirms %s d",fuel:"Degviela",gear:"Ātrumkārba",vol:"Tilpums",mil:"Nobraukums",body:"Virsbūve",drive:"Piedziņa",loc:"Atrašanās",vin:"VIN",source:"Avots",priceHist:"Cenu vēsture",histOne:"Pagaidām viens cenas ieraksts. Vēsture parādīsies, kad cena mainīsies (mēs to sekojam automātiski).",openOrig:"Atvērt oriģinālo sludinājumu ↗",loading:"Ielādē…"},
- en:{search:"Search make or model…",allMakes:"All makes",allFuels:"All fuels",pFrom:"Price from",pTo:"Price to",yFrom:"Year from",yTo:"Year to",sNew:"Newest",sPa:"Price ↑",sPd:"Price ↓",sYd:"Year ↓",all:"All",results:"listings",noPhoto:"No photo",noResults:"No results.",min:"%s min ago",hour:"%s h ago",day:"%s d ago",fuel:"Fuel",gear:"Gearbox",vol:"Engine",mil:"Mileage",body:"Body",drive:"Drive",loc:"Location",vin:"VIN",source:"Source",priceHist:"Price history",histOne:"Only one price point so far. History appears once the price changes (we track it automatically).",openOrig:"Open original listing ↗",loading:"Loading…"},
- ru:{search:"Поиск марки или модели…",allMakes:"Все марки",allFuels:"Все виды топлива",pFrom:"Цена от",pTo:"Цена до",yFrom:"Год от",yTo:"Год до",sNew:"Новые",sPa:"Цена ↑",sPd:"Цена ↓",sYd:"Год ↓",all:"Все",results:"объявлений",noPhoto:"Нет фото",noResults:"Нет результатов.",min:"%s мин назад",hour:"%s ч назад",day:"%s дн назад",fuel:"Топливо",gear:"КПП",vol:"Двигатель",mil:"Пробег",body:"Кузов",drive:"Привод",loc:"Местоположение",vin:"VIN",source:"Источник",priceHist:"История цены",histOne:"Пока одна точка цены. История появится, когда цена изменится (мы отслеживаем автоматически).",openOrig:"Открыть оригинал ↗",loading:"Загрузка…"},
- lt:{search:"Ieškoti markės ar modelio…",allMakes:"Visos markės",allFuels:"Visi kuro tipai",pFrom:"Kaina nuo",pTo:"Kaina iki",yFrom:"Metai nuo",yTo:"Metai iki",sNew:"Naujausi",sPa:"Kaina ↑",sPd:"Kaina ↓",sYd:"Metai ↓",all:"Visi",results:"skelbimų",noPhoto:"Nėra nuotraukos",noResults:"Nėra rezultatų.",min:"prieš %s min",hour:"prieš %s val",day:"prieš %s d",fuel:"Kuras",gear:"Pavarų dėžė",vol:"Variklis",mil:"Rida",body:"Kėbulas",drive:"Pavara",loc:"Vieta",vin:"VIN",source:"Šaltinis",priceHist:"Kainos istorija",histOne:"Kol kas vienas kainos įrašas. Istorija atsiras, kai kaina pasikeis (sekame automatiškai).",openOrig:"Atidaryti originalų skelbimą ↗",loading:"Įkeliama…"},
- et:{search:"Otsi marki või mudelit…",allMakes:"Kõik margid",allFuels:"Kõik kütused",pFrom:"Hind alates",pTo:"Hind kuni",yFrom:"Aasta alates",yTo:"Aasta kuni",sNew:"Uusimad",sPa:"Hind ↑",sPd:"Hind ↓",sYd:"Aasta ↓",all:"Kõik",results:"kuulutust",noPhoto:"Fotot pole",noResults:"Tulemusi pole.",min:"%s min tagasi",hour:"%s h tagasi",day:"%s p tagasi",fuel:"Kütus",gear:"Käigukast",vol:"Mootor",mil:"Läbisõit",body:"Kere",drive:"Vedu",loc:"Asukoht",vin:"VIN",source:"Allikas",priceHist:"Hinnaajalugu",histOne:"Praegu üks hinnapunkt. Ajalugu ilmub, kui hind muutub (jälgime automaatselt).",openOrig:"Ava algne kuulutus ↗",loading:"Laadin…"},
+ lv:{search:"Meklēt marku vai modeli…",allMakes:"Visas markas",allFuels:"Visas degvielas",pFrom:"Cena no",pTo:"Cena līdz",yFrom:"Gads no",yTo:"Gads līdz",sNew:"Jaunākie",sPa:"Lētākie",sPd:"Dārgākie",sYd:"Gads ↓",sMil:"Mazākais nobraukums",all:"Visi",results:"sludinājumi",noPhoto:"Bez foto",noResults:"Nav rezultātu.",min:"pirms %s min",hour:"pirms %s h",day:"pirms %s d",fuel:"Degviela",gear:"Ātrumkārba",vol:"Tilpums",mil:"Nobraukums",body:"Virsbūve",drive:"Piedziņa",loc:"Atrašanās",vin:"VIN",source:"Avots",priceHist:"Cenu vēsture",histOne:"Pagaidām viens cenas ieraksts. Vēsture parādīsies, kad cena mainīsies (mēs to sekojam automātiski).",openOrig:"Atvērt oriģinālo sludinājumu ↗",loading:"Ielādē…"},
+ en:{search:"Search make or model…",allMakes:"All makes",allFuels:"All fuels",pFrom:"Price from",pTo:"Price to",yFrom:"Year from",yTo:"Year to",sNew:"Newest",sPa:"Price ↑",sPd:"Price ↓",sYd:"Year ↓",sMil:"Lowest mileage",all:"All",results:"listings",noPhoto:"No photo",noResults:"No results.",min:"%s min ago",hour:"%s h ago",day:"%s d ago",fuel:"Fuel",gear:"Gearbox",vol:"Engine",mil:"Mileage",body:"Body",drive:"Drive",loc:"Location",vin:"VIN",source:"Source",priceHist:"Price history",histOne:"Only one price point so far. History appears once the price changes (we track it automatically).",openOrig:"Open original listing ↗",loading:"Loading…"},
+ ru:{search:"Поиск марки или модели…",allMakes:"Все марки",allFuels:"Все виды топлива",pFrom:"Цена от",pTo:"Цена до",yFrom:"Год от",yTo:"Год до",sNew:"Новые",sPa:"Цена ↑",sPd:"Цена ↓",sYd:"Год ↓",sMil:"Меньший пробег",all:"Все",results:"объявлений",noPhoto:"Нет фото",noResults:"Нет результатов.",min:"%s мин назад",hour:"%s ч назад",day:"%s дн назад",fuel:"Топливо",gear:"КПП",vol:"Двигатель",mil:"Пробег",body:"Кузов",drive:"Привод",loc:"Местоположение",vin:"VIN",source:"Источник",priceHist:"История цены",histOne:"Пока одна точка цены. История появится, когда цена изменится (мы отслеживаем автоматически).",openOrig:"Открыть оригинал ↗",loading:"Загрузка…"},
+ lt:{search:"Ieškoti markės ar modelio…",allMakes:"Visos markės",allFuels:"Visi kuro tipai",pFrom:"Kaina nuo",pTo:"Kaina iki",yFrom:"Metai nuo",yTo:"Metai iki",sNew:"Naujausi",sPa:"Kaina ↑",sPd:"Kaina ↓",sYd:"Metai ↓",sMil:"Mažiausia rida",all:"Visi",results:"skelbimų",noPhoto:"Nėra nuotraukos",noResults:"Nėra rezultatų.",min:"prieš %s min",hour:"prieš %s val",day:"prieš %s d",fuel:"Kuras",gear:"Pavarų dėžė",vol:"Variklis",mil:"Rida",body:"Kėbulas",drive:"Pavara",loc:"Vieta",vin:"VIN",source:"Šaltinis",priceHist:"Kainos istorija",histOne:"Kol kas vienas kainos įrašas. Istorija atsiras, kai kaina pasikeis (sekame automatiškai).",openOrig:"Atidaryti originalų skelbimą ↗",loading:"Įkeliama…"},
+ et:{search:"Otsi marki või mudelit…",allMakes:"Kõik margid",allFuels:"Kõik kütused",pFrom:"Hind alates",pTo:"Hind kuni",yFrom:"Aasta alates",yTo:"Aasta kuni",sNew:"Uusimad",sPa:"Hind ↑",sPd:"Hind ↓",sYd:"Aasta ↓",sMil:"Väikseim läbisõit",all:"Kõik",results:"kuulutust",noPhoto:"Fotot pole",noResults:"Tulemusi pole.",min:"%s min tagasi",hour:"%s h tagasi",day:"%s p tagasi",fuel:"Kütus",gear:"Käigukast",vol:"Mootor",mil:"Läbisõit",body:"Kere",drive:"Vedu",loc:"Asukoht",vin:"VIN",source:"Allikas",priceHist:"Hinnaajalugu",histOne:"Praegu üks hinnapunkt. Ajalugu ilmub, kui hind muutub (jälgime automaatselt).",openOrig:"Ava algne kuulutus ↗",loading:"Laadin…"},
 };
 Object.assign(LANG.lv,{allModels:"Visi modeļi",allGears:"Visas ātrumkārbas",allBodies:"Visas virsbūves",allDrives:"Visas piedziņas",milFrom:"Nobrauk. no",milTo:"Nobrauk. līdz"});
 Object.assign(LANG.en,{allModels:"All models",allGears:"All gearboxes",allBodies:"All body types",allDrives:"All drivetrains",milFrom:"Mileage from",milTo:"Mileage to"});
@@ -509,6 +526,7 @@ function applyI18n(){
   document.getElementById("ymin").placeholder=t.yFrom;document.getElementById("ymax").placeholder=t.yTo;
   document.getElementById("mmin").placeholder=t.milFrom;document.getElementById("mmax").placeholder=t.milTo;
   const so=document.getElementById("sort").options;so[0].textContent=t.sNew;so[1].textContent=t.sPa;so[2].textContent=t.sPd;so[3].textContent=t.sYd;
+  if(so[4])so[4].textContent=t.sMil||"Mazākais nobraukums";
   document.getElementById("pill-all").textContent=t.all;
   if(typeof msRefreshAll==="function")msRefreshAll();
   document.getElementById("notifyBtn").textContent=ST().nb;
@@ -898,7 +916,9 @@ function applyFilters(cars){
   if(F.emax)r=r.filter(c=>(parseFloat(c.engine_l)||1e9)<=+F.emax);
   const s=F.sort;
   r.sort((a,b)=>s==="pa"?(a.last_price||1e15)-(b.last_price||1e15):s==="pd"?(b.last_price||0)-(a.last_price||0)
-    :s==="yd"?(b.year||0)-(a.year||0):(b.first_seen||"").localeCompare(a.first_seen||""));
+    :s==="yd"?(b.year||0)-(a.year||0)
+    :s==="ma"?((a.last_mileage==null?1e15:a.last_mileage)-(b.last_mileage==null?1e15:b.last_mileage))
+    :(b.first_seen||"").localeCompare(a.first_seen||""));
   return r;
 }
 function fillSelect(id,vals,cur){const el=document.getElementById(id);const keep=el.firstElementChild.outerHTML;
@@ -1074,7 +1094,8 @@ function buildServerQ(){
   if(F.pmin)p.push("last_price=gte."+(+F.pmin)); if(F.pmax)p.push("last_price=lte."+(+F.pmax));
   if(F.mmin)p.push("last_mileage=gte."+(+F.mmin)); if(F.mmax)p.push("last_mileage=lte."+(+F.mmax));
   const s=F.sort;
-  p.push("order="+(s==="pa"?"last_price.asc.nullslast":s==="pd"?"last_price.desc.nullslast":s==="yd"?"year.desc.nullslast":"first_seen.desc"));
+  p.push("order="+(s==="pa"?"last_price.asc.nullslast":s==="pd"?"last_price.desc.nullslast"
+    :s==="yd"?"year.desc.nullslast":s==="ma"?"last_mileage.asc.nullslast":"first_seen.desc"));
   return p.join("&");
 }
 function buildFilterPreds(){   // server-safe filter predicates ONLY (no order) for the full-brand fetch
