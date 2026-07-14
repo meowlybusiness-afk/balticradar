@@ -20,6 +20,10 @@ on:
         description: "1 = match + render but send nothing"
         required: false
         default: "0"
+      ignore_sent:
+        description: "1 = TEST ONLY. Ignore the already-sent dedupe and do not record the send."
+        required: false
+        default: "0"
 
 concurrency:
   group: balticradar-alerts     # never let two runs overlap and double-send
@@ -49,6 +53,7 @@ jobs:
           LOOKBACK_MIN: ${{ github.event.inputs.lookback_min || '45' }}
           TEST_TO: ${{ github.event.inputs.test_to }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
+          IGNORE_SENT: ${{ github.event.inputs.ignore_sent }}
           MAX_PER_EMAIL: "12"
           MAX_EMAILS: "80"
         run: python notify.py
