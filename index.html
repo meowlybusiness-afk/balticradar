@@ -154,7 +154,7 @@
   .ph img.show{opacity:1}
   .card:hover .ph img.show{transform:scale(1.07)}
   .ph .noimg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9aa7b8;font-size:13px}
-  .badge{position:absolute;top:11px;left:11px;z-index:3;background:var(--down);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:7px}
+  .badge{position:absolute;top:40px;right:11px;z-index:3;background:var(--down);color:#fff;font-size:11px;font-weight:700;padding:3px 9px;border-radius:7px}
   .flag{position:absolute;top:11px;right:11px;z-index:3;font-size:11.5px;font-weight:700;background:rgba(255,255,255,.95);color:var(--ink);padding:4px 9px;border-radius:7px;display:flex;gap:6px;align-items:center;box-shadow:0 2px 8px rgba(0,0,0,.18)}
   .fdot{width:20px;height:13px;border-radius:2px;display:inline-block;border:1px solid rgba(0,0,0,.2);box-shadow:0 1px 2px rgba(0,0,0,.15);vertical-align:middle}
   .fdot.LV{background:linear-gradient(#9d1d36 0 38%,#fff 38% 62%,#9d1d36 62% 100%)}
@@ -2297,7 +2297,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 .br2{--a:#16a06a;--ink:#1d1d1f;--i2:#424245;--mut:#86868b;--ln:#ededf0;--ln2:#dfdfe4;--bg2:#fbfbfd;--up:#d2492f}
 /* ---- heart ---- */
 #grid .card{position:relative}
-.br-heart{position:absolute;top:10px;right:10px;z-index:5;width:34px;height:34px;border-radius:50%;border:none;
+.br-heart{position:absolute;top:10px;left:10px;z-index:5;width:34px;height:34px;border-radius:50%;border:none;
   background:rgba(255,255,255,.92);cursor:pointer;display:grid;place-items:center;font-size:16px;line-height:1;
   box-shadow:0 2px 10px -2px rgba(0,0,0,.35);transition:.15s;padding:0}
 .br-heart:hover{transform:scale(1.12)}
@@ -2353,6 +2353,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 .br2c .t{font-weight:700;font-size:13.5px}
 .br2c .m{font-size:11.5px;color:var(--mut);font-weight:500;margin-top:3px}
 .br2c .p{font-weight:800;font-size:14.5px;margin-top:7px}
+.br2c .br2flag{position:absolute;top:8px;left:8px;z-index:2;display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.92);color:#1d1d1f;border-radius:999px;padding:3px 8px;font-size:10.5px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.15)}
 .br2c .rm{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;
   background:rgba(255,255,255,.94);cursor:pointer;font-size:13px;display:grid;place-items:center}
 /* ---- model chips ---- */
@@ -2758,7 +2759,7 @@ async function renderFavs(){
   if(!FAV.size){ box.innerHTML='<div class="br2empty"><span class="e">♡</span>Nav saglabātu auto.<br>Nospied sirsniņu uz sludinājuma.</div>'; return; }
   box.innerHTML='<div class="br2empty">Ielādē…</div>';
   var r = await supa.from('v_listings')
-    .select('car_id,make,model,year,last_price,last_mileage,fuel,photos').in('car_id',[...FAV]);
+    .select('car_id,make,model,year,last_price,last_mileage,fuel,photos,country').in('car_id',[...FAV]);
   if(r.error){ box.innerHTML='<div class="br2empty">Kļūda</div>'; return; }
   box.innerHTML = cardsHtml(r.data||[], true);
 }
@@ -2767,6 +2768,7 @@ function cardsHtml(rows, rm){
   return '<div class="br2cards">' + rows.map(function(c){
     return '<div class="br2c" onclick="BRProfile.openCar(\''+esc(c.car_id)+'\')">'
       + ((c.photos&&c.photos[0]) ? '<img src="'+esc(c.photos[0])+'" loading="lazy">' : '<img>')
+      + (c.country ? '<span class="br2flag"><span class="fdot '+esc(c.country)+'"></span>'+esc(c.country)+'</span>' : '')
       + (rm ? '<button class="rm" onclick="event.stopPropagation();BRProfile.unfav(\''+esc(c.car_id)+'\')">✕</button>' : '')
       + '<div class="cb"><div class="t">'+esc(c.make)+' '+esc(c.model)+'</div>'
       + '<div class="m">'+esc(c.year||'')+' · '+(c.last_mileage!=null?nf(c.last_mileage)+' km':'—')+' · '+esc(c.fuel||'')+'</div>'
@@ -3149,7 +3151,7 @@ BRProfile.runFilter = async function(id, sort){
     + '<div style="font-size:12px;color:#86868b;font-weight:500;margin-bottom:16px">'+esc(describe(c))+'</div>'
     + '<div id="br2Res"><div class="br2empty">Meklē…</div></div>';
 
-  var q = supa.from('v_listings').select('car_id,make,model,year,last_price,last_mileage,fuel,photos,first_seen');
+  var q = supa.from('v_listings').select('car_id,make,model,year,last_price,last_mileage,fuel,photos,first_seen,country');
   var arr = function(a, one){ return (a && a.length) ? a : (one ? [one] : []); };
   var IN = function(col, vals){ if(vals.length) q = q.in(col, vals); };
   // A saved filter stores the NORMALISED label ("Dīzelis"), but auto24 writes "diesel". Matching the
