@@ -1,11 +1,22 @@
-name: BalticRadar alerts (every 20 min)
+name: BalticRadar alerts
 
-# TIMELINESS IS THE PRODUCT: the collector ingests every ~5-15 min, so alerts run on a
-# similar cadence. Each run only looks at cars INGESTED SINCE THE LAST RUN, and every
-# (filter, car) pair is recorded in filter_notifications -> the same car is never sent twice.
+# HOW OFTEN A USER IS E-MAILED IS DECIDED IN notify.py, NOT HERE.
+#
+# This job used to run every 20 minutes AND e-mail on every new match, so one saved filter could
+# fire up to 72 times a day. It also quietly ate Resend's free 100-e-mails-a-day account budget,
+# after which EVERY user - paying ones included - received nothing at all, silently.
+#
+# The cron is now just a "wake up and check" tick. notify.py decides whether anyone is actually due:
+#   * every filter has a cadence (daily digest by default; instant/every-few-hours = Premium)
+#   * a hard per-user ceiling  (DAILY_CAP)
+#   * a hard GLOBAL ceiling    (PROVIDER_DAILY_LIMIT - PROVIDER_RESERVE = 90/100), which stops
+#     before the provider quota is gone and logs loudly instead of failing in silence.
+# Cars that are not sent are NOT recorded as sent, so they roll into the next batch. Nothing is lost.
+#
+# Hourly is the finest tick worth having: the fastest cadence we offer is one e-mail per hour.
 on:
   schedule:
-    - cron: "*/20 * * * *"     # every 20 minutes
+    - cron: "7 * * * *"        # hourly tick. It is notify.py that decides who is actually due.
   workflow_dispatch:
     inputs:
       test_to:
@@ -15,7 +26,7 @@ on:
       lookback_min:
         description: "Look back this many minutes for newly-ingested cars"
         required: false
-        default: "45"
+        default: "1560"
       dry_run:
         description: "1 = match + render but send nothing"
         required: false
@@ -50,10 +61,14 @@ jobs:
           # Resend account owner - every other recipient is rejected with 403.
           ALERT_FROM: ${{ secrets.ALERT_FROM }}
           SITE_URL: "https://balticradar.meowlybusiness.workers.dev"
-          LOOKBACK_MIN: ${{ github.event.inputs.lookback_min || '45' }}
+          # must be WIDER than the slowest cadence (daily), or a digest would miss cars
+          LOOKBACK_MIN: ${{ github.event.inputs.lookback_min || '1560' }}
           TEST_TO: ${{ github.event.inputs.test_to }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
           IGNORE_SENT: ${{ github.event.inputs.ignore_sent }}
           MAX_PER_EMAIL: "12"
-          MAX_EMAILS: "80"
+          MAX_EMAILS: "80"          # per RUN
+          DAILY_CAP: "6"            # per USER per day, whatever their filters ask for
+          PROVIDER_DAILY_LIMIT: "100"   # Resend free tier. RAISE THIS WHEN YOU UPGRADE THE PLAN.
+          PROVIDER_RESERVE: "10"        # never spend the last 10 of the quota
         run: python notify.py
