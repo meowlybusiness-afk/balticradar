@@ -72,6 +72,13 @@ DRY_RUN = os.environ.get("DRY_RUN") == "1"
 # dispatch can re-render a real e-mail from cars that were already alerted on. Never set on cron.
 IGNORE_SENT = os.environ.get("IGNORE_SENT") == "1"
 
+# The legacy `subscriptions` table (the old pre-account alert form) is DEAD: openSub() has sent
+# users to Mans profils > Mani filtri for a long time and nothing writes to it any more. What is
+# left in it is 16 rows of test junk - probe_*@test.invalid, coltest@example.com - plus one row
+# with EVERY criterion NULL, which therefore matched EVERY new car in the catalogue: that is the
+# "92 cars in one e-mail" the owner was getting. Off by default; set LEGACY_SUBS=1 to resurrect it.
+LEGACY_SUBS = os.environ.get("LEGACY_SUBS") == "1"
+
 FLAG = {"LV": "\U0001F1F1\U0001F1FB", "LT": "\U0001F1F1\U0001F1F9", "EE": "\U0001F1EA\U0001F1EA"}
 
 
@@ -666,6 +673,12 @@ def main():
             continue
 
         criteria = f.get("criteria") or {}
+        # A filter with no make is not a filter, it is the whole catalogue. The UI makes make+model
+        # mandatory, but a row created before that rule (or via the API) would e-mail ~1 500 cars a
+        # day. Refuse rather than spam.
+        if not crit(criteria, "makes", "make"):
+            print("  no make in criteria -> this would match the ENTIRE catalogue. Skipped.")
+            continue
         already = set() if IGNORE_SENT else {n["car_id"] for n in get(f"filter_notifications?select=car_id&filter_id=eq.{f['id']}")}
         hits = [c for c in cars if c["car_id"] not in already and matches(c, criteria)]
         if not hits:                 # 3) never send an empty e-mail
@@ -707,7 +720,14 @@ def main():
             record_send(uid, f["id"])
             print(f"  -> {email}: {len(hits)} new car(s) in ONE e-mail")
 
-    # ---- legacy: the old "alerts profile" (subscriptions table), unchanged behaviour
+    # ---- legacy: the old "alerts profile" (subscriptions table)
+    if not LEGACY_SUBS:
+        print("legacy `subscriptions` path DISABLED (set LEGACY_SUBS=1 to re-enable). "
+              "Nothing writes to that table any more and one of its rows has no criteria at all, "
+              "so it matched every car in the catalogue.")
+        print(f"DONE. emails sent this run: {sent_emails}."
+              + (f" Today's total: {spent + sent_emails}/{PROVIDER_DAILY_LIMIT}." if spent is not None else ""))
+        return
     subs = get("subscriptions?select=*")
     seen = {}
     for s in subs:
