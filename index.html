@@ -923,16 +923,24 @@ function applyFilters(cars){
 }
 function fillSelect(id,vals,cur){const el=document.getElementById(id);const keep=el.firstElementChild.outerHTML;
   el.innerHTML=keep+vals.map(v=>`<option ${v===cur?"selected":""}>${esc(v)}</option>`).join("");}
+// A numbered-page jump uses OFFSET, which is O(rows skipped): page ~500 blew the Postgres
+// statement timeout and rendered NOTHING. So the pager NEVER offers a numbered page beyond
+// JUMP_CAP (=100, OFFSET 2970 -> served in <50 ms). Every button here loads first-try. To go
+// deeper the user steps one page at a time with the ‹ › arrows, which use KEYSET pagination
+// (always Range 0-29, never times out). Deep pages are low-value/rotten anyway.
+const JUMP_CAP=100;
 function renderPager(totalPages){
   if(totalPages<=1)return"";
   const cur=curPage;
+  const maxJump=Math.min(totalPages,JUMP_CAP);      // deepest numbered button we are willing to OFFER
+  const win=Math.min(cur,maxJump);                  // keep the number window inside the cap
   const btn=(p,lab,dis,on)=>`<button class="${on?'on':''}" ${dis?'disabled':''} onclick="goPage(${p})">${lab||p}</button>`;
   let h=btn(cur-1,"‹",cur<=1,false);
-  let start=Math.max(1,cur-2),end=Math.min(totalPages,cur+2);
+  let start=Math.max(1,win-2),end=Math.min(maxJump,win+2);
   if(start>1){h+=btn(1);if(start>2)h+='<span class="pgdot">…</span>';}
   for(let p=start;p<=end;p++)h+=btn(p,null,false,p===cur);
-  if(end<totalPages){if(end<totalPages-1)h+='<span class="pgdot">…</span>';h+=btn(totalPages);}
-  h+=btn(cur+1,"›",cur>=totalPages,false);
+  if(end<maxJump){if(end<maxJump-1)h+='<span class="pgdot">…</span>';h+=btn(maxJump);}
+  h+=btn(cur+1,"›",cur>=totalPages,false);          // next/prev keyset-walk still reaches the true end
   h+=`<span class="pginfo">${cur} / ${totalPages}</span>`;
   return `<div class="pager">${h}</div>`;
 }
