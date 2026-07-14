@@ -445,11 +445,7 @@
           <option value="pa">Lētākie</option>
           <option value="pd">Dārgākie</option>
           <option value="yd">Gads ↓</option>
-          <!-- <option value="ma">Mazākais nobraukums</option>  DISABLED: sorting the whole ~94k
-               catalogue by last_mileage exceeds the Postgres statement timeout (57014) and
-               sbPage()'s safety net then silently falls back to first_seen.desc - i.e. the option
-               would look like it does nothing. Run db_mileage_index.sql in Supabase, then simply
-               uncomment this line: every "ma" branch below is already in place and correct. -->
+          <option value="ma">Mazākais nobraukums</option>
         </select>
         <span class="sortcv">⌄</span>
       </label>
@@ -501,7 +497,6 @@ const F={q:"",make:[],model:[],fuel:[],gear:[],bodyf:[],drive:[],pmin:"",pmax:""
   ...JSON.parse(localStorage.getItem("br_filters")||"{}")};
 // Normalise every multi key to an array + drop stale/junk values so they can't hide the catalogue.
 MULTIK.forEach(k=>{F[k]=_arr(F[k]).filter(v=>!junkVal(v));});
-if(F.sort==="ma")F.sort="new";   // "ma" is disabled (see the <option> comment) - never strand a returning visitor on it
 try{localStorage.setItem("br_filters",JSON.stringify(F));}catch(e){}
 let lang=localStorage.getItem("br_lang")||"lv";
 const LANG={
@@ -920,7 +915,6 @@ function applyFilters(cars){
   if(F.emin)r=r.filter(c=>(parseFloat(c.engine_l)||0)>=+F.emin);
   if(F.emax)r=r.filter(c=>(parseFloat(c.engine_l)||1e9)<=+F.emax);
   const s=F.sort;
-  if(s==="ma")r=r.filter(c=>c.last_mileage!=null);        // same rule as the server: unknown km cannot be ranked
   r.sort((a,b)=>s==="pa"?(a.last_price||1e15)-(b.last_price||1e15):s==="pd"?(b.last_price||0)-(a.last_price||0)
     :s==="yd"?(b.year||0)-(a.year||0)
     :s==="ma"?((a.last_mileage==null?1e15:a.last_mileage)-(b.last_mileage==null?1e15:b.last_mileage))
@@ -1088,7 +1082,7 @@ async function scanFacets(){                      // one keyset pass over the wh
   }catch(e){} finally{_facetScan=false;}
 }
 // ---- SERVER-SIDE PAGINATION: one page at a time from Supabase; scales to the whole ~83k catalogue ----
-function serverFilterActive(){return !!(_arr(countryFilter).length||_arr(F.make).length||F.q||F.pmin||F.pmax||F.ymin||F.ymax||F.mmin||F.mmax||F.sort==="ma");}
+function serverFilterActive(){return !!(_arr(countryFilter).length||_arr(F.make).length||F.q||F.pmin||F.pmax||F.ymin||F.ymax||F.mmin||F.mmax);}
 function clientOnlyActive(){return !!(_arr(F.fuel).length||_arr(F.gear).length||_arr(F.bodyf).length||_arr(F.drive).length||F.emin||F.emax||_arr(F.model).length);}
 function qPred(){const qq=String(F.q||"").trim().replace(/[(),*]/g," ").trim(); return qq?`or=(make.ilike.*${encodeURIComponent(qq)}*,model.ilike.*${encodeURIComponent(qq)}*)`:"";}
 function buildServerQ(){
@@ -1100,14 +1094,12 @@ function buildServerQ(){
   if(F.pmin)p.push("last_price=gte."+(+F.pmin)); if(F.pmax)p.push("last_price=lte."+(+F.pmax));
   if(F.mmin)p.push("last_mileage=gte."+(+F.mmin)); if(F.mmax)p.push("last_mileage=lte."+(+F.mmax));
   const s=F.sort;
-  if(s==="ma")p.push("last_mileage=not.is.null");        // see note above: keeps the sort off the timeout path
   p.push("order="+(s==="pa"?"last_price.asc.nullslast":s==="pd"?"last_price.desc.nullslast"
-    :s==="yd"?"year.desc.nullslast":s==="ma"?"last_mileage.asc":"first_seen.desc"));
+    :s==="yd"?"year.desc.nullslast":s==="ma"?"last_mileage.asc.nullslast":"first_seen.desc"));
   return p.join("&");
 }
 function buildFilterPreds(){   // server-safe filter predicates ONLY (no order) for the full-brand fetch
   const p=[];
-  if(F.sort==="ma")p.push("last_mileage=not.is.null");   // mirror buildServerQ -> count/pager/grid agree
   {const cp=inPred("country",countryFilter); if(cp)p.push(cp);}
   {const mp=inPred("make",F.make); if(mp)p.push(mp);}
   {const qp=qPred(); if(qp)p.push(qp);}
@@ -1155,11 +1147,34 @@ async function sbPage(from,to,wantCount){
   catch(e){
     // SAFETY NET: if a sort ever exceeds the DB statement timeout (500), fall back to
     // the always-indexed first_seen sort rather than rendering an EMPTY grid.
-    // With the composite indexes in balticradar_db_fix.sql this path is never taken.
+    // It used to do this SILENTLY, so a degraded query never announced itself - it just
+    // returned the wrong order and looked fine (this is how the last_mileage sort shipped
+    // broken). It now shouts, once per (sort, reason), so the next one surfaces immediately.
     const safe=q.replace(/order=[^&]*/,"order=first_seen.desc");
-    if(safe!==q){ try{ return await go(safe); }catch(_){} }
+    if(safe!==q){
+      try{ const r=await go(safe); reportSortFallback(F.sort, q, e); return r; }catch(_){}
+    }
     throw e;
   }
+}
+// ---- degraded-sort telemetry: never let a broken sort hide behind the safety net again ----
+const _sfSeen=new Set();
+function reportSortFallback(sort, q, err){
+  const order=(String(q).match(/order=([^&]*)/)||[])[1]||"?";
+  const key=sort+"|"+order;
+  if(_sfSeen.has(key))return;                 // one-off per sort: never spam the console/log
+  _sfSeen.add(key);
+  const msg='[BalticRadar] SORT FALLBACK: "'+sort+'" ('+decodeURIComponent(order)+') failed on the '
+    +'server and was silently replaced with first_seen.desc. The grid is NOT in the order the user '
+    +'asked for. Almost always a missing index -> Postgres statement timeout (57014). Reason: '
+    +((err&&err.message)||err);
+  console.error(msg);
+  try{                                        // best-effort beacon so it shows up without a devtools session
+    fetch(`${SB_URL}/rest/v1/client_errors`,{method:"POST",
+      headers:{...SBH,"Content-Type":"application/json",Prefer:"return=minimal"},
+      body:JSON.stringify([{kind:"sort_fallback",sort:sort,detail:msg.slice(0,900),
+                            url:location.href.slice(0,300),ts:new Date().toISOString()}])}).catch(()=>{});
+  }catch(_){}
 }
 async function sbCount(){   // shallow, safe filtered count (Range 0-0) -> never times out on deep offsets
   try{const r=await fetch(`${SB_URL}/rest/v1/v_listings?select=car_id&${buildServerQ()}`,{headers:{...SBH,Range:"0-0",Prefer:"count=estimated"},cache:"no-store"});
@@ -2084,7 +2099,12 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
     //   signed OUT -> sign up / log in
     //   signed IN  -> Mans profils > Mani filtri. We already know who they are and where to
     //                 e-mail them, so the legacy `subscriptions` form is never shown again.
-    window.openSub = function(){
+    window.openSub = async function(){
+      // A returning user's session takes a network round-trip to resolve. If a token is already
+      // persisted, DO NOT show the sign-up modal in that window - wait for it, then go to filters.
+      if(!BR.user && hasStoredSession()){
+        for(var i=0;i<30 && !BR.user;i++) await new Promise(function(r){setTimeout(r,100);});
+      }
       if(!BR.user) return BR.openAuth('signup');
       if(window.BRProfile && window.BRProfile.open) return window.BRProfile.open('filters');
       return BR.view('reset');
@@ -2113,9 +2133,23 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
     lt:{out:'Gauti pranešimus',   inb:'Mano filtrai', nb_out:'Pranešimai', nb_in:'Mano filtrai'},
     et:{out:'Saada teated',       inb:'Minu filtrid', nb_out:'Teated',     nb_in:'Minu filtrid'}
   };
+  function hasStoredSession(){          // supabase-js persists the session in localStorage as sb-<ref>-auth-token
+    try{
+      for(var i=0;i<localStorage.length;i++){
+        var k=localStorage.key(i);
+        if(/^sb-.*-auth-token$/.test(k) && (localStorage.getItem(k)||"").indexOf("access_token")>=0) return true;
+      }
+    }catch(e){}
+    return false;
+  }
+  function curLang(){                   // `lang` is a module-scope let in the main script: window.lang is undefined
+    try{ return localStorage.getItem("br_lang") || "lv"; }catch(e){ return "lv"; }
+  }
   function paintAlertCtas(){
-    var t = CTAT[window.lang] || CTAT.lv;
-    var on = !!BR.user;
+    var t = CTAT[curLang()] || CTAT.lv;
+    // BEFORE the session resolves, trust the persisted token: a returning user must never see
+    // "Paziņojumi" flash, and must never be asked for an e-mail we already have.
+    var on = BR.user ? true : hasStoredSession();
     var nb = document.getElementById('notifyBtn');
     if(nb) nb.textContent = on ? t.nb_in : t.nb_out;
     var cta = document.getElementById('ctaAlerts');
