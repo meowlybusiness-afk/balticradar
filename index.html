@@ -3,7 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BalticRadar</title>
+<title>BalticRadar — lietoti auto Baltijā</title>
+<meta name="description" content="Visi lietotie auto no ss.lv, autoplius.lt un auto24.ee vienuviet. Cenu vēsture, tirgus novērtējums un e-pasta paziņojumi par jauniem sludinājumiem.">
+<meta property="og:site_name" content="BalticRadar">
+<meta property="og:type" content="website">
+<meta property="og:title" content="BalticRadar — lietoti auto Baltijā">
+<meta property="og:description" content="Visi lietotie auto no ss.lv, autoplius.lt un auto24.ee vienuviet. Cenu vēsture un paziņojumi par jauniem sludinājumiem.">
+<meta property="og:url" content="https://balticradar.meowlybusiness.workers.dev/">
+<meta property="og:image" content="https://balticradar.meowlybusiness.workers.dev/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="BalticRadar — lietoti auto Baltijā">
+<meta name="twitter:description" content="Visi lietotie auto no ss.lv, autoplius.lt un auto24.ee vienuviet.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -267,6 +277,8 @@
   .mschip:hover{background:#e6e6ec}
   .mschip.on{background:var(--accent);border-color:var(--accent);color:#fff}
   #msdd .msdd-foot{display:flex;gap:8px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+  #msdd .msdd-done{flex:1;background:var(--accent);color:#fff;border:none;border-radius:10px;
+    padding:9px 0;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
   #msdd .msdd-ok{flex:2;background:var(--accent);color:#fff;border:none;border-radius:10px;
     padding:10px 8px;font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit}
   #msdd .msdd-clr{flex:1;background:transparent;color:var(--ink);border:1px solid var(--line);
@@ -1154,9 +1166,11 @@ async function loadGrid(){
   }catch(e){ /* transient network/DB blip: keep the current grid in place */ }
 }
 async function openCarById(id){
-  let c=(allCars||[]).find(x=>x.car_id===id)||sampleCars.find(x=>x.car_id===id);
-  if(!c){try{const r=await fetch(`${SB_URL}/rest/v1/v_listings?car_id=eq.${encodeURIComponent(id)}&select=${LIST_COLS},photos`,{headers:SBH});const d=await r.json();c=Array.isArray(d)&&d[0];}catch(e){}}
+  let c=(allCars||[]).find(x=>x.car_id===id)||(sampleCars||[]).find(x=>x.car_id===id);
+  if(!c){try{const r=await fetch(`${SB_URL}/rest/v1/v_listings?car_id=eq.${encodeURIComponent(id)}&select=${LIST_COLS},photos`,{headers:SBH,cache:"no-store"});const d=await r.json();c=Array.isArray(d)&&d[0];}catch(e){}}
+  if(!c){try{const r=await fetch(`${SB_URL}/rest/v1/cars?car_id=eq.${encodeURIComponent(id)}&select=*`,{headers:SBH,cache:"no-store"});const d=await r.json();c=Array.isArray(d)&&d[0];}catch(e){}}   // fallback: car may be outside v_listings
   if(c)openModal(c);
+  return !!c;
 }
 async function tick(){
   const wasFirst=firstLoad;
@@ -1166,6 +1180,7 @@ async function tick(){
       try{const rs=await fetch(`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&order=first_seen.desc`,{headers:{...SBH,Range:"0-1499"},cache:"no-store"});
         if(rs.ok){const d=await rs.json(); if(Array.isArray(d))sampleCars=cleanRows(d);}}catch(e){}
       refreshControls();setFeatured(sampleCars);
+      brOpenDeepLink();               // fire-and-forget: the modal must not wait for the grid
       await loadGrid();
       try{const rc=await fetch(`${SB_URL}/rest/v1/v_listings?select=car_id`,{headers:{...SBH,Prefer:"count=estimated",Range:"0-0"},cache:"no-store"});
         const t=parseInt((rc.headers.get("content-range")||"").split("/")[1]);
@@ -1174,7 +1189,7 @@ async function tick(){
     } else { await loadGrid(); }
   }catch(e){ if(wasFirst){allCars=(EMBEDDED.cars||[]).filter(isCar);sampleCars=allCars;refreshControls();setFeatured(sampleCars);render(allCars.slice(0,PAGE_SIZE));setCount(allCars.length);} }
   if(wasFirst&&typeof renderContent==="function")renderContent();
-  if(wasFirst){const _cid=new URLSearchParams(location.search).get("car");if(_cid)openCarById(_cid);}
+  if(wasFirst)brOpenDeepLink();     // safety net if the early call was skipped (offline fallback path)
   firstLoad=false;
 }
 
@@ -1183,7 +1198,47 @@ let galIdx=0;
 function gal(d){const im=document.querySelectorAll("#modal .mgal img");if(im.length<2)return;
   im[galIdx].classList.remove("show");galIdx=(galIdx+d+im.length)%im.length;im[galIdx].classList.add("show");
   const c=document.getElementById("gcnt");if(c)c.textContent=(galIdx+1)+" / "+im.length;}
-function closeModal(){document.getElementById("ov").classList.remove("show");}
+function closeModal(){
+  document.getElementById("ov").classList.remove("show");
+  brStripCarParam();          // arrived from an alert e-mail? closing leaves them browsing BalticRadar
+}
+/* ---------- DEEP LINKS: /?car=<id>  (also #car=<id>) ----------
+   An alert e-mail links to OUR page, not to ss.lv. The modal must open on a cold, logged-out
+   load, fetching that single car by id if it is not in the current page of results. */
+function brCarParam(){
+  try{
+    const q=new URLSearchParams(location.search).get("car");
+    if(q)return q;
+    const h=(location.hash||"").replace(/^#/,"");
+    if(h.startsWith("car="))return decodeURIComponent(h.slice(4));
+  }catch(e){}
+  return null;
+}
+function brStripCarParam(){
+  try{
+    const u=new URL(location.href);
+    if(!u.searchParams.get("car") && !(u.hash||"").startsWith("#car="))return;
+    u.searchParams.delete("car");
+    if((u.hash||"").startsWith("#car="))u.hash="";
+    history.replaceState(null,"",u.pathname+(u.search||"")+(u.hash||""));
+  }catch(e){}
+}
+let _brDeepDone=false;
+async function brOpenDeepLink(){
+  if(_brDeepDone)return;
+  _brDeepDone=true;
+  // ?p=filters  -> the "manage my alerts" link in every alert e-mail lands here
+  try{
+    if(new URLSearchParams(location.search).get("p")==="filters"){
+      let n=0; const t=setInterval(()=>{
+        if(window.BRProfile&&window.BRProfile.open){clearInterval(t);window.BRProfile.open("filters");}
+        else if(++n>40)clearInterval(t);
+      },150);
+    }
+  }catch(e){}
+  const id=brCarParam(); if(!id){_brDeepDone=true;return;}
+  await openCarById(id);
+}
 function sparkline(pts){
   if(pts.length<2)return"";
   const w=640,h=230,padL=64,padR=16,padT=16,padB=34;
@@ -1368,14 +1423,17 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();
 
 /* =========================================================================
    MULTI-SELECT FILTER CONTROLS
-   Compact collapsed control -> anchored overlay dropdown -> chips -> Apstiprināt
+   Compact collapsed control -> anchored overlay dropdown -> chips.
+   NO CONFIRM BUTTON: every chip toggle applies immediately (debounced 300ms). The dropdown
+   stays open so several values can be picked; outside-click / Escape just closes it.
+   Zero selections = NO FILTER (match all) - inPred() turns [] into "", never an empty IN-list.
    ========================================================================= */
 const MSTXT={
- lv:{ok:"Apstiprināt",clr:"Notīrīt",find:"Meklēt…",none:"Nav opciju"},
- en:{ok:"Apply",clr:"Clear",find:"Search…",none:"No options"},
- ru:{ok:"Применить",clr:"Очистить",find:"Поиск…",none:"Нет опций"},
- lt:{ok:"Patvirtinti",clr:"Išvalyti",find:"Ieškoti…",none:"Nėra parinkčių"},
- et:{ok:"Kinnita",clr:"Tühjenda",find:"Otsi…",none:"Valikuid pole"}};
+ lv:{clr:"Notīrīt",find:"Meklēt…",none:"Nav opciju",done:"Gatavs"},
+ en:{clr:"Clear",find:"Search…",none:"No options",done:"Done"},
+ ru:{clr:"Очистить",find:"Поиск…",none:"Нет опций",done:"Готово"},
+ lt:{clr:"Išvalyti",find:"Ieškoti…",none:"Nėra parinkčių",done:"Baigta"},
+ et:{clr:"Tühjenda",find:"Otsi…",none:"Valikuid pole",done:"Valmis"}};
 const MST=()=>MSTXT[lang]||MSTXT.en;
 const MSDEF={
  make: {ph:()=>T().allMakes||"All makes",   search:true},
@@ -1429,20 +1487,22 @@ function _msDDEl(){
   _msDD=document.createElement("div"); _msDD.id="msdd";
   _msDD.innerHTML='<input class="msdd-s" id="msddS" type="text" autocomplete="off">'
     +'<div class="msdd-body" id="msddB"></div>'
-    +'<div class="msdd-foot"><button type="button" class="msdd-ok" id="msddOK"></button>'
-    +'<button type="button" class="msdd-clr" id="msddCLR"></button></div>';
+    +'<div class="msdd-foot"><button type="button" class="msdd-clr" id="msddCLR"></button>'
+    +'<button type="button" class="msdd-done" id="msddDONE"></button></div>';
   document.body.appendChild(_msDD);
   _msDD.addEventListener("click",e=>{
     const ch=e.target.closest(".mschip");
     if(ch){const v=ch.dataset.v; const i=_msSel.indexOf(v);
       if(i>=0)_msSel.splice(i,1); else _msSel.push(v);
-      ch.classList.toggle("on", _msSel.indexOf(v)>=0); return;}
-    if(e.target.id==="msddOK"){msCommit();return;}
-    if(e.target.id==="msddCLR"){_msSel=[]; [..._msDD.querySelectorAll(".mschip")].forEach(c=>c.classList.remove("on")); return;}
+      ch.classList.toggle("on", _msSel.indexOf(v)>=0);
+      msApplySoon();                       // <- INSTANT APPLY, no confirm button
+      return;}
+    if(e.target.id==="msddCLR"){_msSel=[]; [..._msDD.querySelectorAll(".mschip")].forEach(c=>c.classList.remove("on")); msApplySoon(); return;}
+    if(e.target.id==="msddDONE"){msClose();return;}
   });
   const si=_msDD.querySelector("#msddS");
   si.addEventListener("input",()=>msPaintBody(si.value));
-  si.addEventListener("keydown",e=>{if(e.key==="Enter")msCommit();});
+  si.addEventListener("keydown",e=>{if(e.key==="Enter"){msApplyNow();msClose();}});
   return _msDD;
 }
 function msPaintBody(q){
@@ -1475,8 +1535,8 @@ function msOpen(k,btn){
   if(_msOpen===k){msClose();return;}
   _msOpen=k; _msSel=_arr(F[k]).slice();
   const dd=_msDDEl(), si=dd.querySelector("#msddS");
-  dd.querySelector("#msddOK").textContent=MST().ok;
   dd.querySelector("#msddCLR").textContent=MST().clr;
+  dd.querySelector("#msddDONE").textContent=MST().done;
   si.value=""; si.placeholder=MST().find;
   si.style.display=MSDEF[k].search?"block":"none";
   msPaintBody("");
@@ -1485,19 +1545,39 @@ function msOpen(k,btn){
   msPosition();
   if(MSDEF[k].search)setTimeout(()=>si.focus(),20);
 }
-function msClose(){ _msOpen=null; if(_msDD){_msDD.classList.remove("open"); _msDD.style.visibility="";} msRefreshAll(); }
-function msCommit(){
-  const k=_msOpen; if(!k){msClose();return;}
+function msClose(){ msApplyNow(); _msOpen=null; if(_msDD){_msDD.classList.remove("open"); _msDD.style.visibility="";} msRefreshAll(); }
+
+/* ---- instant apply (replaces the old "Apstiprināt" commit) ----
+   msApplySoon()  = called on EVERY chip toggle; debounced 300ms so rapid multi-picking
+                    fires one query, not ten. The label updates instantly.
+   msApplyNow()   = flush the pending apply (on close / Escape / Enter).
+   Both funnel into F[] + repaint(), i.e. buildServerQ/buildFilterPreds -> count, pager and
+   grid stay derived from exactly the same state. [] stays [] = match all. */
+let _msT=null;
+function msApplyState(){
+  const k=_msOpen; if(!k) return false;
   const before=_arr(F[k]).join("|"), now=_msSel.slice();
+  if(before===now.join("|")) return false;                          // nothing actually changed
   F[k]=now;
-  if(k==="make" && before!==now.join("|")){
-    const allowed=new Set(); now.forEach(mk=>{                       // keep only models that belong to the selected makes
+  if(k==="make"){
+    const allowed=new Set(); now.forEach(mk=>{                      // keep only models that belong to the selected makes
       (FACET_MODELS[mk]||[]).forEach(m=>{allowed.add(m); const sr=modelSeries(mk,m); if(sr)allowed.add(sr);});});
     F.model=_arr(F.model).filter(v=>allowed.has(v));
   }
   try{localStorage.setItem("br_filters",JSON.stringify(F));}catch(e){}
-  msClose();
+  return true;
+}
+function msApplyNow(){
+  if(_msT){clearTimeout(_msT); _msT=null;}
+  if(!msApplyState()) return;
+  msRefreshAll(); msPosition();
   curPage=1; repaint();
+}
+function msApplySoon(){
+  msApplyState();                       // state + label immediately...
+  msRefreshAll(); msPosition();
+  if(_msT)clearTimeout(_msT);
+  _msT=setTimeout(()=>{_msT=null; curPage=1; repaint();},300);      // ...query debounced
 }
 document.addEventListener("click",e=>{
   const b=e.target.closest(".msf-btn");
@@ -2684,8 +2764,7 @@ async function msRender(key){
       + '<input class="br2i" id="ms_q_model" placeholder="Meklēt modeli (piem. X5)" autocomplete="off" value="'+esc(q)+'">'
       + msAllRow('model','Visi modeļi')
       + '<div class="br2hint">'+shown+' no '+total+' modeļiem · '+MS.make.length+' marka(s)</div>'
-      + (html||'<div class="br2hint">Nav atbilstošu modeļu.</div>')
-      + '<div style="margin-top:10px"><button class="br2btn g" onclick="BRProfile.msConfirm(\'model\')">Apstiprināt modeļus</button></div>';
+      + (html||'<div class="br2hint">Nav atbilstošu modeļu.</div>');
     var qi=$('ms_q_model');
     if(qi){ qi.oninput=function(){ msRender('model'); }; if(q){ qi.focus(); qi.setSelectionRange(q.length,q.length);} }
     msWire(box); return;
@@ -2702,8 +2781,7 @@ async function msRender(key){
     + list.map(function(o){
         return '<button type="button" class="br2chip'+(MS[key].indexOf(o)!==-1?' on':'')+'" data-k="'+key+'" data-v="'+esc(o)+'">'+esc(o)+'</button>';
       }).join('')
-    + '</div>'
-    + '<div style="margin-top:10px"><button class="br2btn g" onclick="BRProfile.msConfirm(\''+key+'\')">Apstiprināt</button></div>';
+    + '</div>';
   if(long){ var q2=$('ms_q_'+key); if(q2){ q2.oninput=function(){ msRender(key); }; if(qv){ q2.focus(); q2.setSelectionRange(qv.length,qv.length);} } }
   msWire(box);
 }
@@ -2714,10 +2792,9 @@ BRProfile.msDrop = function(key,val){
     msRender('make'); msRender('model');
   } else msRender(key);
 };
-BRProfile.msConfirm = function(key){
-  var n=MS[key].length;
-  m('br2m-flt', n ? ('Apstiprināts: '+n+' izvēle'+(n===1?'':'s')) : 'Nekas nav izvēlēts.', n?'ok':'err');
-};
+/* No confirm button anywhere: a chip click already updates MS[] and re-renders the picked pills.
+   Kept as a no-op so any stale onclick in a cached page cannot throw. */
+BRProfile.msConfirm = function(){};
 
 function combo(id, kind, ph){
   return '<input class="br2i" id="'+id+'" list="brdl-'+kind+'" inputmode="decimal" autocomplete="off" placeholder="'+ph+'">';

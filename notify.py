@@ -42,6 +42,9 @@ RESEND_KEY = os.environ.get("RESEND_API_KEY")
 FROM = (os.environ.get("ALERT_FROM") or "").strip() or "BalticRadar <onboarding@resend.dev>"
 TEST_TO = (os.environ.get("TEST_TO") or "").strip()
 DRY_RUN = os.environ.get("DRY_RUN") == "1"
+# TEST-ONLY: skip the (filter_id, car_id) dedupe read AND skip recording the send, so a manual
+# dispatch can re-render a real e-mail from cars that were already alerted on. Never set on cron.
+IGNORE_SENT = os.environ.get("IGNORE_SENT") == "1"
 
 FLAG = {"LV": "\U0001F1F1\U0001F1FB", "LT": "\U0001F1F1\U0001F1F9", "EE": "\U0001F1EA\U0001F1EA"}
 
@@ -235,61 +238,159 @@ def eur(n):
         return ""
 
 
-def car_row(c, drop=None):
-    img = (c.get("photos") or [None])[0]
-    thumb = (f'<img src="{img}" width="132" height="92" style="border-radius:10px;object-fit:cover;display:block">'
-             if img else '<div style="width:132px;height:92px;background:#eceef2;border-radius:10px"></div>')
-    title = f"{c.get('make') or ''} {c.get('model') or ''} {c.get('year') or ''}".strip()
+FONT = "'Manrope','Helvetica Neue',Helvetica,Arial,sans-serif"
+ACC = "#16a06a"
+INK = "#1d1d1f"
+INK2 = "#5b6470"
+MUT = "#8a929c"
+LINE = "#e7e9ee"
+
+
+def car_url(c):
+    """The CTA opens the listing ON BALTICRADAR (/?car=<id>), not on ss.lv.
+    The source-portal link still lives inside our own detail view."""
+    return f"{SITE}/?car={c.get('car_id')}"
+
+
+def specs_of(c):
     bits = []
     if c.get("last_mileage") is not None:
         bits.append(f"{int(c['last_mileage']):,}".replace(",", " ") + " km")
-    for k in ("fuel", "gearbox", "body"):
-        if c.get(k):
-            bits.append(str(c[k]))
+    if c.get("fuel"):
+        bits.append(_nf(c["fuel"]).capitalize())
     if c.get("engine_l"):
         bits.append(f"{c['engine_l']} l")
-    specs = " &middot; ".join(bits)
+    if c.get("gearbox"):
+        bits.append(_ng(c["gearbox"]).capitalize())
+    if c.get("body"):
+        bits.append(_nb(c["body"]).capitalize())
+    return " &middot; ".join(b for b in bits if b)
+
+
+def car_row(c, drop=None):
+    """One white card: table-based, fully inline, stacks on narrow screens."""
+    img = (c.get("photos") or [None])[0]
+    alt = f"{c.get('make') or ''} {c.get('model') or ''}".strip() or "Auto"
+    thumb = (f'<img src="{img}" width="180" alt="{alt}" border="0" '
+             f'style="width:180px;max-width:180px;height:126px;object-fit:cover;display:block;'
+             f'border:0;border-radius:12px;background:#eef0f4">'
+             if img else
+             '<div style="width:180px;height:126px;background:#eef0f4;border-radius:12px"></div>')
+    title = f"{c.get('make') or ''} {c.get('model') or ''}".strip()
+    year = c.get("year") or ""
     flag = FLAG.get(c.get("country") or "", "")
     src = c.get("source") or ""
-    url = c.get("source_url") or SITE
-    dropline = (f'<div style="color:#16a06a;font-weight:700;font-size:12px">Cena kritusi: '
-                f'<span style="text-decoration:line-through;color:#9aa7b8">{eur(drop)}</span> &rarr; {eur(c.get("last_price"))}</div>'
-                if drop else "")
+    url = car_url(c)
+
+    drop_badge = (
+        f'<div style="margin:0 0 7px">'
+        f'<span style="display:inline-block;background:#e8f7f0;color:{ACC};'
+        f'font:700 11px/1.6 {FONT};padding:2px 9px;border-radius:999px;white-space:nowrap">'
+        f'&darr; Cena kritusi &nbsp;<span style="text-decoration:line-through;color:{MUT};font-weight:600">'
+        f'{eur(drop)}</span></span></div>') if drop else ""
+
     return (
+        f'<tr><td style="padding:0 0 14px">'
+        f'<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" '
+        f'style="border-collapse:separate;background:#ffffff;border:1px solid {LINE};border-radius:16px">'
         f'<tr>'
-        f'<td style="padding:10px 12px 10px 0;vertical-align:top;width:132px">{thumb}</td>'
-        f'<td style="padding:10px 0;vertical-align:top;font-family:Manrope,Arial,sans-serif">'
-        f'<a href="{url}" style="color:#111;text-decoration:none;font-weight:800;font-size:15px">{title}</a><br>'
-        f'<span style="color:#6b7280;font-size:12px">{specs}</span><br>'
-        f'<span style="color:#111;font-weight:800;font-size:16px">{eur(c.get("last_price"))}</span>'
-        f'<span style="color:#9aa7b8;font-size:12px"> &nbsp;{flag} {src}</span>'
-        f'{dropline}'
-        f'<div style="margin-top:6px"><a href="{url}" style="color:#16a06a;font-size:12px;font-weight:700;text-decoration:none">Atvērt sludinājumu &rarr;</a></div>'
-        f'</td></tr>'
+        f'<td class="ph" width="180" style="width:180px;padding:14px 0 14px 14px;vertical-align:top">'
+        f'<a href="{url}" target="_blank" style="text-decoration:none">{thumb}</a></td>'
+        f'<td class="bd" style="padding:14px;vertical-align:top;font-family:{FONT}">'
+        f'{drop_badge}'
+        f'<a href="{url}" target="_blank" style="color:{INK};text-decoration:none;'
+        f'font:800 17px/1.25 {FONT};letter-spacing:-.01em">{title} '
+        f'<span style="color:{INK2};font-weight:600">{year}</span></a>'
+        f'<div style="margin:6px 0 10px;color:{INK2};font:500 13px/1.5 {FONT}">{specs_of(c)}</div>'
+        f'<div style="color:{INK};font:800 21px/1.2 {FONT};letter-spacing:-.02em">{eur(c.get("last_price"))}</div>'
+        f'<div style="margin:6px 0 12px;color:{MUT};font:600 12px/1.5 {FONT}">{flag} {src}</div>'
+        f'<a href="{url}" target="_blank" style="display:inline-block;background:{ACC};color:#ffffff;'
+        f'text-decoration:none;font:800 13px/1 {FONT};padding:11px 18px;border-radius:10px">'
+        f'Atvērt sludinājumu &rarr;</a>'
+        f'</td></tr></table></td></tr>'
     )
+
+
+MQ = (
+    "@media only screen and (max-width:480px){"
+    ".wrap{width:100% !important}"
+    ".ph,.bd{display:block !important;width:100% !important;box-sizing:border-box}"
+    ".ph{padding:14px 14px 0 !important}"
+    ".bd{padding:12px 14px 16px !important}"
+    ".ph img,.ph div{width:100% !important;max-width:100% !important;height:200px !important}"
+    ".cta a{display:block !important}"
+    "}"
+)
 
 
 def build_html(name, filter_name, cars, drops, extra):
     rows = "".join(car_row(c, drops.get(c["car_id"])) for c in cars)
-    more = (f'<p style="color:#6b7280;font-family:Arial;font-size:13px">…un vēl {extra} jauni sludinājumi vietnē.</p>'
-            if extra > 0 else "")
-    hello = f' {name}' if name else ""
+    n = len(cars)
+    hello = f", {name}" if name else ""
+    more = (f'<tr><td style="padding:2px 0 14px;text-align:center;font:600 13px/1.5 {FONT};color:{INK2}">'
+            f'&hellip;un vēl <b style="color:{INK}">{extra}</b> jauni sludinājumi pēc šī filtra &mdash; '
+            f'<a href="{SITE}" target="_blank" style="color:{ACC};text-decoration:none;font-weight:800">'
+            f'skatīt visus</a></td></tr>') if extra > 0 else ""
+    host = SITE.replace("https://", "").replace("http://", "")
+
     return (
-        f'<div style="background:#f4f5f7;padding:22px">'
-        f'<div style="max-width:600px;margin:0 auto;background:#fff;border-radius:16px;padding:26px">'
-        f'<div style="font-family:Manrope,Arial,sans-serif;font-size:22px;font-weight:800;color:#111">'
-        f'Baltic<span style="color:#16a06a">Radar</span></div>'
-        f'<p style="font-family:Arial,sans-serif;color:#111;font-size:14px">'
-        f'Sveiki{hello}! Jauni auto pēc Tava filtra <b>{filter_name}</b> — tikko parādījās:</p>'
-        f'<table style="border-collapse:collapse;width:100%">{rows}</table>{more}'
-        f'<p style="margin:24px 0"><a href="{SITE}" style="background:#16a06a;color:#fff;padding:13px 26px;'
-        f'border-radius:999px;text-decoration:none;font-weight:800;font-family:Arial,sans-serif;font-size:14px">'
-        f'Skatīt BalticRadar &rarr;</a></p>'
-        f'<p style="color:#9aa7b8;font-size:11px;font-family:Arial,sans-serif">'
-        f'Šo e-pastu saņem, jo Tev ir saglabāts filtrs ar ieslēgtiem paziņojumiem. '
-        f'Paziņojumus vari izslēgt savā profilā sadaļā “Mani filtri”.</p>'
-        f'</div></div>'
+        '<!DOCTYPE html><html lang="lv"><head>'
+        '<meta charset="utf-8">'
+        '<meta name="viewport" content="width=device-width,initial-scale=1">'
+        '<meta name="color-scheme" content="light only">'
+        '<meta name="supported-color-schemes" content="light only">'
+        '<title>Jauni auto | BalticRadar</title>'
+        f'<style>{MQ}</style>'
+        '</head>'
+        '<body style="margin:0;padding:0;background:#f4f5f7;-webkit-font-smoothing:antialiased">'
+        f'<div style="display:none;max-height:0;overflow:hidden;opacity:0">{n} jauns(-i) auto pēc filtra &bdquo;{filter_name}&ldquo; &mdash; tikko parādījās.</div>'
+        '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f4f5f7">'
+        '<tr><td align="center" style="padding:26px 12px">'
+        '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="wrap" style="width:600px;max-width:600px">'
+
+        '<tr><td style="padding:0 4px 18px">'
+        f'<a href="{SITE}" target="_blank" style="text-decoration:none;font:800 24px/1 {FONT};color:{INK};letter-spacing:-.03em">'
+        f'Baltic<span style="color:{ACC}">Radar</span></a></td></tr>'
+
+        '<tr><td style="padding:0 0 16px">'
+        f'<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#ffffff;border:1px solid {LINE};border-radius:16px">'
+        '<tr><td style="padding:20px 18px">'
+        f'<div style="font:800 19px/1.3 {FONT};color:{INK};letter-spacing:-.02em">Sveiki{hello} &mdash; {n} jauns(-i) auto tavam filtram</div>'
+        f'<div style="margin-top:9px;font:600 13px/1.5 {FONT};color:{INK2}">Filtrs: '
+        f'<span style="display:inline-block;background:#e8f7f0;color:{ACC};padding:3px 11px;border-radius:999px;font-weight:800">{filter_name}</span></div>'
+        f'<div style="margin-top:11px;font:500 13px/1.6 {FONT};color:{MUT}">Šie sludinājumi tikko parādījās ss.lv / autoplius.lt / auto24.ee.</div>'
+        '</td></tr></table></td></tr>'
+
+        f'{rows}{more}'
+
+        '<tr><td class="cta" align="center" style="padding:8px 0 26px">'
+        f'<a href="{SITE}" target="_blank" style="display:inline-block;background:{INK};color:#ffffff;text-decoration:none;'
+        f'font:800 14px/1 {FONT};padding:15px 30px;border-radius:12px">Skatīt visu katalogu &rarr;</a></td></tr>'
+
+        f'<tr><td style="padding:18px 6px 6px;border-top:1px solid {LINE}">'
+        f'<div style="font:600 12px/1.7 {FONT};color:{MUT}">'
+        'Šo e-pastu saņem, jo tev ir saglabāts filtrs ar ieslēgtiem paziņojumiem.<br>'
+        f'<a href="{SITE}/?p=filters" target="_blank" style="color:{ACC};text-decoration:none;font-weight:800">Pārvaldīt filtrus / atteikties</a>'
+        ' &nbsp;&middot;&nbsp; '
+        f'<a href="mailto:meowlybusiness@gmail.com" style="color:{MUT};text-decoration:none">meowlybusiness@gmail.com</a></div>'
+        f'<div style="margin-top:10px;font:500 11px/1.6 {FONT};color:#a8aeb7">'
+        f'BalticRadar &middot; lietotu auto meklētājs Latvijā, Lietuvā un Igaunijā &middot; {host}</div>'
+        '</td></tr>'
+
+        '</table></td></tr></table></body></html>'
     )
+
+
+def build_text(filter_name, cars, extra):
+    L = [f'Jauni auto pēc filtra "{filter_name}" - BalticRadar', ""]
+    for c in cars:
+        price = f"{c.get('last_price')} EUR" if c.get("last_price") else "cena nav noradita"
+        L.append(f"- {c.get('make') or ''} {c.get('model') or ''} {c.get('year') or ''} · {price}")
+        L.append(f"  {car_url(c)}")
+    if extra > 0:
+        L.append(f"...un vēl {extra} sludinājumi.")
+    L += ["", f"Skatīt visus: {SITE}", f"Pārvaldīt filtrus: {SITE}/?p=filters"]
+    return "\n".join(L)
 
 
 SHARED_FROM = "BalticRadar <onboarding@resend.dev>"
@@ -405,7 +506,7 @@ def main():
             continue
 
         criteria = f.get("criteria") or {}
-        already = {n["car_id"] for n in get(f"filter_notifications?select=car_id&filter_id=eq.{f['id']}")}
+        already = set() if IGNORE_SENT else {n["car_id"] for n in get(f"filter_notifications?select=car_id&filter_id=eq.{f['id']}")}
         hits = [c for c in cars if c["car_id"] not in already and matches(c, criteria)]
         if not hits:
             continue
@@ -422,13 +523,13 @@ def main():
         subject = f"{len(hits)} jauns auto: {name} | BalticRadar" if len(hits) == 1 \
             else f"{len(hits)} jauni auto: {name} | BalticRadar"
         html = build_html(prof.get("full_name"), name, shown, drops, extra)
-        text = "\n".join(
-            f"- {c.get('make')} {c.get('model')} {c.get('year') or ''} · "
-            f"{c.get('last_price')} EUR · {c.get('source_url') or ''}" for c in shown
-        ) + f"\n\nSkatīt visus: {SITE}"
+        text = build_text(name, shown, extra)
 
         if send(email, subject, html, text):
             sent_emails += 1
+            if IGNORE_SENT:
+                print(f"filter {f['id']} '{name}' -> {email}: TEST send (IGNORE_SENT=1, NOT recorded)")
+                continue
             # mark ALL hits (not just the shown ones) so the backlog is never re-sent later
             post("filter_notifications",
                  [{"filter_id": f["id"], "car_id": c["car_id"]} for c in hits],
@@ -461,7 +562,7 @@ def main():
         hits.sort(key=lambda c: (c.get("first_seen") or ""), reverse=True)
         shown = hits[:MAX_PER_EMAIL]
         html = build_html(sub.get("name"), "Tavi kritēriji", shown, drops, len(hits) - len(shown))
-        text = "\n".join(f"- {c.get('make')} {c.get('model')} {c.get('source_url') or ''}" for c in shown)
+        text = build_text("Tavi kritēriji", shown, len(hits) - len(shown))
         if send(sub["email"], f"{len(hits)} jauni auto | BalticRadar", html, text):
             sent_emails += 1
             post("notifications", [{"subscription_id": sub["id"], "car_id": c["car_id"]} for c in hits],
