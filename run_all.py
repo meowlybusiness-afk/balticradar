@@ -22,6 +22,22 @@ def specs_match(inc, car):
 def price_sane(inc_price, car_price):
     if not inc_price or not car_price: return True
     return car_price*(1-PRICE_TOLERANCE) <= inc_price <= car_price*(1+PRICE_TOLERANCE)
+def engine_l_of(f):
+    """autoplius only ever parses cubic centimetres ("Dzinējs: 1998 cm3"), never litres, so every
+    Lithuanian car landed with engine_l = NULL and was invisible to the "Tilpums no/līdz" filter -
+    combining SUV + automatic + 2.0 L returned ZERO cars. Derive the litres when they are missing."""
+    l = f.get("engine_l")
+    if l not in (None, "", 0):
+        return l
+    cc = f.get("engine_cc")
+    try:
+        cc = int(cc)
+    except (TypeError, ValueError):
+        return None
+    if not 200 <= cc <= 12000:      # obvious mis-parse -> leave it NULL rather than invent a value
+        return None
+    return f"{round(cc/1000.0, 1):.1f}"
+
 def fingerprint(f):
     parts=[(f.get("make") or "").lower().strip(),(f.get("model") or "").lower().strip(),
            str(f.get("year") or ""),str(f.get("engine_cc") or ""),
@@ -445,7 +461,7 @@ if USE_SB:
         cid=f"car_{f['ad_id']}"
         _post("cars",[{"car_id":cid,"fingerprint":fingerprint(f)[0],"source":f.get("source"),"country":f.get("country"),
             "make":f.get("make"),"model":f.get("model"),"year":f.get("year"),"engine_cc":f.get("engine_cc"),
-            "engine_l":f.get("engine_l"),"power_kw":f.get("power_kw"),"fuel":f.get("fuel"),"gearbox":f.get("gearbox"),
+            "engine_l":engine_l_of(f),"power_kw":f.get("power_kw"),"fuel":f.get("fuel"),"gearbox":f.get("gearbox"),
             "body":f.get("body"),"drivetrain":f.get("drivetrain"),"color":f.get("color"),"owner_code":f.get("owner_code"),
             "vin_prefix":f.get("vin_prefix"),"location":f.get("location"),"photos":f.get("photos") or [],
             "source_url":f.get("source_url"),"description":f.get("description"),"posted":f.get("posted"),"last_price":sane_price(f.get("price_eur")),
