@@ -31,9 +31,35 @@ URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 KEY = os.environ.get("SUPABASE_KEY", "")
 H = {"apikey": KEY, "Authorization": f"Bearer {KEY}", "Content-Type": "application/json"}
 
-LOOKBACK_MIN = int(os.environ.get("LOOKBACK_MIN", 45))
+LOOKBACK_MIN = int(os.environ.get("LOOKBACK_MIN", 1560))   # 26 h: must cover the SLOWEST cadence
 MAX_PER_EMAIL = int(os.environ.get("MAX_PER_EMAIL", 12))
 MAX_EMAILS = int(os.environ.get("MAX_EMAILS", 80))
+
+# ---------------------------------------------------------------- CADENCE (anti-spam)
+# The job runs every 20 minutes. Before this, ANY new match sent an e-mail immediately, so a single
+# saved filter could fire up to 72 times a day and a user with three filters over 200. That is how
+# you get unsubscribed on day one and how Gmail learns to junk your domain.
+#
+# Now every filter has a cadence and we simply refuse to e-mail it again until its cooldown has
+# expired. Nothing is lost: unsent cars stay unrecorded in filter_notifications and roll into the
+# next batch, because the lookback window (26 h) is wider than the slowest cadence.
+FREQ_COOLDOWN_MIN = {
+    "instant":    60,     # PREMIUM. As fast as we will ever go: at most one e-mail an hour.
+    "few_hours":  360,    # PREMIUM. Every ~6 h -> at most 4 a day.
+    "daily":     1200,    # 20 h, so a "daily" digest never drifts past its slot. Max 1 a day.
+}
+DEFAULT_FREQ = "daily"          # the safe default for every NEW filter
+FREE_FREQ = "daily"             # free accounts always get the digest; instant/hourly is the paywall
+# Hard ceiling per USER per day, whatever their filters say. Anything over it rolls into tomorrow.
+DAILY_CAP = int(os.environ.get("DAILY_CAP", 6))
+
+# ---------------------------------------------------------------- GLOBAL PROVIDER BUDGET
+# Resend's free tier is 100 e-mails A DAY across the whole account. Burn it and EVERY user - paying
+# ones included - silently receives nothing for the rest of the day, with no error anywhere on the
+# site. Refuse to spend past the reserve and say so loudly instead.
+PROVIDER_DAILY_LIMIT = int(os.environ.get("PROVIDER_DAILY_LIMIT", 100))
+PROVIDER_RESERVE = int(os.environ.get("PROVIDER_RESERVE", 10))     # never spend the last 10
+GLOBAL_BUDGET = max(0, PROVIDER_DAILY_LIMIT - PROVIDER_RESERVE)    # -> 90/day
 SITE = os.environ.get("SITE_URL", "https://balticradar.meowlybusiness.workers.dev")
 RESEND_KEY = os.environ.get("RESEND_API_KEY")
 # NOTE: an UNSET GitHub secret is passed through as an EMPTY STRING, not as "missing" - so
@@ -79,6 +105,91 @@ def patch(path, body):
     except Exception as e:
         print("PATCH error", path, e)
         return None
+
+
+# ---------------------------------------------------------------- cadence helpers
+def _now():
+    return datetime.datetime.now(datetime.timezone.utc)
+
+
+def _parse_ts(v):
+    if not v:
+        return None
+    t = str(v).replace("Z", "+00:00")
+    try:
+        d = datetime.datetime.fromisoformat(t)
+    except ValueError:
+        return None
+    return d if d.tzinfo else d.replace(tzinfo=datetime.timezone.utc)
+
+
+def freq_of(f, is_premium):
+    """A free account is ALWAYS on the daily digest - instant/hourly alerts are the paid feature."""
+    v = (f.get("notify_freq") or DEFAULT_FREQ).strip().lower()
+    if v not in FREQ_COOLDOWN_MIN:
+        v = DEFAULT_FREQ
+    if not is_premium:
+        return FREE_FREQ
+    return v
+
+
+def cooling_down(f, freq):
+    """True -> this filter e-mailed too recently. Its new cars are simply left for the next batch."""
+    last = _parse_ts(f.get("last_notified_at"))
+    if not last:
+        return False
+    mins = (_now() - last).total_seconds() / 60.0
+    need = FREQ_COOLDOWN_MIN[freq]
+    if mins < need:
+        print(f"  cooldown: last sent {mins:.0f} min ago, '{freq}' needs {need} -> hold")
+        return True
+    return False
+
+
+def sends_today(user_id):
+    """How many alert e-mails this user has already had since midnight UTC.
+    Degrades gracefully: if alert_sends does not exist yet (db_alert_cadence.sql not run), we
+    return 0 and rely on the per-filter cooldowns alone rather than blocking every alert."""
+    if not user_id:
+        return 0
+    day = _now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat().replace("+00:00", "Z")
+    try:
+        h = dict(H); h["Prefer"] = "count=exact"; h["Range"] = "0-0"
+        r = requests.get(f"{URL}/rest/v1/alert_sends?select=id&user_id=eq.{user_id}"
+                         f"&sent_at=gte.{day}", headers=h, timeout=30)
+        if not r.ok:
+            print("  !! alert_sends unreadable -> per-user daily cap NOT enforced. "
+                  "Run db_alert_cadence.sql in Supabase.")
+            return 0
+        return int((r.headers.get("content-range") or "0/0").split("/")[-1])
+    except Exception as e:
+        print("  !! alert_sends error", e)
+        return 0
+
+
+def global_sends_today():
+    """Every alert e-mail sent by the account since midnight UTC. Same graceful degradation as
+    sends_today(): if the ledger is missing we cannot enforce the budget, and we shout about it."""
+    day = _now().replace(hour=0, minute=0, second=0, microsecond=0).isoformat().replace("+00:00", "Z")
+    try:
+        h = dict(H); h["Prefer"] = "count=exact"; h["Range"] = "0-0"
+        r = requests.get(f"{URL}/rest/v1/alert_sends?select=id&sent_at=gte.{day}", headers=h, timeout=30)
+        if not r.ok:
+            print("!! alert_sends unreadable -> GLOBAL PROVIDER BUDGET NOT ENFORCED. "
+                  "Run db_alert_cadence.sql in Supabase NOW.")
+            return None
+        return int((r.headers.get("content-range") or "0/0").split("/")[-1])
+    except Exception as e:
+        print("!! alert_sends error", e)
+        return None
+
+
+def record_send(user_id, filter_id):
+    """One row per e-mail actually sent. This ledger is what makes both the per-user cap and the
+    GLOBAL provider budget enforceable. Legacy subscriptions have no user_id -> recorded as NULL,
+    because they still spend a message from the same 100/day account budget."""
+    post("alert_sends", [{"user_id": user_id, "filter_id": filter_id,
+                          "sent_at": _now().isoformat()}])
 
 
 # ---------------------------------------------------------------- normalisation
@@ -323,7 +434,14 @@ MQ = (
 )
 
 
-def build_html(name, filter_name, cars, drops, extra):
+FREQ_LABEL = {
+    "instant":   "tūlītēji (ne biežāk kā reizi stundā)",
+    "few_hours": "ik pēc dažām stundām",
+    "daily":     "reizi dienā (kopsavilkums)",
+}
+
+
+def build_html(name, filter_name, cars, drops, extra, freq="daily"):
     rows = "".join(car_row(c, drops.get(c["car_id"])) for c in cars)
     n = len(cars)
     hello = f", {name}" if name else ""
@@ -369,8 +487,10 @@ def build_html(name, filter_name, cars, drops, extra):
 
         f'<tr><td style="padding:18px 6px 6px;border-top:1px solid {LINE}">'
         f'<div style="font:600 12px/1.7 {FONT};color:{MUT}">'
-        'Šo e-pastu saņem, jo tev ir saglabāts filtrs ar ieslēgtiem paziņojumiem.<br>'
-        f'<a href="{SITE}/?p=filters" target="_blank" style="color:{ACC};text-decoration:none;font-weight:800">Pārvaldīt filtrus / atteikties</a>'
+        f'Šo e-pastu saņem, jo tev ir saglabāts filtrs ar ieslēgtiem paziņojumiem. '
+        f'Biežums: <b style="color:{INK}">{FREQ_LABEL.get(freq, FREQ_LABEL["daily"])}</b>. '
+        f'To vari mainīt vai izslēgt jebkurā brīdī.<br>'
+        f'<a href="{SITE}/?p=filters" target="_blank" style="color:{ACC};text-decoration:none;font-weight:800">Mainīt biežumu / atteikties no paziņojumiem</a>'
         ' &nbsp;&middot;&nbsp; '
         f'<a href="mailto:meowlybusiness@gmail.com" style="color:{MUT};text-decoration:none">meowlybusiness@gmail.com</a></div>'
         f'<div style="margin-top:10px;font:500 11px/1.6 {FONT};color:#a8aeb7">'
@@ -389,7 +509,8 @@ def build_text(filter_name, cars, extra):
         L.append(f"  {car_url(c)}")
     if extra > 0:
         L.append(f"...un vēl {extra} sludinājumi.")
-    L += ["", f"Skatīt visus: {SITE}", f"Pārvaldīt filtrus: {SITE}/?p=filters"]
+    L += ["", f"Skatīt visus: {SITE}",
+          f"Mainīt paziņojumu biežumu vai atteikties: {SITE}/?p=filters"]
     return "\n".join(L)
 
 
@@ -400,7 +521,14 @@ def _resend(sender, to, subject, html, text):
     return requests.post(
         "https://api.resend.com/emails",
         headers={"Authorization": f"Bearer {RESEND_KEY}", "Content-Type": "application/json"},
-        json={"from": sender, "to": [to], "subject": subject, "html": html, "text": text},
+        json={"from": sender, "to": [to], "subject": subject, "html": html, "text": text,
+              # Gmail and Yahoo penalise bulk senders that offer no unsubscribe header. Without
+              # this, a burst of alerts is exactly the pattern that gets a domain filed as spam.
+              "headers": {
+                  "List-Unsubscribe": f"<mailto:meowlybusiness@gmail.com?subject=unsubscribe>, "
+                                      f"<{SITE}/?p=filters>",
+                  "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+              }},
         timeout=30,
     )
 
@@ -469,7 +597,7 @@ def main():
              - datetime.timedelta(minutes=LOOKBACK_MIN)).isoformat().replace("+00:00", "Z")
 
     cars = []
-    for off in range(0, 6000, 1000):                    # PostgREST hard-caps a response at 1000 rows
+    for off in range(0, 40000, 1000):                   # PostgREST hard-caps a response at 1000 rows
         h = dict(H); h["Range"] = f"{off}-{off + 999}"
         try:
             r = requests.get(f"{URL}/rest/v1/cars?select=*&active=eq.true"
@@ -494,21 +622,54 @@ def main():
     print(f"saved filters with notifications ON: {len(filters)}")
 
     sent_emails = 0
+    today = {}                       # user_id -> e-mails already sent to them today (incl. this run)
+
+    spent = global_sends_today()     # None -> ledger missing, budget cannot be enforced
+    if spent is None:
+        budget_left = MAX_EMAILS     # fall back to the per-run cap only
+    else:
+        budget_left = GLOBAL_BUDGET - spent
+        pct = (spent * 100 // max(1, PROVIDER_DAILY_LIMIT))
+        print(f"PROVIDER BUDGET: {spent}/{PROVIDER_DAILY_LIMIT} spent today ({pct}%), "
+              f"{budget_left} left before the {GLOBAL_BUDGET} safe ceiling "
+              f"(reserve {PROVIDER_RESERVE})")
+        if budget_left <= 0:
+            print("!! DAILY E-MAIL BUDGET EXHAUSTED. Sending NOTHING this run so the reserve stays "
+                  "intact. Every unsent car rolls into the next batch (nothing is lost). "
+                  "If this keeps happening you have outgrown the Resend free tier - upgrade.")
+            return
+        if budget_left <= 20:
+            print(f"!! WARNING: only {budget_left} e-mails left in today's budget.")
 
     for f in filters:
-        prof = profs.get(f.get("user_id")) or {}
+        uid = f.get("user_id")
+        prof = profs.get(uid) or {}
         email = (prof.get("email") or "").strip()
+        name = f.get("name") or "filtrs"
         if not email:
-            print(f"filter {f['id']} '{f.get('name')}': no email on profile -> skip")
+            print(f"filter {f['id']} '{name}': no email on profile -> skip")
             continue
-        if not prof.get("is_premium"):
-            print(f"filter {f['id']} '{f.get('name')}' ({email}): NOT premium -> skip (alerts are a paid feature)")
+
+        premium = bool(prof.get("is_premium"))
+        freq = freq_of(f, premium)   # free -> always the daily digest; instant/hourly is the paywall
+        print(f"filter {f['id']} '{name}' ({email}) premium={premium} cadence={freq}")
+
+        # 1) cadence: has this filter e-mailed too recently? (its cars roll into the next batch)
+        if not IGNORE_SENT and cooling_down(f, freq):
+            continue
+
+        # 2) hard per-user daily ceiling, whatever the cadence says
+        if uid not in today:
+            today[uid] = sends_today(uid)
+        if not IGNORE_SENT and today[uid] >= DAILY_CAP:
+            print(f"  daily cap: {today[uid]}/{DAILY_CAP} e-mails already sent today -> hold")
             continue
 
         criteria = f.get("criteria") or {}
         already = set() if IGNORE_SENT else {n["car_id"] for n in get(f"filter_notifications?select=car_id&filter_id=eq.{f['id']}")}
         hits = [c for c in cars if c["car_id"] not in already and matches(c, criteria)]
-        if not hits:
+        if not hits:                 # 3) never send an empty e-mail
+            print("  no new matches -> nothing sent")
             continue
 
         hits.sort(key=lambda c: (c.get("first_seen") or c.get("posted") or ""), reverse=True)
@@ -516,27 +677,32 @@ def main():
         extra = len(hits) - len(shown)
 
         if sent_emails >= MAX_EMAILS:
-            print(f"MAX_EMAILS ({MAX_EMAILS}) reached -> stopping (Resend daily cap)")
+            print(f"MAX_EMAILS ({MAX_EMAILS}) reached -> stopping (per-run cap)")
+            break
+        if not IGNORE_SENT and sent_emails >= budget_left:
+            print(f"!! GLOBAL BUDGET reached ({budget_left} left at the start of this run) -> "
+                  f"stopping. The remaining filters roll into the next run.")
             break
 
-        name = f.get("name") or "filtrs"
+        # 4) ONE e-mail containing every new match, never one per car
         subject = f"{len(hits)} jauns auto: {name} | BalticRadar" if len(hits) == 1 \
             else f"{len(hits)} jauni auto: {name} | BalticRadar"
-        html = build_html(prof.get("full_name"), name, shown, drops, extra)
+        html = build_html(prof.get("full_name"), name, shown, drops, extra, freq)
         text = build_text(name, shown, extra)
 
         if send(email, subject, html, text):
             sent_emails += 1
+            today[uid] = today.get(uid, 0) + 1
             if IGNORE_SENT:
-                print(f"filter {f['id']} '{name}' -> {email}: TEST send (IGNORE_SENT=1, NOT recorded)")
+                print(f"  -> TEST send (IGNORE_SENT=1, NOT recorded)")
                 continue
             # mark ALL hits (not just the shown ones) so the backlog is never re-sent later
             post("filter_notifications",
                  [{"filter_id": f["id"], "car_id": c["car_id"]} for c in hits],
                  prefer="resolution=ignore-duplicates")
-            patch(f"saved_filters?id=eq.{f['id']}",
-                  {"last_notified_at": datetime.datetime.now(datetime.timezone.utc).isoformat()})
-            print(f"filter {f['id']} '{name}' -> {email}: {len(hits)} new car(s)")
+            patch(f"saved_filters?id=eq.{f['id']}", {"last_notified_at": _now().isoformat()})
+            record_send(uid, f["id"])
+            print(f"  -> {email}: {len(hits)} new car(s) in ONE e-mail")
 
     # ---- legacy: the old "alerts profile" (subscriptions table), unchanged behaviour
     subs = get("subscriptions?select=*")
@@ -548,6 +714,14 @@ def main():
     for sub in seen.values():
         if sent_emails >= MAX_EMAILS:
             break
+        if not IGNORE_SENT and sent_emails >= budget_left:
+            print("!! GLOBAL BUDGET reached -> legacy subscriptions roll into the next run.")
+            break
+        # The legacy alert profile had NO cadence at all: it fired on every 20-minute run.
+        # Put it on the same daily digest as a free account.
+        if not IGNORE_SENT and cooling_down(sub, "daily"):
+            print(f"legacy sub {sub['id']}: daily digest cooldown -> hold")
+            continue
         already = {n["car_id"] for n in get(f"notifications?select=car_id&subscription_id=eq.{sub['id']}")}
         legacy_crit = {k: sub.get(k) for k in
                        ("country", "make", "model", "body", "fuel", "gearbox",
@@ -561,14 +735,22 @@ def main():
             continue
         hits.sort(key=lambda c: (c.get("first_seen") or ""), reverse=True)
         shown = hits[:MAX_PER_EMAIL]
-        html = build_html(sub.get("name"), "Tavi kritēriji", shown, drops, len(hits) - len(shown))
+        html = build_html(sub.get("name"), "Tavi kritēriji", shown, drops, len(hits) - len(shown), "daily")
         text = build_text("Tavi kritēriji", shown, len(hits) - len(shown))
         if send(sub["email"], f"{len(hits)} jauni auto | BalticRadar", html, text):
             sent_emails += 1
+            if IGNORE_SENT:
+                continue
             post("notifications", [{"subscription_id": sub["id"], "car_id": c["car_id"]} for c in hits],
                  prefer="resolution=ignore-duplicates")
+            patch(f"subscriptions?id=eq.{sub['id']}", {"last_notified_at": _now().isoformat()})
+            record_send(None, None)      # still spends one message from the provider budget
 
-    print(f"DONE. emails sent: {sent_emails}")
+    if spent is not None:
+        print(f"DONE. emails sent this run: {sent_emails}. "
+              f"Today's total: {spent + sent_emails}/{PROVIDER_DAILY_LIMIT}.")
+    else:
+        print(f"DONE. emails sent this run: {sent_emails} (budget unenforced - run db_alert_cadence.sql)")
 
 
 if __name__ == "__main__":

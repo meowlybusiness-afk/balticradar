@@ -2780,13 +2780,18 @@ function filterRow(f){
   var c = f.criteria||{};
   return '<div class="br2f" onclick="BRProfile.runFilter('+f.id+')">'
     + '<div><div class="n">'+esc(f.name)
-    + (f.notify_email?' <span style="color:#16a06a;font-size:11px;font-weight:700">● paziņojumi</span>':'')
+    + (f.notify_email?' <span style="color:#16a06a;font-size:11px;font-weight:700">● '+FREQL(f.notify_freq)+'</span>':'')
     + '</div><div class="c">'+esc(describe(c))+'</div></div>'
     + '<div class="acts">'
     + '<button onclick="event.stopPropagation();BRProfile.runFilter('+f.id+')">Skatīt</button>'
     + '<button onclick="event.stopPropagation();BRProfile.editFilter('+f.id+')">Labot</button>'
     + '<button class="del" onclick="event.stopPropagation();BRProfile.delFilter('+f.id+')">Dzēst</button>'
     + '</div></div>';
+}
+function FREQL(v){
+  return v==='instant'   ? 'paziņojumi tūlītēji'
+       : v==='few_hours' ? 'paziņojumi ik pēc dažām stundām'
+       :                   'paziņojumi reizi dienā';
 }
 function describe(c){
   var p=[];
@@ -2966,9 +2971,10 @@ BRProfile.editFilter = async function(id){
     body:    c.bodies    || (c.body?[c.body]:[]),
     drivetrain: c.drivetrains || (c.drivetrain?[c.drivetrain]:[])
   };
-  showForm(r.data.name, c, r.data.notify_email);
+  showForm(r.data.name, c, r.data.notify_email, r.data.notify_freq);
 };
-async function showForm(name, c, notify){
+function PREM(){ return !!(window.BR && BR.profile && BR.profile.is_premium); }
+async function showForm(name, c, notify, freq){
   ensureDatalists();
   c = c||{};
   var box = $('br2FltForm'); if(!box) return;
@@ -2992,6 +2998,15 @@ async function showForm(name, c, notify){
     + '<div class="br2row"><div><label class="br2l">Tilpums no</label>'+combo('f_emin','engine','—')+'</div>'
     +  '<div><label class="br2l">Tilpums līdz</label>'+combo('f_emax','engine','—')+'</div></div>'
     + '<label class="br2l">Paziņojumi</label><select class="br2s" id="f_notify"><option value="1">Ieslēgti</option><option value="0">Izslēgti</option></select>'
+    + '<label class="br2l" style="margin-top:12px">Cik bieži sūtīt</label>'
+    + '<select class="br2s" id="f_freq">'
+    +   '<option value="daily">Reizi dienā — viens kopsavilkums</option>'
+    +   '<option value="few_hours"'+(PREM()?'':' disabled')+'>Ik pēc dažām stundām'+(PREM()?'':' (Premium)')+'</option>'
+    +   '<option value="instant"'+(PREM()?'':' disabled')+'>Tūlītēji — ne biežāk kā reizi stundā'+(PREM()?'':' (Premium)')+'</option>'
+    + '</select>'
+    + '<div class="s" style="margin:6px 0 0">Vienā e-pastā ir VISI jaunie auto — nekad viens e-pasts par katru auto. Vairāk par 6 e-pastiem dienā netiek sūtīti.'
+    +   (PREM()?'':' Biežāk nekā reizi dienā — ar Premium.')
+    + '</div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">'
     +  '<button class="br2btn g" onclick="BRProfile.saveFilter()">Saglabāt filtru</button>'
     +  '<button class="br2btn o" onclick="BRProfile.cancelForm()">Atcelt</button>'
@@ -3004,6 +3019,9 @@ async function showForm(name, c, notify){
     if(c[p[1]]!=null && $(p[0])) $(p[0]).value = c[p[1]];
   });
   $('f_notify').value = (notify===false) ? '0' : '1';
+  // A FREE account is always on the daily digest, and a NEW filter defaults to it whatever the plan.
+  var _fq = (PREM() && ['instant','few_hours','daily'].indexOf(freq)>=0) ? freq : 'daily';
+  if($('f_freq')) $('f_freq').value = _fq;
   for(var i=0;i<MS_FIELDS.length;i++){ await msRender(MS_FIELDS[i].key); }
 }
 BRProfile.cancelForm = function(){
@@ -3030,11 +3048,23 @@ BRProfile.saveFilter = async function(){
     eng_min:num('f_emin'),   eng_max:num('f_emax')
   };
   var auto = MS.make.join(', ') + ' ' + crit.models.slice(0,3).join(', ');
+  // free plan -> daily digest, always. instant / few_hours is precisely what Premium buys.
+  var freq = ($('f_freq') && $('f_freq').value) || 'daily';
+  if(!PREM() || ['instant','few_hours','daily'].indexOf(freq)<0) freq = 'daily';
   var payload = { user_id:BR.user.id, name:($('f_name').value.trim()||auto).slice(0,70),
-    criteria:crit, notify_email:$('f_notify').value==='1', updated_at:new Date().toISOString() };
-  var r = EDIT_ID
-    ? await supa.from('saved_filters').update(payload).eq('id',EDIT_ID).select()
-    : await supa.from('saved_filters').insert(payload).select();
+    criteria:crit, notify_email:$('f_notify').value==='1', notify_freq:freq,
+    updated_at:new Date().toISOString() };
+  var write = function(pl){
+    return EDIT_ID ? supa.from('saved_filters').update(pl).eq('id',EDIT_ID).select()
+                   : supa.from('saved_filters').insert(pl).select();
+  };
+  var r = await write(payload);
+  // notify_freq lands with db_alert_cadence.sql. If that migration has not been run yet, saving a
+  // filter must NOT break - drop the column and save the rest (the notifier defaults to daily anyway).
+  if(r.error && /notify_freq/i.test(r.error.message||'')){
+    delete payload.notify_freq;
+    r = await write(payload);
+  }
   if(r.error) return m('br2m-flt', r.error.message);
   BRProfile.cancelForm();
   renderFiltersHome();
