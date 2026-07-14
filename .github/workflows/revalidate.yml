@@ -20,6 +20,9 @@ on:
       only_source:
         description: "ss.lv | autoplius | auto24 (blank = all)"
         default: ""
+      sample:
+        description: "oldest = stale tail | random = whole catalogue"
+        default: "oldest"
       diag:
         description: "1 = print http/title/marker evidence for every check"
         default: "0"
@@ -59,6 +62,7 @@ jobs:
           DRY_RUN:      ${{ github.event_name == 'schedule' && '0' || inputs.dry_run }}
           BATCH:        ${{ inputs.batch || '420' }}
           ONLY_SOURCE:  ${{ inputs.only_source }}
+          SAMPLE:       ${{ inputs.sample || 'oldest' }}
           DIAG:         ${{ inputs.diag }}
           SELFTEST:     ${{ inputs.selftest }}
         run: python revalidate.py
