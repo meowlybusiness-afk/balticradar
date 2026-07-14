@@ -1063,33 +1063,92 @@ let sampleCars=[];
 function AGG(){return sampleCars.length?sampleCars:allCars;}   // large sample for ratings/similar
 // ---- FULL-CATALOGUE FACETS: dropdowns must list EVERY make + model, not just the newest sample ----
 let FACET_MAKES=null; const FACET_MODELS={}; let _facetScan=false;
-try{const _c=JSON.parse(localStorage.getItem("br_facets")||"null");
-  if(_c&&_c.t&&(Date.now()-_c.t<86400000)){FACET_MAKES=_c.m||null; Object.assign(FACET_MODELS,_c.mm||{});}}catch(e){}
-function _saveFacets(){try{localStorage.setItem("br_facets",JSON.stringify({t:Date.now(),m:FACET_MAKES,mm:FACET_MODELS}));}catch(e){}}
+/* FACET_VOCAB: normalised bucket -> [every raw value the sources actually write].
+   ss.lv/autoplius say "Dīzelis", auto24 says "diesel". Without this map the fuel/gearbox/body/
+   drivetrain filters could not run on the server, so they were applied in the browser over the
+   newest 25 000 rows only: "Dīzelis" reported 16 842 cars when the catalogue holds 54 813. */
+let FACET_VOCAB=null;
+const VOCAB_SEED={
+ fuel:{"Benz\u012bns":["petrol"],"D\u012bzelis":["diesel"],"Elektr\u012bba":["electric","Elektriskais"],"Hibr\u012bds":["hybrid"],"G\u0101ze":["gas","lpg"]},
+ gear:{"Autom\u0101tisk\u0101":["automatic"],"Meh\u0101nisk\u0101":["manual","Mehanisk\u0101"]},
+ body:{"Sedans":["sedan"],"He\u010dbeks":["hatchback"],"Kupeja":["coupe","Kupeja (Coupe)"],
+   "Kabriolets":["cabriolet","convertible","roadster"],"Pikaps":["pickup"],
+   "Apvidus / SUV":["Apvidus","Visurg\u0101j\u0113js / Krosovers","Visurg\u0101j\u0113js / krosovers","suv","crossover"],
+   "Univers\u0101lis":["Universalas","touring","estate","wagon","kombi","caravan"],
+   "Mikroautobuss / minivens":["Minivens","Mikroautobuss","minivan","minibus","van"]},
+ drive:{}};
+function vocabRaws(kind,sel){          // selected buckets -> every raw DB value that normalises into them
+  const a=_arr(sel); if(!a.length)return [];
+  const V=(FACET_VOCAB&&FACET_VOCAB[kind])||{}, S=VOCAB_SEED[kind]||{}, out=new Set();
+  a.forEach(b=>{ out.add(b); (S[b]||[]).forEach(x=>out.add(x)); (V[b]||[]).forEach(x=>out.add(x)); });
+  return [...out];
+}
+function modelRaws(){                  // selected models/series -> every real model name in the catalogue
+  const MD=_arr(F.model); if(!MD.length)return [];
+  const MKs=_arr(F.make), makes=MKs.length?MKs:Object.keys(FACET_MODELS), out=new Set();
+  MD.forEach(v=>{ let hit=false;
+    makes.forEach(mk=>{ (FACET_MODELS[mk]||[]).forEach(m=>{
+      if(m===v){out.add(m);hit=true;} else if(modelSeries(mk,m)===v){out.add(m);hit=true;} }); });
+    if(!hit)out.add(v);
+  });
+  return [...out];
+}
+function srvModelOK(){                 // can the model pick go server-side? (needs facets + a sane URL length)
+  const md=_arr(F.model); if(!md.length)return true;
+  if(!(FACET_MAKES&&FACET_MAKES.length))return false;
+  const n=modelRaws().length; return n>0&&n<=300;
+}
+try{const _c=JSON.parse(localStorage.getItem("br_facets2")||"null");
+  if(_c&&_c.t&&(Date.now()-_c.t<86400000)){FACET_MAKES=_c.m||null; Object.assign(FACET_MODELS,_c.mm||{}); FACET_VOCAB=_c.v||null;}}catch(e){}
+function _saveFacets(){try{localStorage.setItem("br_facets2",JSON.stringify({t:Date.now(),m:FACET_MAKES,mm:FACET_MODELS,v:FACET_VOCAB}));}catch(e){}}
 async function scanFacets(){                      // one keyset pass over the whole catalogue; cached 24h
   if((FACET_MAKES&&FACET_MAKES.length)||_facetScan)return; _facetScan=true;
   const cnt={}, models={}; let after="";
+  const voc={fuel:{},gear:{},body:{},drive:{}};
+  const addV=(kind,raw)=>{ if(!raw)return; const b=norm(kind,raw); if(!b)return;
+    (voc[kind][b]=voc[kind][b]||new Set()).add(raw); };
   try{
     for(let i=0;i<160;i++){
-      const r=await fetch(`${SB_URL}/rest/v1/cars?select=car_id,make,model&active=eq.true&order=car_id.asc&limit=1000&car_id=gt.${encodeURIComponent(after)}`,{headers:SBH,cache:"no-store"});
+      const r=await fetch(`${SB_URL}/rest/v1/cars?select=car_id,make,model,fuel,gearbox,body,drivetrain&active=eq.true&order=car_id.asc&limit=1000&car_id=gt.${encodeURIComponent(after)}`,{headers:SBH,cache:"no-store"});
       if(!r.ok)break; const rows=await r.json(); if(!Array.isArray(rows)||!rows.length)break;
       for(const x of rows){ if(x.make&&!junkVal(x.make)){ cnt[x.make]=(cnt[x.make]||0)+1;
-        (models[x.make]=models[x.make]||new Set()); if(x.model&&!junkVal(x.model))models[x.make].add(x.model); } }
+        (models[x.make]=models[x.make]||new Set()); if(x.model&&!junkVal(x.model))models[x.make].add(x.model); }
+        addV("fuel",x.fuel); addV("gear",x.gearbox); addV("drive",x.drivetrain);
+        if(x.body&&!BODYJUNK.has(String(deent(x.body)).toLowerCase().trim()))addV("body",x.body); }
       after=rows[rows.length-1].car_id; if(rows.length<1000)break;
     }
     const keep=Object.keys(cnt).filter(m=>cnt[m]>=4);   // drop one-off / mis-parsed "brands" (real brands have many cars)
-    if(keep.length){FACET_MAKES=keep; for(const k of keep)FACET_MODELS[k]=[...(models[k]||[])]; _saveFacets(); refreshControls();}
+    if(keep.length){FACET_MAKES=keep; for(const k of keep)FACET_MODELS[k]=[...(models[k]||[])];
+      const V={}; for(const k in voc){V[k]={}; for(const b in voc[k])V[k][b]=[...voc[k][b]];}
+      FACET_VOCAB=V; _saveFacets(); refreshControls();}
   }catch(e){} finally{_facetScan=false;}
 }
 // ---- SERVER-SIDE PAGINATION: one page at a time from Supabase; scales to the whole ~83k catalogue ----
-function serverFilterActive(){return !!(_arr(countryFilter).length||_arr(F.make).length||F.q||F.pmin||F.pmax||F.ymin||F.ymax||F.mmin||F.mmax);}
-function clientOnlyActive(){return !!(_arr(F.fuel).length||_arr(F.gear).length||_arr(F.bodyf).length||_arr(F.drive).length||F.emin||F.emax||_arr(F.model).length);}
+function serverFilterActive(){return !!(_arr(countryFilter).length||_arr(F.make).length||_arr(F.model).length
+  ||_arr(F.fuel).length||_arr(F.gear).length||_arr(F.bodyf).length||_arr(F.drive).length
+  ||F.q||F.pmin||F.pmax||F.ymin||F.ymax||F.mmin||F.mmax||F.emin||F.emax);}
+/* Every filter now runs ON THE SERVER, so count / pager / grid always describe the same, complete
+   result set. The old client-side path (fetch the newest 25 000 rows, filter them in JS) survives
+   only for the one thing the server cannot express: a model/series pick we cannot yet expand into
+   real model names because the facet scan has not finished. */
+function clientOnlyActive(){return !srvModelOK();}
+function attrPreds(p){
+  {const x=inPred("fuel",vocabRaws("fuel",F.fuel)); if(x)p.push(x);}
+  {const x=inPred("gearbox",vocabRaws("gear",F.gear)); if(x)p.push(x);}
+  {const x=inPred("body",vocabRaws("body",F.bodyf)); if(x)p.push(x);}
+  {const x=inPred("drivetrain",vocabRaws("drive",F.drive)); if(x)p.push(x);}
+  if(F.emin)p.push("engine_l=gte."+(+F.emin));
+  if(F.emax)p.push("engine_l=lte."+(+F.emax));
+  if(srvModelOK()){const x=inPred("model",modelRaws()); if(x)p.push(x);}
+  return p;
+}
 function qPred(){const qq=String(F.q||"").trim().replace(/[(),*]/g," ").trim(); return qq?`or=(make.ilike.*${encodeURIComponent(qq)}*,model.ilike.*${encodeURIComponent(qq)}*)`:"";}
 function buildServerQ(){
   const p=[];
   {const cp=inPred("country",countryFilter); if(cp)p.push(cp);}
   {const mp=inPred("make",F.make); if(mp)p.push(mp);}
   {const qp=qPred(); if(qp)p.push(qp);}
+  attrPreds(p);
   if(F.ymin)p.push("year=gte."+(+F.ymin)); if(F.ymax)p.push("year=lte."+(+F.ymax));
   if(F.pmin)p.push("last_price=gte."+(+F.pmin)); if(F.pmax)p.push("last_price=lte."+(+F.pmax));
   if(F.mmin)p.push("last_mileage=gte."+(+F.mmin)); if(F.mmax)p.push("last_mileage=lte."+(+F.mmax));
@@ -1103,6 +1162,7 @@ function buildFilterPreds(){   // server-safe filter predicates ONLY (no order) 
   {const cp=inPred("country",countryFilter); if(cp)p.push(cp);}
   {const mp=inPred("make",F.make); if(mp)p.push(mp);}
   {const qp=qPred(); if(qp)p.push(qp);}
+  attrPreds(p);
   if(F.ymin)p.push("year=gte."+(+F.ymin)); if(F.ymax)p.push("year=lte."+(+F.ymax));
   if(F.pmin)p.push("last_price=gte."+(+F.pmin)); if(F.pmax)p.push("last_price=lte."+(+F.pmax));
   if(F.mmin)p.push("last_mileage=gte."+(+F.mmin)); if(F.mmax)p.push("last_mileage=lte."+(+F.mmax));
@@ -1176,9 +1236,26 @@ function reportSortFallback(sort, q, err){
                             url:location.href.slice(0,300),ts:new Date().toISOString()}])}).catch(()=>{});
   }catch(_){}
 }
-async function sbCount(){   // shallow, safe filtered count (Range 0-0) -> never times out on deep offsets
-  try{const r=await fetch(`${SB_URL}/rest/v1/v_listings?select=car_id&${buildServerQ()}`,{headers:{...SBH,Range:"0-0",Prefer:"count=estimated"},cache:"no-store"});
-    const t=parseInt((r.headers.get("content-range")||"").split("/")[1]); return isNaN(t)?null:t;}catch(e){return null;}
+/* HYBRID COUNT.
+   count=exact     -> right, but blows the Postgres statement timeout above roughly 25 000 rows.
+   count=estimated -> instant, and accurate for big single-column sets, but the planner returns a
+                      flat 1001 for most in.()/multi-column filters. That is why "Audi A4 + BMW 320"
+                      (3 229 cars) showed 34 pages: the user could never reach page 35.
+   So: ask for the cheap estimate first; if it says the set is small, go and get the real number. */
+async function _cnt(mode){
+  const r=await fetch(`${SB_URL}/rest/v1/v_listings?select=car_id&${buildServerQ()}`,
+    {headers:{...SBH,Range:"0-0",Prefer:"count="+mode},cache:"no-store"});
+  if(!r.ok)return null;
+  const t=parseInt((r.headers.get("content-range")||"").split("/")[1]);
+  return isNaN(t)?null:t;
+}
+async function sbCount(){
+  try{
+    const est=await _cnt("estimated");
+    if(est==null)return null;
+    if(est<=25000){ const ex=await _cnt("exact"); if(ex!=null)return ex; }
+    return est;
+  }catch(e){return null;}
 }
 let _grSeq=0;
 async function loadGrid(){
@@ -1201,7 +1278,10 @@ async function loadGrid(){
       let tot = serverFilterActive() ? await sbCount() : catalogTotal;
       if(my!==_grSeq)return;
       if(tot==null) tot=(from+rows.length)||1;
-      const totalPages=Math.max(1,Math.ceil((tot||1)/PAGE_SIZE));
+      let totalPages=Math.max(1,Math.ceil((tot||1)/PAGE_SIZE));
+      // SAFETY: the server just handed us a FULL page, so there is more to see. An under-reported
+      // count must never be able to disable "next page".
+      if(rows.length>=PAGE_SIZE&&totalPages<=curPage)totalPages=curPage+1;
       if(curPage>totalPages&&curPage>1){curPage=totalPages;return loadGrid();}
       allCars=cleanRows(rows);
       render(allCars);loadPagePhotos(allCars);
@@ -1422,7 +1502,7 @@ function openModal(c){
           <div style="font-weight:800;font-size:15px;color:var(--mut)">${ML().nochg}</div></div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px">
-        <button onclick="openSub()" style="flex:1;min-width:150px;background:var(--accent);color:#fff;border:none;border-radius:11px;padding:12px;font-weight:800;cursor:pointer;font-family:inherit;font-size:14px">${ML().alerts}</button>
+        <button id="mAlerts" onclick="openSub()" style="flex:1;min-width:150px;background:var(--accent);color:#fff;border:none;border-radius:11px;padding:12px;font-weight:800;cursor:pointer;font-family:inherit;font-size:14px">${(window.BRAlertLabel?BRAlertLabel():ML().alerts)}</button>
         <button onclick="shareCar('${c.car_id}')" style="flex:1;min-width:120px;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:11px;padding:12px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px">${ML().share}</button>
         ${c.source_url&&c.source_url!=="#"?`<a href="${c.source_url}" target="_blank" rel="noopener" style="flex:1;min-width:120px;text-align:center;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:11px;padding:12px;font-weight:700;text-decoration:none;font-size:14px">${ML().openad}</a>`:""}
       </div>
@@ -1503,10 +1583,13 @@ function msOptions(k){          // -> [{g:"groupLabel"|"", items:[...]}]
       return {g:mk, items:[...series,...models].filter(v=>v&&!junkVal(v)).sort()};
     });
   }
-  if(k==="fuel")  return [{g:"",items:[...new Set(A.map(c=>norm("fuel",c.fuel)).filter(Boolean))].sort()}];
-  if(k==="gear")  return [{g:"",items:[...new Set(A.map(c=>norm("gear",c.gearbox)).filter(Boolean))].sort()}];
-  if(k==="bodyf") return [{g:"",items:[...new Set(A.filter(c=>c.body&&!BODYJUNK.has(String(deent(c.body)).toLowerCase().trim())).map(c=>norm("body",c.body)).filter(Boolean))].sort()}];
-  if(k==="drive") return [{g:"",items:[...new Set(A.map(c=>norm("drive",c.drivetrain)).filter(Boolean))].sort()}];
+  const VK=(kind,fb)=>{const v=FACET_VOCAB&&FACET_VOCAB[kind];
+    const items=(v&&Object.keys(v).length)?Object.keys(v):fb();
+    return [{g:"",items:items.filter(x=>x&&!junkVal(x)).sort()}];};
+  if(k==="fuel")  return VK("fuel", ()=>[...new Set(A.map(c=>norm("fuel",c.fuel)).filter(Boolean))]);
+  if(k==="gear")  return VK("gear", ()=>[...new Set(A.map(c=>norm("gear",c.gearbox)).filter(Boolean))]);
+  if(k==="bodyf") return VK("body", ()=>[...new Set(A.filter(c=>c.body&&!BODYJUNK.has(String(deent(c.body)).toLowerCase().trim())).map(c=>norm("body",c.body)).filter(Boolean))]);
+  if(k==="drive") return VK("drive",()=>[...new Set(A.map(c=>norm("drive",c.drivetrain)).filter(Boolean))]);
   return [];
 }
 function msLabel(k){
@@ -2154,7 +2237,13 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
     if(nb) nb.textContent = on ? t.nb_in : t.nb_out;
     var cta = document.getElementById('ctaAlerts');
     if(cta) cta.textContent = on ? t.inb : t.out;
+    var ma = document.getElementById('mAlerts');   // the car-detail modal asked logged-in users for an e-mail too
+    if(ma) ma.textContent = on ? t.inb : t.out;
   }
+  window.BRAlertLabel = function(){
+    var t = CTAT[curLang()] || CTAT.lv;
+    return (BR.user || hasStoredSession()) ? t.inb : t.out;
+  };
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();
@@ -2992,20 +3081,23 @@ BRProfile.runFilter = async function(id, sort){
   var q = supa.from('v_listings').select('car_id,make,model,year,last_price,last_mileage,fuel,photos,first_seen');
   var arr = function(a, one){ return (a && a.length) ? a : (one ? [one] : []); };
   var IN = function(col, vals){ if(vals.length) q = q.in(col, vals); };
+  // A saved filter stores the NORMALISED label ("Dīzelis"), but auto24 writes "diesel". Matching the
+  // label straight against the column silently dropped every Estonian car from the user's own filter.
+  var RAW = function(kind, vals){ return (typeof vocabRaws === 'function') ? vocabRaws(kind, vals) : vals; };
   IN('make',       arr(c.makes, c.make));
   IN('model',      arr(c.models, null));
   IN('country',    arr(c.countries, c.country));
-  IN('fuel',       arr(c.fuels, c.fuel));
-  IN('gearbox',    arr(c.gearboxes, c.gearbox));
-  IN('body',       arr(c.bodies, c.body));
-  IN('drivetrain', arr(c.drivetrains, c.drivetrain));
+  IN('fuel',       RAW('fuel',  arr(c.fuels, c.fuel)));
+  IN('gearbox',    RAW('gear',  arr(c.gearboxes, c.gearbox)));
+  IN('body',       RAW('body',  arr(c.bodies, c.body)));
+  IN('drivetrain', RAW('drive', arr(c.drivetrains, c.drivetrain)));
   if(c.price_min!=null) q=q.gte('last_price',c.price_min);
   if(c.price_max!=null) q=q.lte('last_price',c.price_max);
   if(c.year_min!=null)  q=q.gte('year',c.year_min);
   if(c.year_max!=null)  q=q.lte('year',c.year_max);
   if(c.km_min!=null)    q=q.gte('last_mileage',c.km_min);
   if(c.km_max!=null)    q=q.lte('last_mileage',c.km_max);
-  var res = await fsortApply(q, sort).limit(60);
+  var res = await fsortApply(q, sort).limit(61);   // 61 -> we can tell "exactly 60" from "60 and more"
 
   var box=$('br2Res'); if(!box) return;
   if(res.error){ box.innerHTML='<div class="br2empty">Kļūda: '+esc(res.error.message)+'</div>'; return; }
@@ -3015,9 +3107,11 @@ BRProfile.runFilter = async function(id, sort){
     var okset = {}; c.models_q.forEach(function(x){ okset[x.toLowerCase()]=1; });
     rows = rows.filter(function(r2){ return okset[(r2.make+'|'+r2.model).toLowerCase()]; });
   }
+  var capped = rows.length > 60;                  // never claim "60 matches" when it is just a page of 60
+  if(capped) rows = rows.slice(0,60);
   box.innerHTML =
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">'
-    +   '<div style="font-size:12.5px;font-weight:700;color:#86868b">' + rows.length + ' atbilstoši auto</div>'
+    +   '<div style="font-size:12.5px;font-weight:700;color:#86868b">' + rows.length + (capped?'+':'') + ' atbilstoši auto</div>'
     +   fsortSelect(id, sort)
     + '</div>'
     + cardsHtml(rows,false);
@@ -3195,6 +3289,42 @@ footer{background:var(--card2);color:var(--mut);border-top:.5px solid var(--line
 .br2c,.br2sec,.br2plan,.br2bill{border-radius:18px;border:.5px solid var(--line)}
 .br2i,.br2s{border-radius:11px;border:.5px solid var(--line2);font-family:Manrope,sans-serif}
 .br2i:focus,.br2s:focus{border-color:var(--ink);box-shadow:none}
+
+/* ============ DARK THEME FIX FOR THE PROFILE PANEL ============
+   `.br2{--ink:#1d1d1f;...}` redefines the theme's custom properties with a hard-coded LIGHT
+   palette and every descendant inherits it, so in dark mode the panel painted near-black text
+   (#1d1d1f) on a near-black background (#0f0f11): headings, saved-filter names, the active tab
+   and every make/model chip were invisible, and the premium lock-box was a white sheet on black.
+   Re-point the scoped variables at the dark palette and repair the rules that hard-code #fff. */
+html[data-theme="dark"] .br2,
+html[data-theme="dark"] .br2ov,
+html[data-theme="dark"] .br2p{--a:#1eb47a;--ink:#f5f5f7;--i2:#c7c7cc;--mut:#8e8e93;--ln:#26262a;--ln2:#33333a;--bg2:#1c1c20;--up:#e0674c}
+html[data-theme="dark"] .br2p{background:var(--bg);color:var(--ink)}
+html[data-theme="dark"] .br2h{background:rgba(15,15,17,.92)}
+html[data-theme="dark"] .br2tab{background:var(--card);color:var(--ink);border-color:var(--ln2)}
+html[data-theme="dark"] .br2tab.on{background:var(--ink);color:#0f0f11;border-color:var(--ink)}
+html[data-theme="dark"] .br2i,
+html[data-theme="dark"] .br2s{background:var(--card);color:var(--ink)}
+html[data-theme="dark"] .br2i::placeholder{color:var(--mut)}
+html[data-theme="dark"] .br2i:disabled{background:var(--bg2);color:var(--mut)}
+html[data-theme="dark"] .br2btn{background:var(--ink);color:#0f0f11}
+html[data-theme="dark"] .br2btn.g{background:var(--a);color:#fff}
+html[data-theme="dark"] .br2btn.o{background:var(--card);color:var(--ink);border-color:var(--ln2)}
+html[data-theme="dark"] .br2btn.d{background:var(--card);color:var(--up);border-color:var(--ln2)}
+html[data-theme="dark"] .br2chip{background:var(--card);color:var(--ink);border-color:var(--ln2)}
+html[data-theme="dark"] .br2chip:hover{background:var(--bg2)}
+html[data-theme="dark"] .br2chip.on{background:var(--a);color:#fff;border-color:var(--a)}
+html[data-theme="dark"] .br2pick{background:var(--ink);color:#0f0f11}
+html[data-theme="dark"] .br2pick b{background:rgba(0,0,0,.25)}
+html[data-theme="dark"] .msgrp{color:var(--ink)}
+html[data-theme="dark"] .br2f .acts button{background:var(--card);color:var(--ink);border-color:var(--ln2)}
+html[data-theme="dark"] .br2f .acts button.del{color:var(--up)}
+html[data-theme="dark"] .br2bill .tag{background:var(--ink);color:#0f0f11}
+html[data-theme="dark"] .br2c img{background:var(--bg2)}
+html[data-theme="dark"] .br2c .rm{background:rgba(20,20,22,.94);color:var(--ink)}
+html[data-theme="dark"] .lockcta{background:linear-gradient(180deg,rgba(15,15,17,.55),rgba(15,15,17,.92))}
+html[data-theme="dark"] .lockrow{background:linear-gradient(90deg,#26262a,#33333a)}
+html[data-theme="dark"] .br-heart{background:rgba(20,20,22,.92)}
 @media(max-width:860px){
 .bar{padding:11px 14px;gap:10px}
 .layout{padding:16px 14px 70px;gap:16px}
