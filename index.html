@@ -2616,25 +2616,34 @@ if(typeof _open === 'function'){
   };
 }
 async function gateHistory(id){
-  var card = $('pchgcard') || $('hist');
-  if(card && !isPrem() && !card.dataset.brLocked){
-    card.dataset.brLocked = '1';
-    var box = document.createElement('div');
-    box.className = 'lockbox br2';
-    box.style.marginTop = '10px';
-    box.innerHTML = '<div class="lockrows"><div class="lockrow"></div><div class="lockrow"></div>'
-      + '<div class="lockrow"></div><div class="lockrow"></div><div class="lockrow"></div></div>'
-      + '<div class="lockcta"><div class="ic">🔒</div><h4>Cenu un nobraukuma vēsture</h4>'
-      + '<p>Redzi, kā mainījusies šī auto cena un nobraukums. Pieejams Premium plānā.</p>'
-      + '<button class="btn" onclick="BRProfile.open(\'bill\')">Uzzināt vairāk</button></div>';
-    card.style.display = 'none';
-    card.parentNode.insertBefore(box, card);
-  }
-  if(card && isPrem()){
-    card.style.display = '';
-    var prev = card.previousElementSibling;
-    if(prev && prev.classList.contains('lockbox')) prev.remove();
-    addMileageHistory(id, card);
+  // Lock BOTH premium history surfaces for non-premium: the price-change stat card (#pchgcard)
+  // AND the full history section (#hist). loadHistory() already fetches/renders nothing for them,
+  // so #hist would otherwise be left stuck on its "Ielādē…" placeholder - hide it too, and show a
+  // single clean lock-box. Idempotent: re-checks for an existing lock-box instead of a stale flag.
+  var pch = $('pchgcard'), hist = $('hist');
+  var anchor = pch || hist;
+  if(!anchor) return;
+  var prev = anchor.previousElementSibling;
+  var existingLock = (prev && prev.classList && prev.classList.contains('lockbox')) ? prev : null;
+  if(!isPrem()){
+    if(pch) pch.style.display = 'none';
+    if(hist) hist.style.display = 'none';
+    if(!existingLock){
+      var box = document.createElement('div');
+      box.className = 'lockbox br2';
+      box.style.marginTop = '10px';
+      box.innerHTML = '<div class="lockrows"><div class="lockrow"></div><div class="lockrow"></div>'
+        + '<div class="lockrow"></div><div class="lockrow"></div><div class="lockrow"></div></div>'
+        + '<div class="lockcta"><div class="ic">🔒</div><h4>Cenu un nobraukuma vēsture</h4>'
+        + '<p>Redzi, kā mainījusies šī auto cena un nobraukums. Pieejams Premium plānā.</p>'
+        + '<button class="btn" onclick="BRProfile.open(\'bill\')">Uzzināt vairāk</button></div>';
+      anchor.parentNode.insertBefore(box, anchor);
+    }
+  } else {
+    if(pch) pch.style.display = '';
+    if(hist) hist.style.display = '';
+    if(existingLock) existingLock.remove();
+    addMileageHistory(id, hist || pch);
   }
 }
 async function addMileageHistory(id, card){
