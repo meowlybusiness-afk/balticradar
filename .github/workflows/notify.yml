@@ -13,10 +13,13 @@ name: BalticRadar alerts
 #     before the provider quota is gone and logs loudly instead of failing in silence.
 # Cars that are not sent are NOT recorded as sent, so they roll into the next batch. Nothing is lost.
 #
-# Hourly is the finest tick worth having: the fastest cadence we offer is one e-mail per hour.
+# 5-MINUTE TICK (2026-07-15): the fastest cadence is now "instant" (>=10 min gap per filter in
+# notify.py). A 5-min tick means a new matching car reaches an instant-cadence Premium filter within
+# ~5-10 min. Daily/free filters are unaffected - notify.py's per-filter cooldown + per-user cap +
+# global 90/100 budget still gate everything, so the finer tick cannot increase anyone's volume.
 on:
   schedule:
-    - cron: "7 * * * *"        # hourly tick. It is notify.py that decides who is actually due.
+    - cron: "*/5 * * * *"      # 5-min tick -> ~5-10 min "instant" delivery. notify.py decides who is due.
   workflow_dispatch:
     inputs:
       test_to:
