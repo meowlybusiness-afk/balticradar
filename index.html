@@ -1437,6 +1437,12 @@ function sparkline(pts){
 }
 async function loadHistory(carId){
   const box=document.getElementById("hist");if(!box)return;
+  // PREMIUM GATE (2026-07-15): price/mileage history is a paid feature. Non-premium AND signed-out
+  // users must not even FETCH it - otherwise the data is pulled client-side and merely hidden with
+  // CSS by gateHistory(), which is trivially bypassable (remove display:none in devtools, or read it
+  // straight off the network tab). Here we fetch and render NOTHING; gateHistory() paints the
+  // lock-box + "Uzzināt vairāk" CTA. The moment BR.profile.is_premium is true, the chart loads.
+  if(!(window.BR && BR.profile && BR.profile.is_premium)) return;
   try{
     const r=await fetch(`${SB_URL}/rest/v1/price_history?car_id=eq.${encodeURIComponent(carId)}&select=ts,price,mileage&order=ts.asc`,{headers:SBH});
     let pts=(await r.json()).filter(p=>p.price!=null);
@@ -3085,6 +3091,10 @@ function num(id){ var e=$(id); if(!e) return null; var v=(e.value||'').replace(/
 
 BRProfile.saveFilter = async function(){
   m('br2m-flt','');
+  // PREMIUM GATE (defense-in-depth): saved filters + alerts are a paid feature. The UI already
+  // hides the builder behind renderFiltersHome()'s lock-box for non-premium, but block the write
+  // here too so it can't be reached by calling saveFilter() directly.
+  if(!(window.BR && BR.profile && BR.profile.is_premium)) return m('br2m-flt','Saglabātie filtri ir Premium funkcija.');
   if(!MS.make.length)  return m('br2m-flt','Jāizvēlas vismaz viena marka.');
   if(!MS.model.length) return m('br2m-flt','Jāizvēlas vismaz viens modelis.');
   var crit = {
