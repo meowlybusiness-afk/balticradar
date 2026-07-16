@@ -882,7 +882,30 @@ function normBody(v){
   // raw junk, "cits/other"). Return empty so it is dropped from the body filter dropdown entirely.
   return "";
 }
-function norm(kind,v){ if(!v)return v; if(kind==="body")return normBody(v); const m=NMAP[kind]; const k=String(v).toLowerCase().trim(); return (m&&m[k])||v; }
+function normFuel(v){ if(!v)return ""; const s=String(v).toLowerCase();
+  if(/hybrid|hibr/.test(s) || (/(elektr|electr)/.test(s) && /(benz|petrol|diz|d[īi]z|diesel|dyz)/.test(s))) return "Hibrīds";
+  if(/(gas|lpg|dujos|g[āa]ze)/.test(s) && /(benz|petrol)/.test(s)) return "Benzīns / gāze";
+  if(/(elektr|electr)/.test(s)) return "Elektrība";
+  if(/(diz|d[īi]z|diesel|dyz)/.test(s)) return "Dīzelis";
+  if(/(benz|petrol)/.test(s)) return "Benzīns";
+  if(/(gas|lpg|dujos|g[āa]ze)/.test(s)) return "Gāze";
+  if(/(vandenil|hydrogen|[ūu]de[ņn]rad|etanol|ethanol|e85|other|cits)/.test(s)) return "Cits";
+  return ""; }
+function normGear(v){ if(!v)return ""; const s=String(v).toLowerCase();
+  if(/auto|autom[āa]t/.test(s)) return "Automātiskā";
+  if(/manual|meh[āa]n|mehan|mechan|rankin/.test(s)) return "Mehāniskā";
+  return ""; }
+function normDrive(v){ if(!v)return ""; const s=String(v).toLowerCase();
+  if(/4x4|4[хx]4|pilnpied|\ball\b|awd|4wd|4motion|4matic|quattro|visi/.test(s)) return "Pilnpiedziņa";
+  if(/priek|front|fwd/.test(s)) return "Priekšpiedziņa";
+  if(/aizmug|rear|rwd/.test(s)) return "Aizmugurpiedziņa";
+  return ""; }
+function norm(kind,v){ if(!v)return v;
+  if(kind==="body")return normBody(v);
+  if(kind==="fuel")return normFuel(v);
+  if(kind==="gear")return normGear(v);
+  if(kind==="drive")return normDrive(v);
+  const m=NMAP[kind]; const k=String(v).toLowerCase().trim(); return (m&&m[k])||v; }
 // group numeric trims into a series so "BMW 3. sērija" matches 316/318/320/330...
 function modelSeries(make,model){
   if(!model)return model; const mk=(make||"").toLowerCase(),m=String(model).trim();
@@ -1086,14 +1109,26 @@ let FACET_MAKES=null; const FACET_MODELS={}; let _facetScan=false;
    newest 25 000 rows only: "Dīzelis" reported 16 842 cars when the catalogue holds 54 813. */
 let FACET_VOCAB=null;
 const VOCAB_SEED={
- fuel:{"Benz\u012bns":["petrol"],"D\u012bzelis":["diesel"],"Elektr\u012bba":["electric","Elektriskais"],"Hibr\u012bds":["hybrid"],"G\u0101ze":["gas","lpg"]},
- gear:{"Autom\u0101tisk\u0101":["automatic"],"Meh\u0101nisk\u0101":["manual","Mehanisk\u0101"]},
- body:{"Sedans":["sedan"],"He\u010dbeks":["hatchback"],"Kupeja":["coupe","Kupeja (Coupe)"],
-   "Kabriolets":["cabriolet","convertible","roadster"],"Pikaps":["pickup"],
-   "Apvidus / SUV":["Apvidus","Visurg\u0101j\u0113js / Krosovers","Visurg\u0101j\u0113js / krosovers","suv","crossover"],
-   "Univers\u0101lis":["Universalas","touring","estate","wagon","kombi","caravan"],
-   "Mikroautobuss / minivens":["Minivens","Mikroautobuss","minivan","minibus","van"]},
- drive:{}};
+ fuel:{
+   "Benzīns":["petrol","Benzinas","benzinas"],
+   "Dīzelis":["diesel","Dyzelinas","Dyzelis"],
+   "Elektrība":["electric","Elektriskais","Elektra"],
+   "Hibrīds":["hybrid","Benzīns / elektrība","Dīzelis / elektrība","Benzīns / elektrība / gāze","benzins-elektra","benzinas-elektra","benzinas-elektra-dujos","dyzelinas-elektra"],
+   "Gāze":["gas","lpg","Dujos"],
+   "Benzīns / gāze":["benzins-gaze","benzinas-dujos","Benzīns / gāze"],
+   "Cits":["other","cits","vandenilis","Ūdeņradis","hydrogen","Bioetanols (E85)","ethanol","e85"]},
+ gear:{"Automātiskā":["automatic","Automatinė"],"Mehāniskā":["manual","Mehaniskā","Mechaninė","Rankinė"]},
+ body:{"Sedans":["sedan"],"Hečbeks":["hatchback"],"Kupeja":["coupe","Kupeja (Coupe)","kupeja-coupe"],
+   "Kabriolets":["cabriolet","convertible","roadster","Kabriolets / Roadster","kabriolets-roadster"],
+   "Pikaps":["pickup","apvidus-pikaps","Apvidus Pikaps"],
+   "Apvidus / SUV":["Apvidus","Visurgājējs / Krosovers","Visurgājējs / krosovers","suv","crossover"],
+   "Universālis":["Universalas","touring","estate","wagon","kombi","caravan"],
+   "Mikroautobuss / minivens":["Minivens","Mikroautobuss","minivan","minibus","van","precu-mikroautobuss","pasazieru-mikroautobuss","Pasažieru mikroautobuss","Preču mikroautobuss"],
+   "Komerciāls":["komerctransports","Komerctransports","commercial"],
+   "Limuzīns":["limousine"]},
+ drive:{"Pilnpiedziņa":["Pilnpiedziņa (4x4)","all","awd","4wd","4x4","Visi rati"],
+   "Priekšpiedziņa":["Priekšējā","front","fwd"],
+   "Aizmugurpiedziņa":["Aizmugurējā","rear","rwd"]}};
 function vocabRaws(kind,sel){          // selected buckets -> every raw DB value that normalises into them
   const a=_arr(sel); if(!a.length)return [];
   const V=(FACET_VOCAB&&FACET_VOCAB[kind])||{}, S=VOCAB_SEED[kind]||{}, out=new Set();
@@ -1115,9 +1150,9 @@ function srvModelOK(){                 // can the model pick go server-side? (ne
   if(!(FACET_MAKES&&FACET_MAKES.length))return false;
   const n=modelRaws().length; return n>0&&n<=300;
 }
-try{const _c=JSON.parse(localStorage.getItem("br_facets3")||"null");
+try{const _c=JSON.parse(localStorage.getItem("br_facets4")||"null");
   if(_c&&_c.t&&(Date.now()-_c.t<86400000)){FACET_MAKES=_c.m||null; Object.assign(FACET_MODELS,_c.mm||{}); FACET_VOCAB=_c.v||null;}}catch(e){}
-function _saveFacets(){try{localStorage.setItem("br_facets3",JSON.stringify({t:Date.now(),m:FACET_MAKES,mm:FACET_MODELS,v:FACET_VOCAB}));}catch(e){}}
+function _saveFacets(){try{localStorage.setItem("br_facets4",JSON.stringify({t:Date.now(),m:FACET_MAKES,mm:FACET_MODELS,v:FACET_VOCAB}));}catch(e){}}
 async function scanFacets(){                      // one keyset pass over the whole catalogue; cached 24h
   if((FACET_MAKES&&FACET_MAKES.length)||_facetScan)return; _facetScan=true;
   const cnt={}, models={}; let after="";
@@ -1451,7 +1486,7 @@ async function loadHistory(carId){
   // CSS by gateHistory(), which is trivially bypassable (remove display:none in devtools, or read it
   // straight off the network tab). Here we fetch and render NOTHING; gateHistory() paints the
   // lock-box + "Uzzināt vairāk" CTA. The moment BR.profile.is_premium is true, the chart loads.
-  if(!(window.BR && BR.profile && BR.profile.is_premium)) return;
+  if(!(window.BR && BR.profile && BR.profile.is_premium)){ try{ if(typeof gateHistory==="function") gateHistory(carId); }catch(e){} return; }
   try{
     const r=await fetch(`${SB_URL}/rest/v1/price_history?car_id=eq.${encodeURIComponent(carId)}&select=ts,price,mileage&order=ts.asc`,{headers:SBH});
     let pts=(await r.json()).filter(p=>p.price!=null);
@@ -3262,7 +3297,7 @@ header{background:var(--surf);backdrop-filter:blur(16px);-webkit-backdrop-filter
 .langsel:hover{background:var(--card2)}
 .hero{position:relative;min-height:0;display:block;text-align:center;color:var(--ink);background:var(--bg);overflow:hidden;padding:62px 0 26px}
 .heroImg,.heroOverlay{display:none!important}
-.rings{position:absolute;top:-70px;left:50%;transform:translateX(-50%);width:460px;height:460px;max-width:none;opacity:.5;pointer-events:none}
+.rings{position:absolute;top:-48px;left:50%;transform:translateX(-50%);width:300px;height:300px;max-width:none;opacity:.4;pointer-events:none}
 .heroInner{position:relative;z-index:2;padding:0 20px;max-width:860px;margin:0 auto}
 .flags{display:flex;gap:10px;justify-content:center;align-items:center;margin-bottom:18px}
 .flags .fdot{width:30px;height:20px;border-radius:3px}
@@ -3441,7 +3476,7 @@ html[data-theme="dark"] .br-heart .o{color:#fff}   /* white heart outline on the
 .hero{padding:38px 0 20px}
 .hero h1{font-size:38px;letter-spacing:-.035em}
 .hero p{font-size:15.5px}
-.rings{width:340px;height:340px;top:-45px}
+.rings{width:210px;height:210px;top:-28px}
 .flags .fdot{width:26px;height:17px}
 .herocta{flex-direction:column}
 .herocta button{width:100%}
@@ -3466,14 +3501,14 @@ body{overflow-x:hidden}
 }
 
 /* ---------- animated radar hero backdrop (crisp SVG, no blur) ---------- */
-.rings.radar{opacity:.6}
+.rings.radar{opacity:.4}
 .rdr-sweep{transform-origin:360px 360px;animation:brSpin 7s linear infinite;will-change:transform}
 @keyframes brSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .rdr-pulse circle{transform-origin:360px 360px;transform:scale(.12);opacity:0;animation:brPulse 5s ease-out infinite;will-change:transform,opacity}
 .rdr-pulse .p2{animation-delay:2.5s}
 @keyframes brPulse{0%{transform:scale(.12);opacity:.5}70%{opacity:.10}100%{transform:scale(1);opacity:0}}
-html[data-theme="dark"] .rings.radar{opacity:.75}
-@media(max-width:860px){.rings.radar{opacity:.5}.rdr-sweep{animation-duration:9s}}
+html[data-theme="dark"] .rings.radar{opacity:.5}
+@media(max-width:860px){.rings.radar{opacity:.32}.rdr-sweep{animation-duration:9s}}
 @media(prefers-reduced-motion:reduce){.rdr-sweep{animation:none}.rdr-pulse circle{animation:none;opacity:0}}
 </style>
 <script>
