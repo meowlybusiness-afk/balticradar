@@ -2665,7 +2665,7 @@ async function gateHistory(id){
   // so #hist would otherwise be left stuck on its "Ielādē…" placeholder - hide it too, and show a
   // single clean lock-box. Idempotent: re-checks for an existing lock-box instead of a stale flag.
   var pch = $('pchgcard'), hist = $('hist');
-  var anchor = pch || hist;
+  var anchor = hist || pch;   // prefer the full-width #hist slot so the lock-box is not squished into the narrow price-change card
   if(!anchor) return;
   var prev = anchor.previousElementSibling;
   var existingLock = (prev && prev.classList && prev.classList.contains('lockbox')) ? prev : null;
