@@ -383,8 +383,8 @@
   <div class="heroOverlay"></div>
   <div class="heroInner">
     <div class="flags"><span class="fdot LV"></span><span class="fdot EE"></span><span class="fdot LT"></span></div>
-    <h1 id="heroT">Visi Baltijas auto vienuviet</h1>
-    <p id="heroS">Esi pirmais, kas redz jaunos sludinājumus no ss.lv, autoplius.lt un auto24.ee</p>
+    <h1 id="heroT">Visi Baltijas auto vienā vietā</h1>
+    <p id="heroS">ss.lv, autoplius.lt un auto24.ee vienā ekrānā. Cenu un nobraukuma vēsture un paziņojumi — nepalaid garām nevienu darījumu.</p>
     <div class="herocta">
       <button class="primary" id="ctaBrowse" onclick="scrollToEl('grid')">Skatīt sludinājumus</button>
       <button class="ghost" id="ctaAlerts" onclick="openSub()">Saņemt paziņojumus</button>
@@ -533,11 +533,11 @@ function applyI18n(){
   {const BTN={lv:["Meklēt","Atiestatīt"],en:["Search","Reset"],ru:["Искать","Сбросить"],lt:["Ieškoti","Atstatyti"],et:["Otsi","Lähtesta"]};
    const bb=BTN[lang]||BTN.en; const bs=document.getElementById("doSearchBtn"),brr=document.getElementById("doResetBtn");
    if(bs)bs.textContent=bb[0]; if(brr)brr.textContent=bb[1];}
-  const HERO={lv:["Visi Baltijas auto vienuviet","Esi pirmais, kas redz jaunos sludinājumus no ss.lv, autoplius.lt un auto24.ee"],
-   en:["All Baltic cars in one place","Be the first to see new listings from ss.lv, autoplius.lt and auto24.ee"],
-   ru:["Все авто Балтии в одном месте","Будьте первым, кто видит новые объявления с ss.lv, autoplius.lt и auto24.ee"],
-   lt:["Visi Baltijos automobiliai vienoje vietoje","Pirmas pamatyk naujus skelbimus iš ss.lv, autoplius.lt ir auto24.ee"],
-   et:["Kõik Balti autod ühes kohas","Näe esimesena uusi kuulutusi ss.lv, autoplius.lt ja auto24.ee"]};
+  const HERO={lv:["Visi Baltijas auto vienā vietā","ss.lv, autoplius.lt un auto24.ee vienā ekrānā. Cenu un nobraukuma vēsture un paziņojumi — nepalaid garām nevienu darījumu."],
+   en:["All Baltic cars in one place","ss.lv, autoplius.lt and auto24.ee on one screen. Price and mileage history plus alerts — don’t miss a single deal."],
+   ru:["Все авто Балтии в одном месте","ss.lv, autoplius.lt и auto24.ee на одном экране. История цены и пробега плюс уведомления — не упустите ни одной сделки."],
+   lt:["Visi Baltijos automobiliai vienoje vietoje","ss.lv, autoplius.lt ir auto24.ee viename ekrane. Kainos ir ridos istorija bei pranešimai — nepraleisk nė vieno pasiūlymo."],
+   et:["Kõik Balti autod ühes kohas","ss.lv, autoplius.lt ja auto24.ee ühel ekraanil. Hinna- ja läbisõiduajalugu ning teated — ära jäta ühtegi tehingut kasutamata."]};
   const h=HERO[lang]||HERO.en;document.getElementById("heroT").textContent=h[0];document.getElementById("heroS").textContent=h[1];
   setCount();
   if(typeof renderContent==="function")renderContent();
@@ -1150,9 +1150,9 @@ function srvModelOK(){                 // can the model pick go server-side? (ne
   if(!(FACET_MAKES&&FACET_MAKES.length))return false;
   const n=modelRaws().length; return n>0&&n<=300;
 }
-try{const _c=JSON.parse(localStorage.getItem("br_facets4")||"null");
+try{const _c=JSON.parse(localStorage.getItem("br_facets5")||"null");
   if(_c&&_c.t&&(Date.now()-_c.t<86400000)){FACET_MAKES=_c.m||null; Object.assign(FACET_MODELS,_c.mm||{}); FACET_VOCAB=_c.v||null;}}catch(e){}
-function _saveFacets(){try{localStorage.setItem("br_facets4",JSON.stringify({t:Date.now(),m:FACET_MAKES,mm:FACET_MODELS,v:FACET_VOCAB}));}catch(e){}}
+function _saveFacets(){try{localStorage.setItem("br_facets5",JSON.stringify({t:Date.now(),m:FACET_MAKES,mm:FACET_MODELS,v:FACET_VOCAB}));}catch(e){}}
 async function scanFacets(){                      // one keyset pass over the whole catalogue; cached 24h
   if((FACET_MAKES&&FACET_MAKES.length)||_facetScan)return; _facetScan=true;
   const cnt={}, models={}; let after="";
@@ -1683,8 +1683,11 @@ function msOptions(k){          // -> [{g:"groupLabel"|"", items:[...]}]
     });
   }
   const VK=(kind,fb)=>{const v=FACET_VOCAB&&FACET_VOCAB[kind];
-    const items=(v&&Object.keys(v).length)?Object.keys(v):fb();
-    return [{g:"",items:items.filter(x=>x&&!junkVal(x)).sort()}];};
+    const raw=(v&&Object.keys(v).length)?Object.keys(v):fb();
+    // DEFENSIVE: re-normalise every option to its canonical label at render time, so even a stale
+    // localStorage facet cache (built by older code) can NEVER leak raw DB values into the dropdown.
+    const items=[...new Set(raw.map(x=>norm(kind,x)).filter(x=>x&&!junkVal(x)))].sort();
+    return [{g:"",items}];};
   if(k==="fuel")  return VK("fuel", ()=>[...new Set(A.map(c=>norm("fuel",c.fuel)).filter(Boolean))]);
   if(k==="gear")  return VK("gear", ()=>[...new Set(A.map(c=>norm("gear",c.gearbox)).filter(Boolean))]);
   if(k==="bodyf") return VK("body", ()=>[...new Set(A.filter(c=>c.body&&!BODYJUNK.has(String(deent(c.body)).toLowerCase().trim())).map(c=>norm("body",c.body)).filter(Boolean))]);
@@ -1862,7 +1865,7 @@ const CONTENT={
  lv:{nav:["Sludinājumi","Kā tas strādā","BUJ"],cta:["Skatīt sludinājumus","Saņemt paziņojumus"],
   makesT:"Populārākās markas",makesS:"Izvēlies marku un uzreiz redzi visus pieejamos sludinājumus visā Baltijā.",
   aboutT:"Visi Baltijas lietotie auto vienā meklēšanā",
-  about:["BalticRadar apkopo lietoto auto sludinājumus no trim lielākajiem Baltijas portāliem — ss.lv Latvijā, autoplius.lt Lietuvā un auto24.ee Igaunijā — un parāda tos vienuviet. Vairs nav jāatver trīs lapas atsevišķi.","Katram auto sekojam cenas vēsturei. Ja pārdevējs pazemina cenu, tu to redzi uzreiz, kā arī datumu, kad sludinājums tika ievietots. Tā vieglāk pamanīt patiesi izdevīgus piedāvājumus.","Cenas vērtējums tiek aprēķināts, salīdzinot auto ar līdzīgiem tā paša modeļa un gada sludinājumiem mūsu datubāzē. Tas dod ātru priekšstatu, vai cena atbilst tirgum."],
+  about:["BalticRadar apkopo auto sludinājumus no trim lielākajiem Baltijas portāliem: ss.lv Latvijā, autoplius.lt Lietuvā un auto24.ee Igaunijā, un parāda tos vienā vietā. Vairs nav jāpārlūko trīs lapas atsevišķi.","Pēc filtra iestatīšanas BalticRadar automātiski pārbauda jaunos sludinājumus. Tiklīdz parādās auto, kas atbilst kritērijiem, vai tiek pazemināta cena, uz e-pastu pienāk paziņojums.","Katram auto tiek rādīta cenas un nobraukuma vēsture, kā arī datums, kad sludinājums ievietots. Tā uzreiz redzams, vai cena ir kritusi un cik ilgi auto jau atrodas tirgū. Cenas vērtējums tiek aprēķināts, salīdzinot auto ar tā paša modeļa un gada sludinājumiem datubāzē."],
   pcT:"Lietota auto plusi un mīnusi",proT:"Plusi",conT:"Mīnusi",
   pros:["Zemāka cena nekā jaunam auto","Mazāks vērtības kritums pēc iegādes","Plaša izvēle dažādos cenu līmeņos","Pieejams uzreiz, bez gaidīšanas","Augstākas klases auto par mazāku naudu"],
   cons:["Var būt nepieciešama apkope vai remonts","Īsāka vai nereti nekāda garantija","Lielāks nobraukums","Svarīgi pārbaudīt auto vēsturi un VIN"],
@@ -1929,16 +1932,12 @@ function renderContent(){
   const counts={};AGG().forEach(x=>{if(x.make)counts[x.make]=(counts[x.make]||0)+1;});
   const top=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).slice(0,16);
   const chips=top.map(m=>`<span class="chip" onclick='pickMake(${JSON.stringify(m)})'>${m} <b style="color:var(--mut);font-weight:600">${counts[m]}</b></span>`).join("");
-  const pros=c.pros.map(x=>`<li>${x}</li>`).join("");
-  const cons=c.cons.map(x=>`<li>${x}</li>`).join("");
   const steps=c.steps.map((s,i)=>`<div class="step"><div class="n">${i+1}</div><h4>${s[0]}</h4><p>${s[1]}</p></div>`).join("");
   const faq=c.faq.map(f=>`<details class="qa"><summary>${f[0]}</summary><div class="ans">${f[1]}</div></details>`).join("");
   const about=c.about.map(p=>`<p>${p}</p>`).join("");
   document.getElementById("content").innerHTML=`
     ${chips?`<section class="section reveal"><div class="wrap"><h2 class="secttl">${c.makesT}</h2><p class="secsub">${c.makesS}</p><div class="chips2">${chips}</div></div></section>`:""}
     <section class="section reveal alt"><div class="wrap"><h2 class="secttl">${c.aboutT}</h2><div class="article">${about}</div>
-      <h2 class="secttl" style="margin-top:38px">${c.pcT}</h2>
-      <div class="pc"><div class="pccard pro"><h4>${c.proT}</h4><ul>${pros}</ul></div><div class="pccard con"><h4>${c.conT}</h4><ul>${cons}</ul></div></div>
     </div></section>
     <section class="section reveal" id="s-how"><div class="wrap"><h2 class="secttl">${c.howT}</h2><p class="secsub">${c.howS}</p><div class="steps">${steps}</div></div></section>
     <section class="section reveal alt" id="s-faq"><div class="wrap"><h2 class="secttl">${c.faqT}</h2><div class="faq">${faq}</div></div></section>`;
