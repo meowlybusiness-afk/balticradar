@@ -67,6 +67,7 @@ RESEND_KEY = os.environ.get("RESEND_API_KEY")
 # Use `or` so an empty ALERT_FROM falls back to the shared sender.
 FROM = (os.environ.get("ALERT_FROM") or "").strip() or "BalticRadar <onboarding@resend.dev>"
 TEST_TO = (os.environ.get("TEST_TO") or "").strip()
+ONLY_EMAIL = (os.environ.get("ONLY_EMAIL") or "").strip().lower()
 DRY_RUN = os.environ.get("DRY_RUN") == "1"
 # TEST-ONLY: skip the (filter_id, car_id) dedupe read AND skip recording the send, so a manual
 # dispatch can re-render a real e-mail from cars that were already alerted on. Never set on cron.
@@ -655,6 +656,8 @@ def main():
         name = f.get("name") or "filtrs"
         if not email:
             print(f"filter {f['id']} '{name}': no email on profile -> skip")
+            continue
+        if ONLY_EMAIL and email.lower() != ONLY_EMAIL:
             continue
 
         premium = bool(prof.get("is_premium"))
