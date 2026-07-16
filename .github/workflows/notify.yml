@@ -13,13 +13,10 @@ name: BalticRadar alerts
 #     before the provider quota is gone and logs loudly instead of failing in silence.
 # Cars that are not sent are NOT recorded as sent, so they roll into the next batch. Nothing is lost.
 #
-# 5-MINUTE TICK (2026-07-15): the fastest cadence is now "instant" (>=10 min gap per filter in
-# notify.py). A 5-min tick means a new matching car reaches an instant-cadence Premium filter within
-# ~5-10 min. Daily/free filters are unaffected - notify.py's per-filter cooldown + per-user cap +
-# global 90/100 budget still gate everything, so the finer tick cannot increase anyone's volume.
+# Hourly is the finest tick worth having: the fastest cadence we offer is one e-mail per hour.
 on:
   schedule:
-    - cron: "*/5 * * * *"      # 5-min tick -> ~5-10 min "instant" delivery. notify.py decides who is due.
+    - cron: "7 * * * *"        # hourly tick. It is notify.py that decides who is actually due.
   workflow_dispatch:
     inputs:
       test_to:
@@ -38,6 +35,10 @@ on:
         description: "1 = TEST ONLY. Ignore the already-sent dedupe and do not record the send."
         required: false
         default: "0"
+      only_email:
+        description: "Send ONLY to this email address (targeted test). Empty = all due users."
+        required: false
+        default: ""
 
 concurrency:
   group: balticradar-alerts     # never let two runs overlap and double-send
@@ -59,16 +60,17 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
-          # Set the ALERT_FROM secret to "BalticRadar <alerts@yourdomain.lv>" once the domain is
-          # verified in Resend. Until then the default onboarding@resend.dev ONLY delivers to the
-          # Resend account owner - every other recipient is rejected with 403.
-          ALERT_FROM: ${{ secrets.ALERT_FROM }}
+          # The sending domain balticradar.com is verified in Resend, so the default sender is now
+          # alerts@balticradar.com and delivers to ALL recipients. Setting the ALERT_FROM secret is
+          # optional and only needed to override this default.
+          ALERT_FROM: ${{ secrets.ALERT_FROM || 'BalticRadar <alerts@balticradar.com>' }}
           SITE_URL: "https://balticradar.meowlybusiness.workers.dev"
           # must be WIDER than the slowest cadence (daily), or a digest would miss cars
           LOOKBACK_MIN: ${{ github.event.inputs.lookback_min || '1560' }}
           TEST_TO: ${{ github.event.inputs.test_to }}
           DRY_RUN: ${{ github.event.inputs.dry_run }}
           IGNORE_SENT: ${{ github.event.inputs.ignore_sent }}
+          ONLY_EMAIL: ${{ github.event.inputs.only_email }}
           MAX_PER_EMAIL: "12"
           MAX_EMAILS: "80"          # per RUN
           DAILY_CAP: "6"            # per USER per day, whatever their filters ask for
