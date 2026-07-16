@@ -853,7 +853,14 @@ function render(cars){
 // filter dropdowns don't show duplicates ("petrol" + "Benzīns").
 const NMAP={
  fuel:{petrol:"Benzīns",diesel:"Dīzelis",electric:"Elektrība",hybrid:"Hibrīds",gas:"Gāze",lpg:"Gāze",
-   benzīns:"Benzīns","dīzelis":"Dīzelis","elektrība":"Elektrība","elektriskais":"Elektrība",hibrīds:"Hibrīds","gāze":"Gāze"},
+   benzīns:"Benzīns","dīzelis":"Dīzelis","elektrība":"Elektrība","elektriskais":"Elektrība",hibrīds:"Hibrīds","gāze":"Gāze",
+   // collapse the raw / cross-language fuel strings that were leaking into the dropdown as junk
+   "benzins-gaze":"Benzīns / gāze","benzinas-dujos":"Benzīns / gāze","benzīns / gāze":"Benzīns / gāze",
+   "benzinas-elektra-dujos":"Hibrīds","benzins-elektra":"Hibrīds","benzinas-elektra":"Hibrīds",
+   "vandenilis":"Ūdeņradis","ūdeņradis":"Ūdeņradis",hydrogen:"Ūdeņradis",
+   other:"Cits",cits:"Cits","bioetanols (e85)":"Bioetanols (E85)",ethanol:"Bioetanols (E85)",e85:"Bioetanols (E85)",
+   benzinas:"Benzīns",dyzelinas:"Dīzelis",dyzelis:"Dīzelis",elektra:"Elektrība",hibridas:"Hibrīds",dujos:"Gāze",
+   "dīzelis / elektrība":"Dīzelis / elektrība","dyzelinas-elektra":"Dīzelis / elektrība"},
  gear:{automatic:"Automātiskā",manual:"Mehāniskā","automātiskā":"Automātiskā","mehāniskā":"Mehāniskā","mehaniskā":"Mehāniskā"},
  body:{sedan:"Sedans",hatchback:"Hečbeks",coupe:"Kupeja",suv:"Visurgājējs / krosovers",estate:"Universālis",wagon:"Universālis",
    caravan:"Universālis",van:"Minivens",minivan:"Minivens",minibus:"Mikroautobuss",cabriolet:"Kabriolets",convertible:"Kabriolets",
@@ -867,11 +874,13 @@ function normBody(v){
   if(/cabrio|kabriolet|roadster|convertible/.test(s))return "Kabriolets";
   if(/pickup|pikap/.test(s))return "Pikaps";
   if(/suv|visurg|krosover|cross|gel[aä]nd|jeep|apvidus/.test(s))return "Apvidus / SUV";
-  if(/universal|estate|wagon|kombi|touring|caravan/.test(s))return "Universālis";
+  if(/universal|universāl|estate|wagon|kombi|touring|caravan|avant/.test(s))return "Universālis";
   if(/minibus|mikroautobus|minivan|miniven|pasa[žz]ier|\bvan\b/.test(s))return "Mikroautobuss / minivens";
   if(/limous|limuzin/.test(s))return "Limuzīns";
   if(/commercial|komerc|kravas/.test(s))return "Komerciāls";
-  return v;
+  // Anything else is NOT a passenger-car body (machinery, "rigid", "battery plus", "stacijas vagons",
+  // raw junk, "cits/other"). Return empty so it is dropped from the body filter dropdown entirely.
+  return "";
 }
 function norm(kind,v){ if(!v)return v; if(kind==="body")return normBody(v); const m=NMAP[kind]; const k=String(v).toLowerCase().trim(); return (m&&m[k])||v; }
 // group numeric trims into a series so "BMW 3. sērija" matches 316/318/320/330...
@@ -1106,9 +1115,9 @@ function srvModelOK(){                 // can the model pick go server-side? (ne
   if(!(FACET_MAKES&&FACET_MAKES.length))return false;
   const n=modelRaws().length; return n>0&&n<=300;
 }
-try{const _c=JSON.parse(localStorage.getItem("br_facets2")||"null");
+try{const _c=JSON.parse(localStorage.getItem("br_facets3")||"null");
   if(_c&&_c.t&&(Date.now()-_c.t<86400000)){FACET_MAKES=_c.m||null; Object.assign(FACET_MODELS,_c.mm||{}); FACET_VOCAB=_c.v||null;}}catch(e){}
-function _saveFacets(){try{localStorage.setItem("br_facets2",JSON.stringify({t:Date.now(),m:FACET_MAKES,mm:FACET_MODELS,v:FACET_VOCAB}));}catch(e){}}
+function _saveFacets(){try{localStorage.setItem("br_facets3",JSON.stringify({t:Date.now(),m:FACET_MAKES,mm:FACET_MODELS,v:FACET_VOCAB}));}catch(e){}}
 async function scanFacets(){                      // one keyset pass over the whole catalogue; cached 24h
   if((FACET_MAKES&&FACET_MAKES.length)||_facetScan)return; _facetScan=true;
   const cnt={}, models={}; let after="";
@@ -3253,7 +3262,7 @@ header{background:var(--surf);backdrop-filter:blur(16px);-webkit-backdrop-filter
 .langsel:hover{background:var(--card2)}
 .hero{position:relative;min-height:0;display:block;text-align:center;color:var(--ink);background:var(--bg);overflow:hidden;padding:62px 0 26px}
 .heroImg,.heroOverlay{display:none!important}
-.rings{position:absolute;top:-140px;left:50%;transform:translateX(-50%);width:720px;height:720px;max-width:none;opacity:.55;pointer-events:none}
+.rings{position:absolute;top:-70px;left:50%;transform:translateX(-50%);width:460px;height:460px;max-width:none;opacity:.5;pointer-events:none}
 .heroInner{position:relative;z-index:2;padding:0 20px;max-width:860px;margin:0 auto}
 .flags{display:flex;gap:10px;justify-content:center;align-items:center;margin-bottom:18px}
 .flags .fdot{width:30px;height:20px;border-radius:3px}
@@ -3432,7 +3441,7 @@ html[data-theme="dark"] .br-heart .o{color:#fff}   /* white heart outline on the
 .hero{padding:38px 0 20px}
 .hero h1{font-size:38px;letter-spacing:-.035em}
 .hero p{font-size:15.5px}
-.rings{width:520px;height:520px;top:-90px}
+.rings{width:340px;height:340px;top:-45px}
 .flags .fdot{width:26px;height:17px}
 .herocta{flex-direction:column}
 .herocta button{width:100%}
