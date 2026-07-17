@@ -664,7 +664,7 @@ function ago(iso){if(!iso)return"";const t=T(),s=(Date.now()-new Date(iso))/1000
   if(s<3600)return t.min.replace("%s",Math.max(1,Math.round(s/60)));
   if(s<86400)return t.hour.replace("%s",Math.round(s/3600));return t.day.replace("%s",Math.round(s/86400));}
 function hq(u){return u && /i\.ss\.(lv|com)/.test(u) ? u.replace(/\.(t|th|th2|th3|sm|400|800|1200|2000)\.jpg$/,".800.jpg") : u;}
-function thumb(u){return u && /i\.ss\.(lv|com)/.test(u) ? u.replace(/\.(t|th|th2|th3|sm|400|800|1200|2000)\.jpg$/,".400.jpg") : u;}
+function thumb(u){return hq(u);}  /* .400 returned a 1x1 dummy on ss.lv; use .800 (hq) which serves real photos */
 // autoplius stores the same photo at many sizes (ann_2_/ann_3_/ann_25_ ... same id) -> keep one per photo id
 function uniqPhotos(arr){if(!arr||!arr.length)return arr||[];const seen=new Map();
   for(const u of arr){const m=String(u).match(/ann_\d+_(\d+)/);const k=m?m[1]:u;if(!seen.has(k))seen.set(k,u);}
@@ -810,7 +810,7 @@ function isCar(c){
 function ratePill(c){ return `<div class="prate" data-prate="${esc(c.car_id)}"></div>`; }
 function openSource(c){ if(c&&c.source_url&&c.source_url!=="#"){ window.open(c.source_url,"_blank","noopener"); } }
 function innerCard(c,fresh){
-  const ph=uniqPhotos((c.photos&&c.photos.length)?c.photos:[]).map(thumb);
+  const ph=uniqPhotos((c.photos&&c.photos.length)?c.photos:[]).map(hq);
   const imgs=ph.length
     ? ph.map((u,k)=>`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" class="${k===0?'show':''}" src="${u}">`).join("")
       +`<div class="dots">${ph.map((_,k)=>`<span class="${k===0?'a':''}"></span>`).join("")}</div>`
@@ -838,7 +838,7 @@ function wireHoverEl(card){
 const grid=document.getElementById("grid"); const rendered=new Map(); let lastSig="";
 function apskatitLabel(){return ({lv:"Apskatīt sludinājumu",en:"View listing",ru:"Открыть объявление",lt:"Peržiūrėti skelbimą",et:"Vaata kuulutust"}[lang]||"Apskatīt sludinājumu");}
 function innerRow(c,fresh){
-  const ph=uniqPhotos((c.photos&&c.photos.length)?c.photos:[]).map(thumb);
+  const ph=uniqPhotos((c.photos&&c.photos.length)?c.photos:[]).map(hq);
   const img=ph.length?`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${ph[0]}">`:`<div class="noimg">${T().noPhoto}</div>`;
   const specs=[c.last_mileage!=null?km(c.last_mileage):null,esc(norm("fuel",c.fuel)),esc(norm("gear",c.gearbox)),c.engine_l?esc(c.engine_l)+" l":null,esc(norm("body",c.body))].filter(Boolean).join(" · ");
   return `<div class="lrow-head">
@@ -1043,10 +1043,22 @@ async function loadPagePhotos(cars){
 }
 function updateCardPhotos(c){
   const el=rendered.get(c.car_id); if(!el)return;
-  const lt=el.querySelector(".lthumb"); if(!lt)return;
-  const first=(uniqPhotos(c.photos||[]).map(thumb))[0]; if(!first)return;
-  const badge=lt.querySelector(".badge");
-  lt.innerHTML=(badge?badge.outerHTML:"")+`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${first}">`;
+  const ph=el.querySelector(".ph");
+  if(ph){
+    const pics=uniqPhotos(c.photos||[]).map(hq);
+    const badge=ph.querySelector(".badge"), flag=ph.querySelector(".flag");
+    const imgs=pics.map((u,k)=>`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" class="${k===0?'show':''}" src="${u}">`).join("")
+      +`<div class="dots">${pics.map((_,k)=>`<span class="${k===0?'a':''}"></span>`).join("")}</div>`;
+    ph.innerHTML=(badge?badge.outerHTML:"")+(flag?flag.outerHTML:"")+imgs;
+    wireHoverEl(el);
+    return;
+  }
+  const lt=el.querySelector(".lthumb");
+  if(lt){
+    const first=(uniqPhotos(c.photos||[]).map(hq))[0]; if(!first)return;
+    const badge=lt.querySelector(".badge");
+    lt.innerHTML=(badge?badge.outerHTML:"")+`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${first}">`;
+  }
 }
 function heroGo(){let v=(document.getElementById("heroq").value||"").trim();
   const cc=CHASSIS[v.toLowerCase()];
