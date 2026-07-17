@@ -835,16 +835,59 @@ function wireHoverEl(card){
 }
 
 const grid=document.getElementById("grid"); const rendered=new Map(); let lastSig="";
+function apskatitLabel(){return ({lv:"Apskatīt sludinājumu",en:"View listing",ru:"Открыть объявление",lt:"Peržiūrėti skelbimą",et:"Vaata kuulutust"}[lang]||"Apskatīt sludinājumu");}
+function innerRow(c,fresh){
+  const ph=uniqPhotos((c.photos&&c.photos.length)?c.photos:[]).map(thumb);
+  const img=ph.length?`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${ph[0]}">`:`<div class="noimg">${T().noPhoto}</div>`;
+  const specs=[c.last_mileage!=null?km(c.last_mileage):null,esc(norm("fuel",c.fuel)),esc(norm("gear",c.gearbox)),c.engine_l?esc(c.engine_l)+" l":null,esc(norm("body",c.body))].filter(Boolean).join(" · ");
+  return `<div class="lrow-head">
+      <div class="lthumb">${fresh?'<span class="badge">JAUNS</span>':''}${img}</div>
+      <div class="lmain">
+        <div class="ltitle">${esc(c.make)} ${esc(c.model)}<span class="yr">${c.year||""}</span></div>
+        <div class="lspecs">${specs||"&nbsp;"}</div>
+        <div class="prate lprate" data-prate="${esc(c.car_id)}"></div>
+      </div>
+      <div class="lright">
+        <span class="lflag"><span class="fdot ${esc(c.country)}"></span></span>
+        <span class="lprice bigprice">${eur(c.last_price)}</span>
+        <span class="lchev">▼</span>
+      </div>
+    </div><div class="lrow-exp"></div>`;
+}
+function toggleRow(el,c){ const open=el.classList.toggle("open"); if(open&&!el._exp){el._exp=true;fillRowExp(el,c);} }
+async function fillRowExp(el,c){
+  const box=el.querySelector(".lrow-exp"); if(!box)return;
+  const src=(c.source_url&&c.source_url!=="#")?c.source_url:null;
+  const btn=src?`<a class="lbtn" href="${esc(src)}" target="_blank" rel="noopener nofollow" onclick="event.stopPropagation()">${apskatitLabel()} ↗</a>`:`<span class="lbtn" style="opacity:.5;cursor:default">${apskatitLabel()}</span>`;
+  if(!(window.BR&&BR.profile&&BR.profile.is_premium)){
+    box.innerHTML=`<div class="lexp-inner">${btn}<div class="lhist-lock"><div class="ic">🔒</div><h4>Cenas izmaiņas šajā sludinājumā</h4><p>Cenu un nobraukuma vēsture ir pieejama Premium plānā.</p><button class="lbtn" style="margin:0" onclick="event.stopPropagation(); if(window.BRProfile)BRProfile.open('bill')">Uzzināt vairāk</button></div></div>`;
+    return;
+  }
+  box.innerHTML=`<div class="lexp-inner">${btn}<div class="lhist-cap">Cenas izmaiņas šajā sludinājumā</div><div class="lhist-wrap muted">${T().loading}</div></div>`;
+  try{
+    const r=await fetch(`${SB_URL}/rest/v1/price_history?car_id=eq.${encodeURIComponent(c.car_id)}&select=ts,price,mileage&order=ts.asc`,{headers:SBH,cache:"no-store"});
+    let pts=(await r.json()).filter(p=>p.price!=null);
+    if(c.posted&&pts.length&&new Date(c.posted)<new Date(pts[0].ts)) pts=[{ts:c.posted,price:pts[0].price,mileage:pts[0].mileage},...pts];
+    const wrap=box.querySelector(".lhist-wrap"); if(!wrap)return;
+    if(!pts.length){ wrap.textContent=T().histOne; return; }
+    let rows="",prev=null;
+    pts.forEach(p=>{ let d=""; if(prev!=null){const diff=p.price-prev; if(diff!==0)d=` <span class="${diff<0?'dn':'up'}">${diff<0?'':'+'}${eur(diff)}</span>`;}
+      rows+=`<tr><td>${eur(p.price)}${d}</td><td>${p.mileage!=null?km(p.mileage):"—"}</td><td>${c.year||"—"}</td><td>${dt(p.ts)}</td></tr>`; prev=p.price; });
+    const first=pts[0],last=pts[pts.length-1],total=last.price-first.price;
+    const days=Math.max(0,Math.round((new Date(last.ts)-new Date(first.ts))/864e5));
+    wrap.classList.remove("muted");
+    wrap.innerHTML=`<table class="lhist-t"><thead><tr><th>Cena</th><th>Nobraukums</th><th>Gads</th><th>Datums</th></tr></thead><tbody>${rows}</tbody></table><div class="lhist-foot">Cenas izmaiņa: <b class="${total<0?'dn':total>0?'up':''}">${total>0?'+':''}${eur(total)}</b> · Ilgums: ${days} ${days===1?'diena':'dienas'}</div>`;
+  }catch(e){ const wrap=box.querySelector(".lhist-wrap"); if(wrap)wrap.textContent="—"; }
+}
 function render(cars){
   const sig=cars.map(c=>c.car_id).join(",");const ids=new Set(cars.map(c=>c.car_id));
   for(const[id,el]of[...rendered]){if(!ids.has(id)){el.remove();rendered.delete(id);}}
   grid.querySelector(".empty")?.remove();
   if(!cars.length&&!rendered.size){grid.innerHTML='<div class="empty">'+T().noResults+'</div>';lastSig="";return;}
   cars.forEach((c,i)=>{let el=rendered.get(c.car_id);
-    if(!el){el=document.createElement("div");el.className="card";el.addEventListener("click",()=>openModal(c));
-      if(firstLoad)el.style.animationDelay=Math.min(i*40,400)+"ms";
-      el.innerHTML=innerCard(c,!firstLoad);rendered.set(c.car_id,el);grid.appendChild(el);wireHoverEl(el);}
-    else{const p=el.querySelector(".bigprice");if(p&&p.textContent!==eur(c.last_price))p.textContent=eur(c.last_price);}});
+    if(!el){el=document.createElement("div");el.className="card";el.dataset.cid=c.car_id;el.addEventListener("click",()=>toggleRow(el,c));
+      el.innerHTML=innerRow(c,!firstLoad);rendered.set(c.car_id,el);grid.appendChild(el);}
+    else{const p=el.querySelector(".lprice");if(p&&p.textContent!==eur(c.last_price))p.textContent=eur(c.last_price);}});
   if(sig!==lastSig){let prev=null;cars.forEach(c=>{const el=rendered.get(c.car_id);if(!el)return;
     const want=prev?prev.nextSibling:grid.firstChild;if(el!==want)grid.insertBefore(el,want);prev=el;});lastSig=sig;}
   paintRatings(cars);   // valuation runs against the real market, after the cards are on screen
@@ -998,13 +1041,10 @@ async function loadPagePhotos(cars){
 }
 function updateCardPhotos(c){
   const el=rendered.get(c.car_id); if(!el)return;
-  const ph=el.querySelector(".ph"); if(!ph)return;
-  const pics=uniqPhotos(c.photos||[]).map(thumb);
-  const badge=ph.querySelector(".badge"), flag=ph.querySelector(".flag");
-  const imgs=pics.map((u,k)=>`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" class="${k===0?'show':''}" src="${u}">`).join("")
-    +`<div class="dots">${pics.map((_,k)=>`<span class="${k===0?'a':''}"></span>`).join("")}</div>`;
-  ph.innerHTML=(badge?badge.outerHTML:"")+(flag?flag.outerHTML:"")+imgs;
-  wireHoverEl(el);
+  const lt=el.querySelector(".lthumb"); if(!lt)return;
+  const first=(uniqPhotos(c.photos||[]).map(thumb))[0]; if(!first)return;
+  const badge=lt.querySelector(".badge");
+  lt.innerHTML=(badge?badge.outerHTML:"")+`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${first}">`;
 }
 function heroGo(){let v=(document.getElementById("heroq").value||"").trim();
   const cc=CHASSIS[v.toLowerCase()];
@@ -2633,8 +2673,8 @@ BR.toggleFav = async function(id, btn){
 var HEART = '<span class="o">♡</span><span class="f">♥</span>';
 function decorate(){
   document.querySelectorAll('#grid .card').forEach(function(card){
-    var img = card.querySelector('img'); if(!img) return;
-    var id = PHOTO2ID[img.getAttribute('src')||img.dataset.src||''];
+    var id = card.dataset.cid;
+    if(!id){ var img = card.querySelector('img'); id = img ? PHOTO2ID[img.getAttribute('src')||img.dataset.src||''] : null; }
     if(!id) return;
     var b = card.querySelector('.br-heart');
     if(!b){
@@ -3517,5 +3557,49 @@ html[data-theme="dark"] .rings.radar{opacity:.5}
 </script>
 
 
+<style id="dify-rows">
+#grid.grid{display:block}
+#grid .card{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:visible;margin:0 0 8px;transform:none!important;box-shadow:none;cursor:pointer;animation:none;transition:border-color .15s,box-shadow .15s}
+#grid .card:hover{transform:none!important;box-shadow:var(--shadow);border-color:var(--line2)}
+.lrow-head{display:flex;align-items:center;gap:12px;padding:10px 12px}
+.lthumb{flex:none;width:88px;height:62px;border-radius:8px;overflow:hidden;background:var(--card2);position:relative}
+.lthumb img{width:100%;height:100%;object-fit:cover;display:block}
+.lthumb .noimg{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:10px;color:var(--mut);text-align:center;padding:4px}
+.lthumb .badge{position:absolute;top:4px;left:4px;background:var(--accent);color:#fff;font-size:9px;font-weight:800;padding:2px 5px;border-radius:5px;letter-spacing:.03em}
+.lmain{flex:1;min-width:0}
+.ltitle{font-weight:700;font-size:15px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ltitle .yr{color:var(--mut);font-weight:600;font-size:13px;margin-left:6px}
+.lspecs{color:var(--mut);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lprate{margin-top:4px}
+.lright{flex:none;display:flex;align-items:center;gap:12px}
+.lprice{font-weight:800;font-size:17px;color:#1668dc;white-space:nowrap}
+html[data-theme="dark"] .lprice{color:#5b9bf5}
+.lflag .fdot{width:20px;height:13px}
+.lchev{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:var(--mut);transition:transform .2s;font-size:11px;background:var(--card2)}
+#grid .card.open .lchev{transform:rotate(180deg)}
+.lrow-exp{display:none;border-top:1px solid var(--line);padding:0 12px}
+#grid .card.open .lrow-exp{display:block}
+.lexp-inner{padding:14px 0}
+.lbtn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:11px 18px;font-weight:700;font-size:14px;text-decoration:none;cursor:pointer;font-family:inherit;margin-bottom:14px}
+.lbtn:hover{opacity:.9}
+.lhist-cap{font-weight:800;font-size:13.5px;margin-bottom:8px;color:var(--ink)}
+.lhist-t{width:100%;border-collapse:collapse;font-size:13px}
+.lhist-t th{text-align:left;color:var(--mut);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;padding:6px 8px;border-bottom:1px solid var(--line)}
+.lhist-t td{padding:7px 8px;border-bottom:1px solid var(--line);color:var(--ink)}
+.lhist-t .dn,.lhist-foot .dn{color:#16a06a;font-weight:700}
+.lhist-t .up,.lhist-foot .up{color:#d2492f;font-weight:700}
+.lhist-foot{margin-top:10px;font-size:12.5px;color:var(--mut);font-weight:600}
+.lhist-lock{position:relative;border:1px dashed var(--line2);border-radius:12px;padding:20px;text-align:center;background:var(--card2)}
+.lhist-lock .ic{font-size:22px;margin-bottom:6px}
+.lhist-lock h4{font-size:13.5px;font-weight:800;margin:0 0 4px;color:var(--ink)}
+.lhist-lock p{font-size:12.5px;color:var(--mut);margin:0 0 12px}
+#grid .card .br-heart{position:absolute;top:8px;left:8px;z-index:3;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.92);border:none;cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.2);color:#d2492f}
+@media(max-width:560px){
+.lrow-head{gap:10px;padding:9px 10px}
+.lthumb{width:66px;height:50px}
+.ltitle{font-size:13.5px}.lprice{font-size:15px}.lspecs{font-size:11px}
+.lright{gap:8px}.lflag{display:none}
+}
+</style>
 </body>
 </html>
