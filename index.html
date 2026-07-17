@@ -3,24 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BalticRadar — lietoti auto Baltijā</title>
-<meta name="description" content="Visi lietotie auto no ss.lv, autoplius.lt un auto24.ee vienuviet. Cenu vēsture, tirgus novērtējums un e-pasta paziņojumi par jauniem sludinājumiem.">
+<title>BalticRadar — Visi Baltijas auto vienā vietā</title>
+<meta name="description" content="Visi Baltijas auto no ss.lv, autoplius.lt un auto24.ee vienuviet. Cenu vēsture, tirgus novērtējums un e-pasta paziņojumi par jauniem sludinājumiem.">
 <meta property="og:site_name" content="BalticRadar">
 <meta property="og:type" content="website">
-<meta property="og:title" content="BalticRadar — lietoti auto Baltijā">
-<meta property="og:description" content="Visi lietotie auto no ss.lv, autoplius.lt un auto24.ee vienuviet. Cenu vēsture un paziņojumi par jauniem sludinājumiem.">
+<meta property="og:title" content="BalticRadar — Visi Baltijas auto vienā vietā">
+<meta property="og:description" content="Visi Baltijas auto no ss.lv, autoplius.lt un auto24.ee vienuviet. Cenu vēsture un paziņojumi par jauniem sludinājumiem.">
 <meta property="og:url" content="https://balticradar.meowlybusiness.workers.dev/">
 <meta property="og:image" content="https://balticradar.meowlybusiness.workers.dev/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="BalticRadar — lietoti auto Baltijā">
-<meta name="twitter:description" content="Visi lietotie auto no ss.lv, autoplius.lt un auto24.ee vienuviet.">
+<meta name="twitter:title" content="BalticRadar — Visi Baltijas auto vienā vietā">
+<meta name="twitter:description" content="Visi Baltijas auto no ss.lv, autoplius.lt un auto24.ee vienuviet.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>try{var _t=localStorage.getItem("br_theme")||"auto";var _e=_t==="auto"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):_t;document.documentElement.setAttribute("data-theme",_e);}catch(_){}</script>
 <style>
   :root{--bg:#0d1117;--card:#161b22;--card2:#1c232d;--ink:#e6edf3;--mut:#9aa6b2;--line:#262c36;
-    --accent:#ff4605;--accent2:#ff6a32;--gold:#ff7a3c;--orange:#ff4605;--up:#ff6b6b;--down:#3fb950;
+    --accent:#16a06a;--accent2:#16a06a;--gold:#16a06a;--orange:#16a06a;--up:#ff6b6b;--down:#3fb950;
     --dark:#0a0e14;--dark2:#11161e;
     --lv:#c0314f;--lt:#f5b301;--ee:#2b9fe6;--shadow:0 8px 28px rgba(0,0,0,.45);}
   html[data-theme="light"]{--bg:#f2f5f9;--card:#ffffff;--card2:#eef2f7;--ink:#18202c;--mut:#5a6573;
@@ -396,9 +396,9 @@
     <div class="hstat" id="heroStat"></div>
     <div class="herofeat" id="herofeat"></div>
     <div class="hsteps">
-      <div class="hs"><div class="n">1</div><b>Iestati filtru</b><span>Marka, modelis, cena, gads — vienreiz.</span></div>
-      <div class="hs"><div class="n">2</div><b>Mēs sekojam</b><span>Visi LV · EE · LT sludinājumi, ik pēc dažām minūtēm.</span></div>
-      <div class="hs"><div class="n">3</div><b>Saņem ziņu</b><span>Pirmais redzi jaunu sludinājumu un cenas kritumu.</span></div>
+      <div class="hs"><div class="n">1</div><b>Norādi, ko meklē — Konkrēts modelis, budžets, gads.</b></div>
+      <div class="hs"><div class="n">2</div><b>Viss vienuviet — LV, LT un EE sludinājumi, bez vairākiem dažādiem saitiem.</b></div>
+      <div class="hs"><div class="n">3</div><b>Nepalaid garām — Paziņojums uzreiz, kad parādās tavs auto vai krīt cena.</b></div>
     </div>
   </div>
 </section>
@@ -457,7 +457,7 @@
 </div>
 <div id="content"></div>
 <footer><div class="foot">
-  <div class="fb"><b>BalticRadar</b><br><span id="footAbout">Visi Baltijas lietoto auto sludinājumi vienuviet — ss.lv, autoplius.lt un auto24.ee — ar cenu vēsturi un godīgu cenas vērtējumu.</span></div>
+  <div class="fb"><b>BalticRadar</b><br><span id="footAbout">Visi Baltijas auto sludinājumi vienuviet: ss.lv, autoplius.lt un auto24.ee, ar cenu vēsturi un godīgu cenas vērtējumu.</span></div>
   <div class="fb"><span id="footSrc" class="src"></span></div>
 </div></footer>
 <div class="cookie" id="cookie"><span id="cookieTxt"></span><div style="display:flex;gap:9px">
@@ -554,7 +554,7 @@ const SUBT={
  lt:{nb:"Pranešimai",st:"Pranešimai apie naujus auto",name:"Vardas",email:"El. paštas",phone:"Telefonas",anyC:"Šalis (bet kuri)",make:"Markė (bet kuri)",pmax:"Maks. kaina €",ymin:"Metai nuo",consent:"Sutinku saugoti duomenis pranešimams.",submit:"Prenumeruoti",ok:"Ačiū! Atsiųsime naujus atitikmenis.",need:"Įveskite el. paštą ir sutikimą."},
  et:{nb:"Teated",st:"Teated uute autode kohta",name:"Nimi",email:"E-post",phone:"Telefon",anyC:"Riik (kõik)",make:"Mark (kõik)",pmax:"Max hind €",ymin:"Aasta alates",consent:"Nõustun andmete salvestamisega teadete jaoks.",submit:"Telli",ok:"Aitäh! Saadame uued sobivused e-postile.",need:"Sisesta e-post ja nõustumine."},
 };
-Object.assign(SUBT.lv,{title:"Izveido savu profilu",sub:"Izvēlies, kādus auto Tev sūtīt — saņemsi tikai tos.",step1:"1. Ko Tev meklēt?",step2:"2. Tavi kontakti",model:"Modelis (jebkurš)",update:"Saglabāt profilu",profile:"Mans profils"});
+Object.assign(SUBT.lv,{title:"Izveido savu profilu",sub:"Izvēlies, kādus auto Tev sūtīt, saņemsi tikai tos.",step1:"1. Ko Tev meklēt?",step2:"2. Tavi kontakti",model:"Modelis (jebkurš)",update:"Saglabāt profilu",profile:"Mans profils"});
 Object.assign(SUBT.en,{title:"Create your profile",sub:"Choose which cars to send you — you'll only get those.",step1:"1. What to look for?",step2:"2. Your contacts",model:"Model (any)",update:"Save profile",profile:"My profile"});
 Object.assign(SUBT.ru,{title:"Создайте профиль",sub:"Выберите, какие авто присылать — получите только их.",step1:"1. Что искать?",step2:"2. Ваши контакты",model:"Модель (любая)",update:"Сохранить профиль",profile:"Мой профиль"});
 Object.assign(SUBT.lt,{title:"Sukurkite profilį",sub:"Pasirinkite, kokius auto siųsti — gausite tik juos.",step1:"1. Ko ieškoti?",step2:"2. Jūsų kontaktai",model:"Modelis (bet kuris)",update:"Išsaugoti profilį",profile:"Mano profilis"});
@@ -664,6 +664,7 @@ function ago(iso){if(!iso)return"";const t=T(),s=(Date.now()-new Date(iso))/1000
   if(s<3600)return t.min.replace("%s",Math.max(1,Math.round(s/60)));
   if(s<86400)return t.hour.replace("%s",Math.round(s/3600));return t.day.replace("%s",Math.round(s/86400));}
 function hq(u){return u && /i\.ss\.(lv|com)/.test(u) ? u.replace(/\.(t|th|th2|th3|sm|400|800|1200|2000)\.jpg$/,".800.jpg") : u;}
+function thumb(u){return u && /i\.ss\.(lv|com)/.test(u) ? u.replace(/\.(t|th|th2|th3|sm|400|800|1200|2000)\.jpg$/,".400.jpg") : u;}
 // autoplius stores the same photo at many sizes (ann_2_/ann_3_/ann_25_ ... same id) -> keep one per photo id
 function uniqPhotos(arr){if(!arr||!arr.length)return arr||[];const seen=new Map();
   for(const u of arr){const m=String(u).match(/ann_\d+_(\d+)/);const k=m?m[1]:u;if(!seen.has(k))seen.set(k,u);}
@@ -808,9 +809,9 @@ function isCar(c){
 // so the grid renders immediately instead of blocking on the valuation.
 function ratePill(c){ return `<div class="prate" data-prate="${esc(c.car_id)}"></div>`; }
 function innerCard(c,fresh){
-  const ph=uniqPhotos((c.photos&&c.photos.length)?c.photos:[]).map(hq);
+  const ph=uniqPhotos((c.photos&&c.photos.length)?c.photos:[]).map(thumb);
   const imgs=ph.length
-    ? ph.map((u,k)=>`<img loading="lazy" referrerpolicy="no-referrer" class="${k===0?'show':''}" src="${u}">`).join("")
+    ? ph.map((u,k)=>`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" class="${k===0?'show':''}" src="${u}">`).join("")
       +`<div class="dots">${ph.map((_,k)=>`<span class="${k===0?'a':''}"></span>`).join("")}</div>`
     : `<div class="noimg">${T().noPhoto}</div>`;
   const specs=[c.last_mileage!=null?km(c.last_mileage):null,esc(norm("fuel",c.fuel)),esc(norm("gear",c.gearbox)),c.engine_l?esc(c.engine_l)+" l":null,esc(norm("body",c.body))].filter(Boolean).join(" · ");
@@ -998,9 +999,9 @@ async function loadPagePhotos(cars){
 function updateCardPhotos(c){
   const el=rendered.get(c.car_id); if(!el)return;
   const ph=el.querySelector(".ph"); if(!ph)return;
-  const pics=uniqPhotos(c.photos||[]).map(hq);
+  const pics=uniqPhotos(c.photos||[]).map(thumb);
   const badge=ph.querySelector(".badge"), flag=ph.querySelector(".flag");
-  const imgs=pics.map((u,k)=>`<img loading="lazy" referrerpolicy="no-referrer" class="${k===0?'show':''}" src="${u}">`).join("")
+  const imgs=pics.map((u,k)=>`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" class="${k===0?'show':''}" src="${u}">`).join("")
     +`<div class="dots">${pics.map((_,k)=>`<span class="${k===0?'a':''}"></span>`).join("")}</div>`;
   ph.innerHTML=(badge?badge.outerHTML:"")+(flag?flag.outerHTML:"")+imgs;
   wireHoverEl(el);
@@ -1864,7 +1865,7 @@ function applyTheme(){let t=localStorage.getItem("br_theme")||"auto";
 const CONTENT={
  lv:{nav:["Sludinājumi","Kā tas strādā","BUJ"],cta:["Skatīt sludinājumus","Saņemt paziņojumus"],
   makesT:"Populārākās markas",makesS:"Izvēlies marku un uzreiz redzi visus pieejamos sludinājumus visā Baltijā.",
-  aboutT:"Visi Baltijas lietotie auto vienā meklēšanā",
+  aboutT:"Visi Baltijas auto vienā meklēšanā",
   about:["Norādi, ko meklē — Konkrēts modelis, budžets, gads. Viss vienuviet — LV, LT un EE sludinājumi, bez vairākiem dažādiem saitiem. Nepalaid garām — Paziņojums uzreiz, kad parādās tavs auto vai krīt cena.","BalticRadar apkopo auto sludinājumus no trim lielākajiem Baltijas portāliem: ss.lv Latvijā, autoplius.lt Lietuvā un auto24.ee Igaunijā, un parāda tos vienā vietā. Vairs nav jāpārlūko trīs lapas atsevišķi. Pēc filtra iestatīšanas BalticRadar automātiski pārbauda jaunos sludinājumus. Tiklīdz parādās auto, kas atbilst kritērijiem, vai tiek pazemināta cena, uz e-pastu pienāk paziņojums. Katram auto tiek rādīta cenas un nobraukuma vēsture, kā arī datums, kad sludinājums ievietots. Tā uzreiz redzams, vai cena ir kritusi un cik ilgi auto jau atrodas tirgū. Cenas vērtējums tiek aprēķināts, salīdzinot auto ar tā paša modeļa un gada sludinājumiem datubāzē."],
   pcT:"Lietota auto plusi un mīnusi",proT:"Plusi",conT:"Mīnusi",
   pros:["Zemāka cena nekā jaunam auto","Mazāks vērtības kritums pēc iegādes","Plaša izvēle dažādos cenu līmeņos","Pieejams uzreiz, bez gaidīšanas","Augstākas klases auto par mazāku naudu"],
@@ -1873,7 +1874,7 @@ const CONTENT={
   steps:[["Meklē","Filtrē pēc markas, modeļa, cenas, gada un degvielas visā Baltijā."],["Salīdzini","Skati cenas vērtējumu un līdzīgus piedāvājumus, lai saprastu tirgus cenu."],["Seko cenai","Redzi cenas vēsturi un pamani, kad pārdevējs pazemina cenu."],["Saņem paziņojumus","Piesakies un saņem e-pastu, tiklīdz parādās piemērots auto."],["Sazinies","Atver oriģinālo sludinājumu un sazinies ar pārdevēju tieši."]],
   faqT:"Biežāk uzdotie jautājumi",
   faq:[["Cik bieži dati tiek atjaunoti?","Latvijas (ss.lv) sludinājumi tiek pārbaudīti ik pēc dažām minūtēm visu diennakti. Lietuvas un Igaunijas dati tiek atjaunoti vairākas reizes dienā."],["Vai cenas vērtējums ir precīzs?","Tā ir aplēse, balstīta uz līdzīgiem sludinājumiem mūsu datubāzē. Jo vairāk auto, jo precīzāk. Tas neaizstāj auto klātienes pārbaudi."],["Vai redzēšu VIN numuru?","Detaļās rādām pieejamo informāciju. Pilnu VIN un vēstures pārbaudi parasti nodrošina pats portāls vai atsevišķs vēstures serviss."],["Vai lapa ir bez maksas?","Jā, auto meklēšana un cenu vēstures skatīšana ir bez maksas."],["No kurienes nāk sludinājumi?","No ss.lv (Latvija), autoplius.lt (Lietuva) un auto24.ee (Igaunija). Katrā sludinājumā ir saite uz oriģinālu."]],
-  footAbout:"Visi Baltijas lietoto auto sludinājumi vienuviet — ss.lv, autoplius.lt un auto24.ee — ar cenu vēsturi un godīgu cenas vērtējumu.",footSrc:"Dati: ss.lv · autoplius.lt · auto24.ee · © BalticRadar"},
+  footAbout:"Visi Baltijas auto sludinājumi vienuviet: ss.lv, autoplius.lt un auto24.ee, ar cenu vēsturi un godīgu cenas vērtējumu.",footSrc:"Dati: ss.lv · autoplius.lt · auto24.ee · © BalticRadar"},
  en:{nav:["Listings","How it works","FAQ"],cta:["Browse listings","Get alerts"],
   makesT:"Popular makes",makesS:"Pick a make and instantly see every available listing across the Baltics.",
   aboutT:"All Baltic used cars in one search",
@@ -2075,7 +2076,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
   /* --- forgot --- */
   + '<div class="br-view" id="brV-forgot">'
     + '<div class="br-h">Atjaunot paroli</div>'
-    + '<div class="br-tag">Ievadi e-pastu — nosūtīsim saiti paroles maiņai.</div>'
+    + '<div class="br-tag">Ievadi e-pastu, nosūtīsim saiti paroles maiņai.</div>'
     + '<div class="br-msg" id="brM-forgot"></div>'
     + '<input class="br-inp" id="brFoEmail" type="email" placeholder="E-pasts" autocomplete="email">'
     + '<button class="br-btn" id="brFoBtn" onclick="BR.forgot()">Nosūtīt saiti</button>'
