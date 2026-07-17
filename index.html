@@ -808,6 +808,7 @@ function isCar(c){
 // Placeholder only — paintRatings() fills this in once the real market comparables land,
 // so the grid renders immediately instead of blocking on the valuation.
 function ratePill(c){ return `<div class="prate" data-prate="${esc(c.car_id)}"></div>`; }
+function openSource(c){ if(c&&c.source_url&&c.source_url!=="#"){ window.open(c.source_url,"_blank","noopener"); } }
 function innerCard(c,fresh){
   const ph=uniqPhotos((c.photos&&c.photos.length)?c.photos:[]).map(thumb);
   const imgs=ph.length
@@ -885,9 +886,10 @@ function render(cars){
   grid.querySelector(".empty")?.remove();
   if(!cars.length&&!rendered.size){grid.innerHTML='<div class="empty">'+T().noResults+'</div>';lastSig="";return;}
   cars.forEach((c,i)=>{let el=rendered.get(c.car_id);
-    if(!el){el=document.createElement("div");el.className="card";el.dataset.cid=c.car_id;el.addEventListener("click",()=>toggleRow(el,c));
-      el.innerHTML=innerRow(c,!firstLoad);rendered.set(c.car_id,el);grid.appendChild(el);}
-    else{const p=el.querySelector(".lprice");if(p&&p.textContent!==eur(c.last_price))p.textContent=eur(c.last_price);}});
+    if(!el){el=document.createElement("div");el.className="card";el.dataset.cid=c.car_id;el.addEventListener("click",()=>openSource(c));
+      if(firstLoad)el.style.animationDelay=Math.min(i*40,400)+"ms";
+      el.innerHTML=innerCard(c,!firstLoad);rendered.set(c.car_id,el);grid.appendChild(el);wireHoverEl(el);}
+    else{const p=el.querySelector(".bigprice");if(p&&p.textContent!==eur(c.last_price))p.textContent=eur(c.last_price);}});
   if(sig!==lastSig){let prev=null;cars.forEach(c=>{const el=rendered.get(c.car_id);if(!el)return;
     const want=prev?prev.nextSibling:grid.firstChild;if(el!==want)grid.insertBefore(el,want);prev=el;});lastSig=sig;}
   paintRatings(cars);   // valuation runs against the real market, after the cards are on screen
@@ -2882,6 +2884,14 @@ function cardsHtml(rows, rm){
       + '<div class="p">'+eur(c.last_price)+'</div></div></div>';
   }).join('') + '</div>';
 }
+window._mfCars = window._mfCars || {};
+function mfCardsHtml(rows){
+  if(!rows.length) return '<div class="br2empty">Nav rezultātu.</div>';
+  return '<div class="mfrows">'+rows.map(function(c){ window._mfCars[c.car_id]=c;
+    return '<div class="mfrow" data-cid="'+esc(c.car_id)+'" onclick="mfToggle(this)">'+innerRow(c,false)+'</div>';
+  }).join('')+'</div>';
+}
+window.mfToggle = function(el){ var id=el.dataset.cid; var c=window._mfCars&&window._mfCars[id]; if(!c)return; var open=el.classList.toggle('open'); if(open&&!el._exp){el._exp=true; fillRowExp(el,c);} };
 BRProfile.unfav = async function(id){
   FAV.delete(id);
   await supa.from('favourites').delete().eq('user_id',BR.user.id).eq('car_id',id);
@@ -3298,7 +3308,8 @@ BRProfile.runFilter = async function(id, sort){
     +   '<div style="font-size:12.5px;font-weight:700;color:#86868b">' + rows.length + (capped?'+':'') + ' atbilstoši auto</div>'
     +   fsortSelect(id, sort)
     + '</div>'
-    + cardsHtml(rows,false);
+    + mfCardsHtml(rows);
+  if(typeof paintRatings==='function'){ try{ paintRatings(rows); }catch(e){} }
 };
 
 /* ---- boot ---- */
@@ -3558,9 +3569,8 @@ html[data-theme="dark"] .rings.radar{opacity:.5}
 
 
 <style id="dify-rows">
-#grid.grid{display:block}
-#grid .card{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:visible;margin:0 0 8px;transform:none!important;box-shadow:none;cursor:pointer;opacity:1!important;animation:none!important;transition:border-color .15s,box-shadow .15s}
-#grid .card:hover{transform:none!important;box-shadow:var(--shadow);border-color:var(--line2)}
+.mfrow{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:visible;margin:0 0 8px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.mfrow:hover{box-shadow:var(--shadow);border-color:var(--line2)}
 .lrow-head{display:flex;align-items:center;gap:12px;padding:10px 12px}
 .lthumb{flex:none;width:88px;height:62px;border-radius:8px;overflow:hidden;background:var(--card2);position:relative}
 .lthumb img{width:100%;height:100%;object-fit:cover;display:block}
@@ -3576,9 +3586,9 @@ html[data-theme="dark"] .rings.radar{opacity:.5}
 html[data-theme="dark"] .lprice{color:#5b9bf5}
 .lflag .fdot{width:20px;height:13px}
 .lchev{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:var(--mut);transition:transform .2s;font-size:11px;background:var(--card2)}
-#grid .card.open .lchev{transform:rotate(180deg)}
+.mfrow.open .lchev{transform:rotate(180deg)}
 .lrow-exp{display:none;border-top:1px solid var(--line);padding:0 12px}
-#grid .card.open .lrow-exp{display:block}
+.mfrow.open .lrow-exp{display:block}
 .lexp-inner{padding:14px 0}
 .lbtn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:11px 18px;font-weight:700;font-size:14px;text-decoration:none;cursor:pointer;font-family:inherit;margin-bottom:14px}
 .lbtn:hover{opacity:.9}
@@ -3593,7 +3603,6 @@ html[data-theme="dark"] .lprice{color:#5b9bf5}
 .lhist-lock .ic{font-size:22px;margin-bottom:6px}
 .lhist-lock h4{font-size:13.5px;font-weight:800;margin:0 0 4px;color:var(--ink)}
 .lhist-lock p{font-size:12.5px;color:var(--mut);margin:0 0 12px}
-#grid .card .br-heart{position:absolute;top:8px;left:8px;z-index:3;width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.92);border:none;cursor:pointer;font-size:14px;line-height:1;display:grid;place-items:center;box-shadow:0 1px 4px rgba(0,0,0,.2);color:#d2492f}
 @media(max-width:560px){
 .lrow-head{gap:10px;padding:9px 10px}
 .lthumb{width:66px;height:50px}
