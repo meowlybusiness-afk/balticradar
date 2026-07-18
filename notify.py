@@ -35,6 +35,30 @@ LOOKBACK_MIN = int(os.environ.get("LOOKBACK_MIN", 1560))   # 26 h: must cover th
 MAX_PER_EMAIL = int(os.environ.get("MAX_PER_EMAIL", 12))
 MAX_EMAILS = int(os.environ.get("MAX_EMAILS", 80))
 
+# ---------------------------------------------------------------- "NEW" MEANS NEWLY POSTED
+# The promise is: you hear about a car when it is newly POSTED on ss.lv / auto24 / autoplius.
+# Until now "new" actually meant "our scraper first saw it" (first_seen within LOOKBACK_MIN).
+# Those are the same moment on a normal day, but they come apart badly the day the collector
+# re-scans an old section, backfills, or reaches list pages it had never parsed: every one of
+# those months-old listings looks brand new to us and the user gets a burst of alerts for cars
+# that have sat on the portal since last year. That reads as spam and destroys the only promise
+# the product makes.
+#
+# So a car may alert only if BOTH hold:
+#   * we ingested it recently          -> first_seen >= now - LOOKBACK_MIN   (enforced in the query)
+#   * the SOURCE says it is new        -> posted     >= now - POSTED_MAX_AGE_H
+#
+# When `posted` is NULL we have nothing better than first_seen, so the car is allowed through
+# (autoplius omits the publication date on a slice of its rows). Keep POSTED_MAX_AGE_H
+# comfortably WIDER than LOOKBACK_MIN, or a slow cadence could suppress a genuinely new car.
+POSTED_MAX_AGE_H = int(os.environ.get("POSTED_MAX_AGE_H", 72))
+
+# A single filter matching an abnormal number of cars in ONE run is the signature of a backfill or
+# a re-scan, not of a normal hour. Rather than blast (or silently swallow) that batch, hold the
+# filter and say so loudly: nothing is sent and nothing is recorded, so every car rolls into the
+# next run once a human has looked. Raise this to override.
+MASS_INGEST_MAX = int(os.environ.get("MASS_INGEST_MAX", 60))
+
 # ---------------------------------------------------------------- CADENCE (anti-spam)
 # The job runs every 20 minutes. Before this, ANY new match sent an e-mail immediately, so a single
 # saved filter could fire up to 72 times a day and a user with three filters over 200. That is how
@@ -129,6 +153,36 @@ def _parse_ts(v):
     except ValueError:
         return None
     return d if d.tzinfo else d.replace(tzinfo=datetime.timezone.utc)
+
+
+def freshly_posted(c, now=None):
+    """Does the SOURCE say this listing is new?
+
+    True  -> `posted` is within POSTED_MAX_AGE_H, or is unknown (nothing better than first_seen).
+    False -> the portal published it a long time ago and we only just discovered it: a re-scan or
+             a backfill, NOT a new listing. Never alert on those.
+    """
+    p = _parse_ts(c.get("posted"))
+    if p is None:
+        return True                                  # unknown -> fall back to first_seen
+    return (now or _now()) - p <= datetime.timedelta(hours=POSTED_MAX_AGE_H)
+
+
+def drop_stale_posts(cars):
+    """Keep only the cars the SOURCE considers newly posted, and say what was suppressed."""
+    now = _now()
+    fresh = [c for c in cars if freshly_posted(c, now)]
+    stale = [c for c in cars if not freshly_posted(c, now)]
+    if stale:
+        print(f"POSTED GUARD: suppressed {len(stale)} of {len(cars)} recently-ingested car(s) whose "
+              f"source publication date is older than {POSTED_MAX_AGE_H} h "
+              f"(re-scan/backfill, not new listings):")
+        for c in sorted(stale, key=lambda x: str(x.get("posted") or ""))[:10]:
+            print(f"   - {c.get('car_id')} [{c.get('source')}] {c.get('make')} {c.get('model')} "
+                  f"posted={c.get('posted')} first_seen={c.get('first_seen')}")
+        if len(stale) > 10:
+            print(f"   ... and {len(stale) - 10} more")
+    return fresh
 
 
 def freq_of(f, is_premium):
@@ -623,6 +677,14 @@ def main():
         print("nothing new -> no alerts")
         return
 
+    # Recently INGESTED is not the same as newly POSTED. Drop anything the source published long
+    # ago that we merely happened to discover now (re-scan / backfill) - see POSTED_MAX_AGE_H.
+    cars = drop_stale_posts(cars)
+    print(f"cars eligible to alert on (newly posted): {len(cars)}")
+    if not cars:
+        print("nothing NEWLY POSTED -> no alerts")
+        return
+
     drops = price_drops([c["car_id"] for c in cars])
 
     filters = get("saved_filters?select=*&notify_email=eq.true")
@@ -686,6 +748,18 @@ def main():
         hits = [c for c in cars if c["car_id"] not in already and matches(c, criteria)]
         if not hits:                 # 3) never send an empty e-mail
             print("  no new matches -> nothing sent")
+            continue
+
+        # A backfill/re-scan can hand ONE filter hundreds of "new" cars at once. MAX_PER_EMAIL would
+        # still cap the e-mail at 12 rows, but the send would silently consume the whole batch (all
+        # hits are recorded as notified), so the rest could never be e-mailed again. Hold instead:
+        # nothing sent, nothing recorded, everything rolls into the next run. IGNORE_SENT is exempt
+        # because it deliberately ignores the dedupe and therefore always looks like a mass event.
+        if not IGNORE_SENT and len(hits) > MASS_INGEST_MAX:
+            print(f"  !! MASS-INGEST GUARD: {len(hits)} matches for this ONE filter (ceiling "
+                  f"{MASS_INGEST_MAX}). That is the signature of a backfill or a re-scan, not a "
+                  f"normal run. HOLDING: nothing sent, nothing recorded - every car rolls into the "
+                  f"next run. Investigate the collector, then raise MASS_INGEST_MAX to release.")
             continue
 
         hits.sort(key=lambda c: (c.get("first_seen") or c.get("posted") or ""), reverse=True)
