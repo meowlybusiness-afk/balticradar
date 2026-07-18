@@ -246,6 +246,19 @@ def global_sends_today():
         return None
 
 
+def done_line(n, spent):
+    """The closing summary. A DRY_RUN / IGNORE_SENT pass still walks the whole pipeline and still
+    counts what it WOULD have done, but nothing leaves the building and nothing is recorded - so it
+    must never read as 'emails sent', and it must not pretend to have spent provider quota."""
+    if DRY_RUN or IGNORE_SENT:
+        return (f"DONE (TEST RUN - nothing sent, nothing recorded, no quota spent). "
+                f"Emails that WOULD have been sent: {n}."
+                + (f" Real quota still at {spent}/{PROVIDER_DAILY_LIMIT} today." if spent is not None else ""))
+    if spent is None:
+        return f"DONE. emails sent this run: {n} (budget unenforced - run db_alert_cadence.sql)"
+    return f"DONE. emails sent this run: {n}. Today's total: {spent + n}/{PROVIDER_DAILY_LIMIT}."
+
+
 def record_send(user_id, filter_id):
     """One row per e-mail actually sent. This ledger is what makes both the per-user cap and the
     GLOBAL provider budget enforceable. Legacy subscriptions have no user_id -> recorded as NULL,
@@ -802,8 +815,7 @@ def main():
         print("legacy `subscriptions` path DISABLED (set LEGACY_SUBS=1 to re-enable). "
               "Nothing writes to that table any more and one of its rows has no criteria at all, "
               "so it matched every car in the catalogue.")
-        print(f"DONE. emails sent this run: {sent_emails}."
-              + (f" Today's total: {spent + sent_emails}/{PROVIDER_DAILY_LIMIT}." if spent is not None else ""))
+        print(done_line(sent_emails, spent))
         return
     subs = get("subscriptions?select=*")
     seen = {}
@@ -846,11 +858,7 @@ def main():
             patch(f"subscriptions?id=eq.{sub['id']}", {"last_notified_at": _now().isoformat()})
             record_send(None, None)      # still spends one message from the provider budget
 
-    if spent is not None:
-        print(f"DONE. emails sent this run: {sent_emails}. "
-              f"Today's total: {spent + sent_emails}/{PROVIDER_DAILY_LIMIT}.")
-    else:
-        print(f"DONE. emails sent this run: {sent_emails} (budget unenforced - run db_alert_cadence.sql)")
+    print(done_line(sent_emails, spent))
 
 
 if __name__ == "__main__":

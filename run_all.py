@@ -330,10 +330,39 @@ def ss_detail_desc(html):
     m=re.search(r'<meta\s+name=["\']description["\']\s+content=["\'](.*?)["\']',html,re.I|re.S)
     if not m: return None
     return re.sub(r"^Sludinājumi\..*?€\.?\s*","",m.group(1).strip()) or None
+# ---------------------------------------------------------------- Baltic wall-clock -> UTC
+# ss.lv ("Datums: 18.07.2026 05:57") and auto24 (data-changed="2026-07-18 02:57:05") both print
+# LOCAL Baltic time. We used to append a "Z" and store that verbatim as UTC, which made every
+# listing look up to 3 h NEWER than it really was - so `first_seen` landed BEFORE `posted` on ~90%
+# of ss.lv rows and ~72% of auto24 rows, the card dates shown to users were wrong, and any
+# "how fast are we?" measurement was meaningless.
+#
+# Europe/Riga and Europe/Tallinn share one rule set: EET (UTC+2) in winter, EEST (UTC+3) in summer,
+# switching on the last Sunday of March / October. Convert per-row so DST is handled correctly
+# instead of hard-coding -3.
+try:
+    from zoneinfo import ZoneInfo
+    _BALTIC = ZoneInfo("Europe/Riga")
+except Exception:                       # no tzdata on the box -> fall back to the EU DST rule
+    _BALTIC = None
+
+def _last_sunday(year, month):
+    d = datetime.datetime(year, month, 31)
+    return d - datetime.timedelta(days=(d.weekday() + 1) % 7)
+
+def baltic_to_utc_iso(y, mo, d, H, Mi, S=0):
+    """Read a Baltic wall-clock time and return the correct UTC ISO string."""
+    naive = datetime.datetime(int(y), int(mo), int(d), int(H), int(Mi), int(S))
+    if _BALTIC is not None:
+        return (naive.replace(tzinfo=_BALTIC).astimezone(datetime.timezone.utc)
+                     .strftime("%Y-%m-%dT%H:%M:%SZ"))
+    dst = _last_sunday(naive.year, 3) <= naive < _last_sunday(naive.year, 10)
+    return (naive - datetime.timedelta(hours=3 if dst else 2)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
 def ss_detail_posted(html):
     m=re.search(r"Datums:\s*(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})",html)
     if not m: return None
-    d,mo,y,H,Mi=m.groups(); return f"{y}-{mo}-{d}T{H}:{Mi}:00Z"
+    d,mo,y,H,Mi=m.groups(); return baltic_to_utc_iso(y,mo,d,H,Mi)   # ss.lv prints LOCAL time
 _SS_BODY={"sedans":"Sedans","kupeja":"Kupeja","universālis":"Universālis","universals":"Universālis",
   "universāls":"Universālis","hečbeks":"Hečbeks","hecbeks":"Hečbeks","kabriolets":"Kabriolets",
   "apvidus":"Apvidus","minivens":"Minivens","pikaps":"Pikaps","kravas":"Kravas","limuzīns":"Limuzīns",
