@@ -519,11 +519,11 @@ Object.assign(LANG.ru,{allModels:"Все модели",allGears:"Все КПП",
 Object.assign(LANG.lt,{allModels:"Visi modeliai",allGears:"Visos pavarų dėžės",allBodies:"Visi kėbulai",allDrives:"Visos pavaros",milFrom:"Rida nuo",milTo:"Rida iki"});
 Object.assign(LANG.et,{allModels:"Kõik mudelid",allGears:"Kõik käigukastid",allBodies:"Kõik keretüübid",allDrives:"Kõik veoskeemid",milFrom:"Läbisõit alates",milTo:"Läbisõit kuni"});
 // UX-polish i18n: strings that previously stayed Latvian on language switch
-Object.assign(LANG.lv,{filters:"Filtri",newBadge:"JAUNS"});
-Object.assign(LANG.en,{filters:"Filters",newBadge:"NEW"});
-Object.assign(LANG.ru,{filters:"Фильтры",newBadge:"НОВОЕ"});
-Object.assign(LANG.lt,{filters:"Filtrai",newBadge:"NAUJA"});
-Object.assign(LANG.et,{filters:"Filtrid",newBadge:"UUS"});
+Object.assign(LANG.lv,{filters:"Filtri",newBadge:"JAUNS",engFrom:"Tilpums no (L)",engTo:"Tilpums līdz (L)"});
+Object.assign(LANG.en,{filters:"Filters",newBadge:"NEW",engFrom:"Engine from (L)",engTo:"Engine to (L)"});
+Object.assign(LANG.ru,{filters:"Фильтры",newBadge:"НОВОЕ",engFrom:"Объём от (L)",engTo:"Объём до (L)"});
+Object.assign(LANG.lt,{filters:"Filtrai",newBadge:"NAUJA",engFrom:"Tūris nuo (L)",engTo:"Tūris iki (L)"});
+Object.assign(LANG.et,{filters:"Filtrid",newBadge:"UUS",engFrom:"Maht alates (L)",engTo:"Maht kuni (L)"});
 const HSTEPS={
  lv:[["Iestati filtru","Marka, modelis, cena, gads — vienreiz."],["Mēs sekojam","Visi LV · EE · LT sludinājumi, ik pēc dažām minūtēm."],["Saņem ziņu","Pirmais redzi jaunu sludinājumu un cenas kritumu."]],
  en:[["Set a filter","Make, model, price, year — once."],["We track","All LV · EE · LT listings, every few minutes."],["Get notified","Be first to see new listings and price drops."]],
@@ -544,6 +544,7 @@ function applyI18n(){
   document.getElementById("pmin").placeholder=t.pFrom;document.getElementById("pmax").placeholder=t.pTo;
   document.getElementById("ymin").placeholder=t.yFrom;document.getElementById("ymax").placeholder=t.yTo;
   document.getElementById("mmin").placeholder=t.milFrom;document.getElementById("mmax").placeholder=t.milTo;
+  {const em=document.getElementById("emin"),ex=document.getElementById("emax");if(em)em.placeholder=t.engFrom||"Engine from (L)";if(ex)ex.placeholder=t.engTo||"Engine to (L)";}
   const so=document.getElementById("sort").options;so[0].textContent=t.sNew;so[1].textContent=t.sPa;so[2].textContent=t.sPd;so[3].textContent=t.sYd;
   if(so[4])so[4].textContent=t.sMil||"Mazākais nobraukums";
   document.getElementById("pill-all").textContent=t.all;
