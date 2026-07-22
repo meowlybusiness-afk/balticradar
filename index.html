@@ -2286,10 +2286,107 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
     refresh(session);
   });
 
+  /* ---------------- auth callback (email confirm / Google / password reset) ----------------
+     The e-mail "Apstiprināt e-pasta adresi" link, the Google return and the password-reset link
+     all come back to THIS origin with the session material in the URL (PKCE `?code=`, a
+     `?token_hash=&type=` pair, or an implicit `#access_token=`). supabase-js
+     (detectSessionInUrl) normally consumes it, but when that silently fails - e.g. the PKCE code
+     verifier was written on a DIFFERENT origin (balticradar.com vs the workers.dev fallback when a
+     redirect URL isn't allow-listed), or an e-mail link-scanner already spent the one-time code -
+     the visitor used to land logged OUT with no explanation and had to press "Pieslēgties" again.
+     This resolves the callback explicitly: establish the session, surface any error, strip the
+     tokens from the address bar, and leave the user SIGNED IN. */
+  function cleanAuthUrl(){
+    try{
+      var u = new URL(window.location.href);
+      ['code','token_hash','type','error','error_code','error_description','redirect_to'].forEach(function(k){ u.searchParams.delete(k); });
+      history.replaceState(null, document.title, u.pathname + (u.search || '')); // also drops the #hash
+    }catch(e){}
+  }
+  function brToast(text){
+    try{
+      var t = document.createElement('div');
+      t.textContent = text;
+      t.style.cssText = 'position:fixed;left:50%;top:20px;transform:translateX(-50%);z-index:100000;'
+        + 'background:#16a06a;color:#fff;font-family:Manrope,system-ui,sans-serif;font-weight:600;'
+        + 'font-size:14px;padding:12px 20px;border-radius:12px;box-shadow:0 10px 30px -8px rgba(0,0,0,.4)';
+      document.body.appendChild(t);
+      setTimeout(function(){ t.style.transition='opacity .4s'; t.style.opacity='0'; }, 3200);
+      setTimeout(function(){ t.remove(); }, 3700);
+    }catch(e){}
+  }
+  function hashParams(){ return new URLSearchParams((window.location.hash || '').replace(/^#/, '')); }
+  async function handleAuthCallback(){
+    var q, hp;
+    try{ q = new URL(window.location.href).searchParams; hp = hashParams(); }
+    catch(e){ return false; }
+
+    var errDesc = q.get('error_description') || hp.get('error_description');
+    var errCode = q.get('error') || q.get('error_code') || hp.get('error') || hp.get('error_code');
+    var code = q.get('code');
+    var tokenHash= q.get('token_hash');
+    var type = q.get('type') || hp.get('type');
+    var implicit = hp.get('access_token');
+
+    if(!errDesc && !errCode && !code && !tokenHash && !implicit) return false; // ordinary page load
+
+    if(errDesc || errCode){ // expired / already-used link, etc.
+      cleanAuthUrl();
+      BR.openAuth('signin');
+      msg('signin', errDesc ? decodeURIComponent(errDesc).replace(/\+/g,' ')
+                            : 'Saite nav derīga vai tai beidzies termiņš. Lūdzu pieslēdzies vēlreiz.', 'err');
+      return true;
+    }
+
+    var isRecovery = (type === 'recovery');
+    try{
+      if(tokenHash && type){
+        // token_hash links verify server-side and need NO PKCE verifier (work across devices).
+        var vr = await supa.auth.verifyOtp({ type: type, token_hash: tokenHash });
+        if(vr.error) throw vr.error;
+      } else {
+        // `?code` (PKCE: confirm / Google / recovery) or `#access_token` (implicit). supabase-js
+        // consumes these during init - wait for it to settle instead of racing it.
+        var settled = null;
+        for(var i=0;i<25;i++){
+          settled = (await supa.auth.getSession()).data.session;
+          if(settled) break;
+          await new Promise(function(r){ setTimeout(r,120); });
+        }
+        // Fallback: init didn't establish a session but a fresh code is still here -> exchange it.
+        if(!settled && code){
+          var ex = await supa.auth.exchangeCodeForSession(code);
+          if(ex.error) throw ex.error;
+        }
+      }
+    }catch(e){
+      cleanAuthUrl();
+      BR.openAuth('signin');
+      msg('signin', (e && e.message) || 'Apstiprināšana neizdevās. Lūdzu pieslēdzies vēlreiz.', 'err');
+      return true;
+    }
+
+    var sess = (await supa.auth.getSession()).data.session;
+    cleanAuthUrl();
+    if(!sess){
+      BR.openAuth('signin');
+      msg('signin', 'Apstiprinājums neizdevās. Lūdzu pieslēdzies vēlreiz.', 'err');
+      return true;
+    }
+    await refresh(sess);
+    if(isRecovery){ BR.view('reset'); } // reset link -> let them set a new password
+    else { BR.close(); brToast('E-pasts apstiprināts. Tu esi pieslēdzies!'); }
+    return true;
+  }
+
   function boot(){
     mountHeader();
     applyGoogleFlag();
-    supa.auth.getSession().then(function(r){ refresh(r.data.session); });
+    // Resolve a confirm / Google / recovery callback FIRST; only fall back to the plain session
+    // read on an ordinary load, so the header never gets stuck on "Pieslēgties" after a confirm.
+    handleAuthCallback().then(function(handled){
+      if(!handled){ supa.auth.getSession().then(function(r){ refresh(r.data.session); }); }
+    }).catch(function(){ supa.auth.getSession().then(function(r){ refresh(r.data.session); }); });
 
     // ONE path for alerts (Henrijs' bug: a logged-in user was still asked for an e-mail).
     //   signed OUT -> sign up / log in
