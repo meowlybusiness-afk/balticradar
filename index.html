@@ -3,24 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BalticRadar — Visi Baltijas auto vienā vietā</title>
-<meta name="description" content="Visi Baltijas auto no ss.lv, autoplius.lt un auto24.ee vienuviet. Cenu vēsture, tirgus novērtējums un e-pasta paziņojumi par jauniem sludinājumiem.">
+<title>BalticRadar — lietoti auto Baltijā</title>
+<meta name="description" content="Visi lietotie auto no ss.lv, autoplius.lt un auto24.ee vienuviet. Cenu vēsture, tirgus novērtējums un e-pasta paziņojumi par jauniem sludinājumiem.">
 <meta property="og:site_name" content="BalticRadar">
 <meta property="og:type" content="website">
-<meta property="og:title" content="BalticRadar — Visi Baltijas auto vienā vietā">
-<meta property="og:description" content="Visi Baltijas auto no ss.lv, autoplius.lt un auto24.ee vienuviet. Cenu vēsture un paziņojumi par jauniem sludinājumiem.">
+<meta property="og:title" content="BalticRadar — lietoti auto Baltijā">
+<meta property="og:description" content="Visi lietotie auto no ss.lv, autoplius.lt un auto24.ee vienuviet. Cenu vēsture un paziņojumi par jauniem sludinājumiem.">
 <meta property="og:url" content="https://balticradar.meowlybusiness.workers.dev/">
 <meta property="og:image" content="https://balticradar.meowlybusiness.workers.dev/og.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="BalticRadar — Visi Baltijas auto vienā vietā">
-<meta name="twitter:description" content="Visi Baltijas auto no ss.lv, autoplius.lt un auto24.ee vienuviet.">
+<meta name="twitter:title" content="BalticRadar — lietoti auto Baltijā">
+<meta name="twitter:description" content="Visi lietotie auto no ss.lv, autoplius.lt un auto24.ee vienuviet.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>try{var _t=localStorage.getItem("br_theme")||"auto";var _e=_t==="auto"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):_t;document.documentElement.setAttribute("data-theme",_e);}catch(_){}</script>
 <style>
   :root{--bg:#0d1117;--card:#161b22;--card2:#1c232d;--ink:#e6edf3;--mut:#9aa6b2;--line:#262c36;
-    --accent:#16a06a;--accent2:#16a06a;--gold:#16a06a;--orange:#16a06a;--up:#ff6b6b;--down:#3fb950;
+    --accent:#ff4605;--accent2:#ff6a32;--gold:#ff7a3c;--orange:#ff4605;--up:#ff6b6b;--down:#3fb950;
     --dark:#0a0e14;--dark2:#11161e;
     --lv:#c0314f;--lt:#f5b301;--ee:#2b9fe6;--shadow:0 8px 28px rgba(0,0,0,.45);}
   html[data-theme="light"]{--bg:#f2f5f9;--card:#ffffff;--card2:#eef2f7;--ink:#18202c;--mut:#5a6573;
@@ -285,6 +285,13 @@
     font-family:inherit;user-select:none;transition:background .12s,color .12s}
   .mschip:hover{background:#e6e6ec}
   .mschip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  /* model picker: vertical multi-select list (one model per row) with a checkbox */
+  #msdd.msdd-list .msdd-chips{display:flex;flex-direction:column;flex-wrap:nowrap;gap:4px}
+  #msdd.msdd-list .mschip{width:100%;justify-content:flex-start;text-align:left;border-radius:9px;padding:10px 12px 10px 38px;position:relative;font-size:14px;white-space:normal}
+  #msdd.msdd-list .mschip::before{content:"";position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;border:1.5px solid #c3c3cc;border-radius:4px;background:#fff;box-sizing:border-box}
+  #msdd.msdd-list .mschip.on::before{background:#fff;border-color:#fff}
+  #msdd.msdd-list .mschip.on::after{content:"✓";position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--accent);font-size:12px;font-weight:900;line-height:1}
+  #msdd.msdd-list .msdd-g{margin-top:8px}
   #msdd .msdd-foot{display:flex;gap:8px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
   #msdd .msdd-done{flex:1;background:var(--accent);color:#fff;border:none;border-radius:10px;
     padding:9px 0;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
@@ -383,8 +390,8 @@
   <div class="heroOverlay"></div>
   <div class="heroInner">
     <div class="flags"><span class="fdot LV"></span><span class="fdot EE"></span><span class="fdot LT"></span></div>
-    <h1 id="heroT">Visi Baltijas auto vienā vietā</h1>
-    <p id="heroS">ss.lv, autoplius.lt un auto24.ee vienā ekrānā. Cenu un nobraukuma vēsture, paziņojumi — nepalaid garām nevienu darījumu.</p>
+    <h1 id="heroT">Visi Baltijas auto vienuviet</h1>
+    <p id="heroS">Esi pirmais, kas redz jaunos sludinājumus no ss.lv, autoplius.lt un auto24.ee</p>
     <div class="herocta">
       <button class="primary" id="ctaBrowse" onclick="scrollToEl('grid')">Skatīt sludinājumus</button>
       <button class="ghost" id="ctaAlerts" onclick="openSub()">Saņemt paziņojumus</button>
@@ -396,9 +403,9 @@
     <div class="hstat" id="heroStat"></div>
     <div class="herofeat" id="herofeat"></div>
     <div class="hsteps">
-      <div class="hs"><div class="n">1</div><b>Norādi, ko meklē — Konkrēts modelis, budžets, gads.</b></div>
-      <div class="hs"><div class="n">2</div><b>Viss vienuviet — LV, LT un EE sludinājumi, bez vairākiem dažādiem saitiem.</b></div>
-      <div class="hs"><div class="n">3</div><b>Nepalaid garām — Paziņojums uzreiz, kad parādās tavs auto vai krīt cena.</b></div>
+      <div class="hs"><div class="n">1</div><b id="hs1b">Iestati filtru</b><span id="hs1s">Marka, modelis, cena, gads — vienreiz.</span></div>
+      <div class="hs"><div class="n">2</div><b id="hs2b">Mēs sekojam</b><span id="hs2s">Visi LV · EE · LT sludinājumi, ik pēc dažām minūtēm.</span></div>
+      <div class="hs"><div class="n">3</div><b id="hs3b">Saņem ziņu</b><span id="hs3s">Pirmais redzi jaunu sludinājumu un cenas kritumu.</span></div>
     </div>
   </div>
 </section>
@@ -457,10 +464,10 @@
 </div>
 <div id="content"></div>
 <footer><div class="foot">
-  <div class="fb"><b>BalticRadar</b><br><span id="footAbout">Visi Baltijas auto sludinājumi vienuviet: ss.lv, autoplius.lt un auto24.ee, ar cenu vēsturi un godīgu cenas vērtējumu.</span></div>
-  <div class="fb"><span id="footSrc" class="src"></span><br><a id="footLegal" onclick="if(window.BR&&BR.openAuth)BR.openAuth('tc')" style="color:#cdd6e2;cursor:pointer;text-decoration:underline;font-size:13px;display:inline-block;margin-top:10px"></a></div>
+  <div class="fb"><b>BalticRadar</b><br><span id="footAbout">Visi Baltijas lietoto auto sludinājumi vienuviet — ss.lv, autoplius.lt un auto24.ee — ar cenu vēsturi un godīgu cenas vērtējumu.</span></div>
+  <div class="fb"><span id="footSrc" class="src"></span></div>
 </div></footer>
-<div class="cookie" id="cookie"><span id="cookieTxt"></span> <a id="cookieMore" onclick="if(window.BR&&BR.openAuth)BR.openAuth('tc')" style="color:var(--accent);cursor:pointer;text-decoration:underline;font-weight:600;white-space:nowrap;margin:0 6px"></a><div style="display:flex;gap:9px">
+<div class="cookie" id="cookie"><span id="cookieTxt"></span><div style="display:flex;gap:9px">
   <button class="dec" id="cookieDec" onclick="cookieChoice(0)"></button>
   <button class="acc" id="cookieAcc" onclick="cookieChoice(1)"></button></div></div>
 <div class="ov" id="ov"><div class="modal" id="modal"></div></div>
@@ -511,6 +518,18 @@ Object.assign(LANG.en,{allModels:"All models",allGears:"All gearboxes",allBodies
 Object.assign(LANG.ru,{allModels:"Все модели",allGears:"Все КПП",allBodies:"Все кузова",allDrives:"Все приводы",milFrom:"Пробег от",milTo:"Пробег до"});
 Object.assign(LANG.lt,{allModels:"Visi modeliai",allGears:"Visos pavarų dėžės",allBodies:"Visi kėbulai",allDrives:"Visos pavaros",milFrom:"Rida nuo",milTo:"Rida iki"});
 Object.assign(LANG.et,{allModels:"Kõik mudelid",allGears:"Kõik käigukastid",allBodies:"Kõik keretüübid",allDrives:"Kõik veoskeemid",milFrom:"Läbisõit alates",milTo:"Läbisõit kuni"});
+// UX-polish i18n: strings that previously stayed Latvian on language switch
+Object.assign(LANG.lv,{filters:"Filtri",newBadge:"JAUNS"});
+Object.assign(LANG.en,{filters:"Filters",newBadge:"NEW"});
+Object.assign(LANG.ru,{filters:"Фильтры",newBadge:"НОВОЕ"});
+Object.assign(LANG.lt,{filters:"Filtrai",newBadge:"NAUJA"});
+Object.assign(LANG.et,{filters:"Filtrid",newBadge:"UUS"});
+const HSTEPS={
+ lv:[["Iestati filtru","Marka, modelis, cena, gads — vienreiz."],["Mēs sekojam","Visi LV · EE · LT sludinājumi, ik pēc dažām minūtēm."],["Saņem ziņu","Pirmais redzi jaunu sludinājumu un cenas kritumu."]],
+ en:[["Set a filter","Make, model, price, year — once."],["We track","All LV · EE · LT listings, every few minutes."],["Get notified","Be first to see new listings and price drops."]],
+ ru:[["Настройте фильтр","Марка, модель, цена, год — один раз."],["Мы отслеживаем","Все объявления LV · EE · LT, каждые несколько минут."],["Получите уведомление","Первым видите новые объявления и снижение цен."]],
+ lt:[["Nustatyk filtrą","Markė, modelis, kaina, metai — vieną kartą."],["Mes sekame","Visi LV · EE · LT skelbimai, kas kelias minutes."],["Gauk pranešimą","Pirmas matai naujus skelbimus ir kainų kritimus."]],
+ et:[["Sea filter","Mark, mudel, hind, aasta — üks kord."],["Meie jälgime","Kõik LV · EE · LT kuulutused, iga paari minuti tagant."],["Saa teade","Näe esimesena uusi kuulutusi ja hinnalangusi."]]};
 const T=()=>LANG[lang]||LANG.lv;
 function applyI18n(){
   const t=T();
@@ -533,12 +552,16 @@ function applyI18n(){
   {const BTN={lv:["Meklēt","Atiestatīt"],en:["Search","Reset"],ru:["Искать","Сбросить"],lt:["Ieškoti","Atstatyti"],et:["Otsi","Lähtesta"]};
    const bb=BTN[lang]||BTN.en; const bs=document.getElementById("doSearchBtn"),brr=document.getElementById("doResetBtn");
    if(bs)bs.textContent=bb[0]; if(brr)brr.textContent=bb[1];}
-  const HERO={lv:["Visi Baltijas auto vienā vietā","ss.lv, autoplius.lt un auto24.ee vienā ekrānā. Cenu un nobraukuma vēsture, paziņojumi — nepalaid garām nevienu darījumu."],
-   en:["All Baltic cars in one place","ss.lv, autoplius.lt and auto24.ee on one screen. Price and mileage history plus alerts — don’t miss a single deal."],
-   ru:["Все авто Балтии в одном месте","ss.lv, autoplius.lt и auto24.ee на одном экране. История цены и пробега плюс уведомления — не упустите ни одной сделки."],
-   lt:["Visi Baltijos automobiliai vienoje vietoje","ss.lv, autoplius.lt ir auto24.ee viename ekrane. Kainos ir ridos istorija bei pranešimai — nepraleisk nė vieno pasiūlymo."],
-   et:["Kõik Balti autod ühes kohas","ss.lv, autoplius.lt ja auto24.ee ühel ekraanil. Hinna- ja läbisõiduajalugu ning teated — ära jäta ühtegi tehingut kasutamata."]};
+  const HERO={lv:["Visi Baltijas auto vienuviet","Esi pirmais, kas redz jaunos sludinājumus no ss.lv, autoplius.lt un auto24.ee"],
+   en:["All Baltic cars in one place","Be the first to see new listings from ss.lv, autoplius.lt and auto24.ee"],
+   ru:["Все авто Балтии в одном месте","Будьте первым, кто видит новые объявления с ss.lv, autoplius.lt и auto24.ee"],
+   lt:["Visi Baltijos automobiliai vienoje vietoje","Pirmas pamatyk naujus skelbimus iš ss.lv, autoplius.lt ir auto24.ee"],
+   et:["Kõik Balti autod ühes kohas","Näe esimesena uusi kuulutusi ss.lv, autoplius.lt ja auto24.ee"]};
   const h=HERO[lang]||HERO.en;document.getElementById("heroT").textContent=h[0];document.getElementById("heroS").textContent=h[1];
+  {const fb=document.getElementById("filtbtn");if(fb)fb.textContent=t.filters||"Filters";}
+  {const hs=HSTEPS[lang]||HSTEPS.en;
+   for(let i=0;i<3;i++){const b=document.getElementById("hs"+(i+1)+"b"),s=document.getElementById("hs"+(i+1)+"s");
+     if(b&&hs[i])b.textContent=hs[i][0]; if(s&&hs[i])s.textContent=hs[i][1];}}
   setCount();
   if(typeof renderContent==="function")renderContent();
   if(typeof initCookie==="function")initCookie();
@@ -554,7 +577,7 @@ const SUBT={
  lt:{nb:"Pranešimai",st:"Pranešimai apie naujus auto",name:"Vardas",email:"El. paštas",phone:"Telefonas",anyC:"Šalis (bet kuri)",make:"Markė (bet kuri)",pmax:"Maks. kaina €",ymin:"Metai nuo",consent:"Sutinku saugoti duomenis pranešimams.",submit:"Prenumeruoti",ok:"Ačiū! Atsiųsime naujus atitikmenis.",need:"Įveskite el. paštą ir sutikimą."},
  et:{nb:"Teated",st:"Teated uute autode kohta",name:"Nimi",email:"E-post",phone:"Telefon",anyC:"Riik (kõik)",make:"Mark (kõik)",pmax:"Max hind €",ymin:"Aasta alates",consent:"Nõustun andmete salvestamisega teadete jaoks.",submit:"Telli",ok:"Aitäh! Saadame uued sobivused e-postile.",need:"Sisesta e-post ja nõustumine."},
 };
-Object.assign(SUBT.lv,{title:"Izveido savu profilu",sub:"Izvēlies, kādus auto Tev sūtīt, saņemsi tikai tos.",step1:"1. Ko Tev meklēt?",step2:"2. Tavi kontakti",model:"Modelis (jebkurš)",update:"Saglabāt profilu",profile:"Mans profils"});
+Object.assign(SUBT.lv,{title:"Izveido savu profilu",sub:"Izvēlies, kādus auto Tev sūtīt — saņemsi tikai tos.",step1:"1. Ko Tev meklēt?",step2:"2. Tavi kontakti",model:"Modelis (jebkurš)",update:"Saglabāt profilu",profile:"Mans profils"});
 Object.assign(SUBT.en,{title:"Create your profile",sub:"Choose which cars to send you — you'll only get those.",step1:"1. What to look for?",step2:"2. Your contacts",model:"Model (any)",update:"Save profile",profile:"My profile"});
 Object.assign(SUBT.ru,{title:"Создайте профиль",sub:"Выберите, какие авто присылать — получите только их.",step1:"1. Что искать?",step2:"2. Ваши контакты",model:"Модель (любая)",update:"Сохранить профиль",profile:"Мой профиль"});
 Object.assign(SUBT.lt,{title:"Sukurkite profilį",sub:"Pasirinkite, kokius auto siųsti — gausite tik juos.",step1:"1. Ko ieškoti?",step2:"2. Jūsų kontaktai",model:"Modelis (bet kuris)",update:"Išsaugoti profilį",profile:"Mano profilis"});
@@ -565,11 +588,11 @@ Object.assign(SUBT.ru,{pmin:"Цена от €",ymax:"Год до",milmin:"Пр�
 Object.assign(SUBT.lt,{pmin:"Kaina nuo €",ymax:"Metai iki",milmin:"Rida nuo (km)",milmax:"Rida iki (km)",engmin:"Tūris nuo (L)",engmax:"Tūris iki (L)",anyBody:"Kėbulas (bet koks)",anyFuel:"Kuras (bet koks)",anyGear:"Pavarų dėžė (bet kokia)",consent:"Patvirtinu ir sutinku, kad BalticRadar saugo ir tvarko mano duomenis (el. paštą ir nustatymus) pranešimams siųsti. Be sutikimo prenumerata negalima."});
 Object.assign(SUBT.et,{pmin:"Hind alates €",ymax:"Aasta kuni",milmin:"Läbisõit alates (km)",milmax:"Läbisõit kuni (km)",engmin:"Maht alates (L)",engmax:"Maht kuni (L)",anyBody:"Kere (kõik)",anyFuel:"Kütus (kõik)",anyGear:"Käigukast (kõik)",consent:"Kinnitan ja nõustun, et BalticRadar salvestab ja töötleb minu andmeid (e-post ja eelistused) teadete saatmiseks. Ilma nõusolekuta ei saa tellida."});
 const COOKIE={
- lv:{txt:"Mēs izmantojam sīkdatnes, lai lapa darbotos un atcerētos Tavas izvēles. Nospiežot “Pieņemt”, Tu piekrīti sīkdatnēm un mūsu lietošanas noteikumiem.",more:"Lietošanas noteikumi",acc:"Pieņemt",dec:"Tikai nepieciešamās"},
- en:{txt:"We use cookies to run the site and remember your choices. By clicking “Accept”, you agree to cookies and our Terms of Use.",more:"Terms of Use",acc:"Accept",dec:"Essential only"},
- ru:{txt:"Мы используем файлы cookie, чтобы сайт работал и запоминал ваши настройки. Нажимая «Принять», вы соглашаетесь с cookie и нашими Условиями использования.",more:"Условия использования",acc:"Принять",dec:"Только нужные"},
- lt:{txt:"Naudojame slapukus, kad svetainė veiktų ir įsimintų jūsų pasirinkimus. Spausdami „Sutikti“, sutinkate su slapukais ir naudojimo taisyklėmis.",more:"Naudojimo taisyklės",acc:"Sutikti",dec:"Tik būtini"},
- et:{txt:"Kasutame küpsiseid, et sait töötaks ja jätaks meelde sinu valikud. Nuppu „Nõustu“ vajutades nõustud küpsiste ja kasutustingimustega.",more:"Kasutustingimused",acc:"Nõustu",dec:"Ainult vajalikud"}};
+ lv:{txt:"Mēs izmantojam sīkdatnes, lai uzlabotu lapas darbību. Turpinot lietot lapu, Tu piekrīti sīkdatnēm.",acc:"Pieņemt",dec:"Tikai nepieciešamās"},
+ en:{txt:"We use cookies to improve the site. By continuing you accept cookies.",acc:"Accept",dec:"Essential only"},
+ ru:{txt:"Мы используем файлы cookie для улучшения сайта. Продолжая, вы принимаете cookie.",acc:"Принять",dec:"Только нужные"},
+ lt:{txt:"Naudojame slapukus svetainei gerinti. Tęsdami sutinkate su slapukais.",acc:"Sutikti",dec:"Tik būtini"},
+ et:{txt:"Kasutame küpsiseid saidi parandamiseks. Jätkates nõustud küpsistega.",acc:"Nõustu",dec:"Ainult vajalikud"}};
 const ST=()=>SUBT[lang]||SUBT.en;
 function subModelOpts(make,cur){
   const s=ST(); let opts=[];
@@ -628,7 +651,7 @@ function closeSub(){document.getElementById("subov").classList.remove("show");}
 function updateNotifyBtn(){const b=document.getElementById("notifyBtn");if(b&&localStorage.getItem("br_profile"))b.textContent=ST().profile;}
 function cookieChoice(ok){localStorage.setItem("br_cookie",ok?"1":"0");document.getElementById("cookie").classList.remove("show");}
 function initCookie(){const el=document.getElementById("cookie");if(!el)return;const c=COOKIE[lang]||COOKIE.en;
-  setT("cookieTxt",c.txt);setT("cookieMore",c.more);setT("cookieAcc",c.acc);setT("cookieDec",c.dec);
+  setT("cookieTxt",c.txt);setT("cookieAcc",c.acc);setT("cookieDec",c.dec);
   if(!localStorage.getItem("br_cookie"))el.classList.add("show");}
 async function submitSub(){
   const s=ST(),v=id=>document.getElementById(id).value.trim();
@@ -664,12 +687,27 @@ function ago(iso){if(!iso)return"";const t=T(),s=(Date.now()-new Date(iso))/1000
   if(s<3600)return t.min.replace("%s",Math.max(1,Math.round(s/60)));
   if(s<86400)return t.hour.replace("%s",Math.round(s/3600));return t.day.replace("%s",Math.round(s/86400));}
 function hq(u){return u && /i\.ss\.(lv|com)/.test(u) ? u.replace(/\.(t|th|th2|th3|sm|400|800|1200|2000)\.jpg$/,".800.jpg") : u;}
-function thumb(u){return hq(u);}  /* .400 returned a 1x1 dummy on ss.lv; use .800 (hq) which serves real photos */
 // autoplius stores the same photo at many sizes (ann_2_/ann_3_/ann_25_ ... same id) -> keep one per photo id
 function uniqPhotos(arr){if(!arr||!arr.length)return arr||[];const seen=new Map();
   for(const u of arr){const m=String(u).match(/ann_\d+_(\d+)/);const k=m?m[1]:u;if(!seen.has(k))seen.set(k,u);}
   return [...seen.values()].sort((a,b)=>{const na=(String(a).match(/-(\d+)\.jpg$/)||[])[1],nb=(String(b).match(/-(\d+)\.jpg$/)||[])[1];return(na!=null&&nb!=null)?(+na-+nb):0;});}
 function postedTxt(c){ const d=c.posted||c.first_seen; if(d){try{return new Date(d).toLocaleString("lv-LV",{timeZone:"Europe/Riga",day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"});}catch(e){}} return ""; }
+// Broken/expired photo fallback: ss.lv sometimes lacks the .800 size -> try alternates,
+// and if a card ends up with no usable image, show the "No photo" placeholder instead of a blank broken icon.
+function brImgFail(img){
+  const ph=img.closest?img.closest(".ph"):null;
+  const s=img.getAttribute("src")||"";
+  if(/i\.ss\.(lv|com)/.test(s)){
+    if(/\.800\.jpg$/.test(s)&&img.dataset.alt!=="1"){img.dataset.alt="1";img.src=s.replace(/\.800\.jpg$/,".1200.jpg");return;}
+    if(/\.1200\.jpg$/.test(s)&&img.dataset.alt!=="2"){img.dataset.alt="2";img.src=s.replace(/\.1200\.jpg$/,".sm.jpg");return;}
+  }
+  img.remove();
+  if(ph&&!ph.querySelector("img")){
+    const dots=ph.querySelector(".dots"); if(dots)dots.remove();
+    if(!ph.querySelector(".noimg")){const d=document.createElement("div");d.className="noimg";d.textContent=(T().noPhoto||"No photo");ph.appendChild(d);}
+  }
+}
+window.brImgFail=brImgFail;
 
 // Estimate a fair price from comparable cars already in the DB (same make+model,
 // year within +/-2). Needs >=5 comparables, else no rating shown (avoids noise on thin data).
@@ -808,15 +846,14 @@ function isCar(c){
 // Placeholder only — paintRatings() fills this in once the real market comparables land,
 // so the grid renders immediately instead of blocking on the valuation.
 function ratePill(c){ return `<div class="prate" data-prate="${esc(c.car_id)}"></div>`; }
-function openSource(c){ if(c&&c.source_url&&c.source_url!=="#"){ window.open(c.source_url,"_blank","noopener"); } }
 function innerCard(c,fresh){
-  const ph=uniqPhotos((c.photos&&c.photos.length)?c.photos:[]).map(hq);
+  const ph=uniqPhotos((c.photos&&c.photos.length)?c.photos:[]).map(hq).filter(Boolean);
   const imgs=ph.length
-    ? ph.map((u,k)=>`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" class="${k===0?'show':''}" src="${u}">`).join("")
+    ? ph.map((u,k)=>`<img loading="lazy" referrerpolicy="no-referrer" onerror="brImgFail(this)" class="${k===0?'show':''}" src="${u}">`).join("")
       +`<div class="dots">${ph.map((_,k)=>`<span class="${k===0?'a':''}"></span>`).join("")}</div>`
     : `<div class="noimg">${T().noPhoto}</div>`;
   const specs=[c.last_mileage!=null?km(c.last_mileage):null,esc(norm("fuel",c.fuel)),esc(norm("gear",c.gearbox)),c.engine_l?esc(c.engine_l)+" l":null,esc(norm("body",c.body))].filter(Boolean).join(" · ");
-  return `<div class="ph">${fresh?'<span class="badge">JAUNS</span>':''}
+  return `<div class="ph">${fresh?'<span class="badge">'+(T().newBadge||"NEW")+'</span>':''}
     <span class="flag"><span class="fdot ${esc(c.country)}"></span>${esc(c.country)}</span>${imgs}</div>
     <div class="body">
       <div class="name">${esc(c.make)} ${esc(c.model)}<span class="yr">${c.year||""}</span></div>
@@ -836,57 +873,13 @@ function wireHoverEl(card){
 }
 
 const grid=document.getElementById("grid"); const rendered=new Map(); let lastSig="";
-function apskatitLabel(){return ({lv:"Apskatīt sludinājumu",en:"View listing",ru:"Открыть объявление",lt:"Peržiūrėti skelbimą",et:"Vaata kuulutust"}[lang]||"Apskatīt sludinājumu");}
-function innerRow(c,fresh){
-  const ph=uniqPhotos((c.photos&&c.photos.length)?c.photos:[]).map(hq);
-  const img=ph.length?`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${ph[0]}">`:`<div class="noimg">${T().noPhoto}</div>`;
-  const specs=[c.last_mileage!=null?km(c.last_mileage):null,esc(norm("fuel",c.fuel)),esc(norm("gear",c.gearbox)),c.engine_l?esc(c.engine_l)+" l":null,esc(norm("body",c.body))].filter(Boolean).join(" · ");
-  return `<div class="lrow-head">
-      <div class="lthumb">${fresh?'<span class="badge">JAUNS</span>':''}${img}</div>
-      <div class="lmain">
-        <div class="ltitle">${esc(c.make)} ${esc(c.model)}<span class="yr">${c.year||""}</span></div>
-        <div class="lspecs">${specs||"&nbsp;"}</div>
-        <div class="prate lprate" data-prate="${esc(c.car_id)}"></div>
-      </div>
-      <div class="lright">
-        <span class="lflag"><span class="fdot ${esc(c.country)}"></span></span>
-        <span class="lprice bigprice">${eur(c.last_price)}</span>
-        <span class="lchev">▼</span>
-      </div>
-    </div><div class="lrow-exp"></div>`;
-}
-function toggleRow(el,c){ const open=el.classList.toggle("open"); if(open&&!el._exp){el._exp=true;fillRowExp(el,c);} }
-async function fillRowExp(el,c){
-  const box=el.querySelector(".lrow-exp"); if(!box)return;
-  const src=(c.source_url&&c.source_url!=="#")?c.source_url:null;
-  const btn=src?`<a class="lbtn" href="${esc(src)}" target="_blank" rel="noopener nofollow" onclick="event.stopPropagation()">${apskatitLabel()} ↗</a>`:`<span class="lbtn" style="opacity:.5;cursor:default">${apskatitLabel()}</span>`;
-  if(!(window.BR&&BR.profile&&BR.profile.is_premium)){
-    box.innerHTML=`<div class="lexp-inner">${btn}<div class="lhist-lock"><div class="ic">🔒</div><h4>Cenas izmaiņas šajā sludinājumā</h4><p>Cenu un nobraukuma vēsture ir pieejama Premium plānā.</p><button class="lbtn" style="margin:0" onclick="event.stopPropagation(); if(window.BRProfile)BRProfile.open('bill')">Uzzināt vairāk</button></div></div>`;
-    return;
-  }
-  box.innerHTML=`<div class="lexp-inner">${btn}<div class="lhist-cap">Cenas izmaiņas šajā sludinājumā</div><div class="lhist-wrap muted">${T().loading}</div></div>`;
-  try{
-    const r=await fetch(`${SB_URL}/rest/v1/price_history?car_id=eq.${encodeURIComponent(c.car_id)}&select=ts,price,mileage&order=ts.asc`,{headers:SBH,cache:"no-store"});
-    let pts=(await r.json()).filter(p=>p.price!=null);
-    if(c.posted&&pts.length&&new Date(c.posted)<new Date(pts[0].ts)) pts=[{ts:c.posted,price:pts[0].price,mileage:pts[0].mileage},...pts];
-    const wrap=box.querySelector(".lhist-wrap"); if(!wrap)return;
-    if(!pts.length){ wrap.textContent=T().histOne; return; }
-    let rows="",prev=null;
-    pts.forEach(p=>{ let d=""; if(prev!=null){const diff=p.price-prev; if(diff!==0)d=` <span class="${diff<0?'dn':'up'}">${diff<0?'':'+'}${eur(diff)}</span>`;}
-      rows+=`<tr><td>${eur(p.price)}${d}</td><td>${p.mileage!=null?km(p.mileage):"—"}</td><td>${c.year||"—"}</td><td>${dt(p.ts)}</td></tr>`; prev=p.price; });
-    const first=pts[0],last=pts[pts.length-1],total=last.price-first.price;
-    const days=Math.max(0,Math.round((new Date(last.ts)-new Date(first.ts))/864e5));
-    wrap.classList.remove("muted");
-    wrap.innerHTML=`<table class="lhist-t"><thead><tr><th>Cena</th><th>Nobraukums</th><th>Gads</th><th>Datums</th></tr></thead><tbody>${rows}</tbody></table><div class="lhist-foot">Cenas izmaiņa: <b class="${total<0?'dn':total>0?'up':''}">${total>0?'+':''}${eur(total)}</b> · Ilgums: ${days} ${days===1?'diena':'dienas'}</div>`;
-  }catch(e){ const wrap=box.querySelector(".lhist-wrap"); if(wrap)wrap.textContent="—"; }
-}
 function render(cars){
   const sig=cars.map(c=>c.car_id).join(",");const ids=new Set(cars.map(c=>c.car_id));
   for(const[id,el]of[...rendered]){if(!ids.has(id)){el.remove();rendered.delete(id);}}
   grid.querySelector(".empty")?.remove();
   if(!cars.length&&!rendered.size){grid.innerHTML='<div class="empty">'+T().noResults+'</div>';lastSig="";return;}
   cars.forEach((c,i)=>{let el=rendered.get(c.car_id);
-    if(!el){el=document.createElement("div");el.className="card";el.dataset.cid=c.car_id;el.addEventListener("click",()=>openSource(c));
+    if(!el){el=document.createElement("div");el.className="card";el.addEventListener("click",()=>openModal(c));
       if(firstLoad)el.style.animationDelay=Math.min(i*40,400)+"ms";
       el.innerHTML=innerCard(c,!firstLoad);rendered.set(c.car_id,el);grid.appendChild(el);wireHoverEl(el);}
     else{const p=el.querySelector(".bigprice");if(p&&p.textContent!==eur(c.last_price))p.textContent=eur(c.last_price);}});
@@ -928,30 +921,7 @@ function normBody(v){
   // raw junk, "cits/other"). Return empty so it is dropped from the body filter dropdown entirely.
   return "";
 }
-function normFuel(v){ if(!v)return ""; const s=String(v).toLowerCase();
-  if(/hybrid|hibr/.test(s) || (/(elektr|electr)/.test(s) && /(benz|petrol|diz|d[īi]z|diesel|dyz)/.test(s))) return "Hibrīds";
-  if(/(gas|lpg|dujos|g[āa]ze)/.test(s) && /(benz|petrol)/.test(s)) return "Benzīns / gāze";
-  if(/(elektr|electr)/.test(s)) return "Elektrība";
-  if(/(diz|d[īi]z|diesel|dyz)/.test(s)) return "Dīzelis";
-  if(/(benz|petrol)/.test(s)) return "Benzīns";
-  if(/(gas|lpg|dujos|g[āa]ze)/.test(s)) return "Gāze";
-  if(/(vandenil|hydrogen|[ūu]de[ņn]rad|etanol|ethanol|e85|other|cits)/.test(s)) return "Cits";
-  return ""; }
-function normGear(v){ if(!v)return ""; const s=String(v).toLowerCase();
-  if(/auto|autom[āa]t/.test(s)) return "Automātiskā";
-  if(/manual|meh[āa]n|mehan|mechan|rankin/.test(s)) return "Mehāniskā";
-  return ""; }
-function normDrive(v){ if(!v)return ""; const s=String(v).toLowerCase();
-  if(/4x4|4[хx]4|pilnpied|\ball\b|awd|4wd|4motion|4matic|quattro|visi/.test(s)) return "Pilnpiedziņa";
-  if(/priek|front|fwd/.test(s)) return "Priekšpiedziņa";
-  if(/aizmug|rear|rwd/.test(s)) return "Aizmugurpiedziņa";
-  return ""; }
-function norm(kind,v){ if(!v)return v;
-  if(kind==="body")return normBody(v);
-  if(kind==="fuel")return normFuel(v);
-  if(kind==="gear")return normGear(v);
-  if(kind==="drive")return normDrive(v);
-  const m=NMAP[kind]; const k=String(v).toLowerCase().trim(); return (m&&m[k])||v; }
+function norm(kind,v){ if(!v)return v; if(kind==="body")return normBody(v); const m=NMAP[kind]; const k=String(v).toLowerCase().trim(); return (m&&m[k])||v; }
 // group numeric trims into a series so "BMW 3. sērija" matches 316/318/320/330...
 function modelSeries(make,model){
   if(!model)return model; const mk=(make||"").toLowerCase(),m=String(model).trim();
@@ -1043,22 +1013,13 @@ async function loadPagePhotos(cars){
 }
 function updateCardPhotos(c){
   const el=rendered.get(c.car_id); if(!el)return;
-  const ph=el.querySelector(".ph");
-  if(ph){
-    const pics=uniqPhotos(c.photos||[]).map(hq);
-    const badge=ph.querySelector(".badge"), flag=ph.querySelector(".flag");
-    const imgs=pics.map((u,k)=>`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" class="${k===0?'show':''}" src="${u}">`).join("")
-      +`<div class="dots">${pics.map((_,k)=>`<span class="${k===0?'a':''}"></span>`).join("")}</div>`;
-    ph.innerHTML=(badge?badge.outerHTML:"")+(flag?flag.outerHTML:"")+imgs;
-    wireHoverEl(el);
-    return;
-  }
-  const lt=el.querySelector(".lthumb");
-  if(lt){
-    const first=(uniqPhotos(c.photos||[]).map(hq))[0]; if(!first)return;
-    const badge=lt.querySelector(".badge");
-    lt.innerHTML=(badge?badge.outerHTML:"")+`<img loading="lazy" decoding="async" referrerpolicy="no-referrer" src="${first}">`;
-  }
+  const ph=el.querySelector(".ph"); if(!ph)return;
+  const pics=uniqPhotos(c.photos||[]).map(hq).filter(Boolean);
+  const badge=ph.querySelector(".badge"), flag=ph.querySelector(".flag");
+  const imgs=pics.map((u,k)=>`<img loading="lazy" referrerpolicy="no-referrer" onerror="brImgFail(this)" class="${k===0?'show':''}" src="${u}">`).join("")
+    +`<div class="dots">${pics.map((_,k)=>`<span class="${k===0?'a':''}"></span>`).join("")}</div>`;
+  ph.innerHTML=(badge?badge.outerHTML:"")+(flag?flag.outerHTML:"")+imgs;
+  wireHoverEl(el);
 }
 function heroGo(){let v=(document.getElementById("heroq").value||"").trim();
   const cc=CHASSIS[v.toLowerCase()];
@@ -1151,7 +1112,15 @@ function refreshControls(){
   fillSelect("bodyf",[...new Set(A.filter(c=>c.body&&!BODYJUNK.has(String(deent(c.body)).toLowerCase().trim())).map(c=>norm("body",c.body)).filter(Boolean))].sort(),_arr(F.bodyf)[0]||"");
   fillSelect("drive",[...new Set(A.map(c=>norm("drive",c.drivetrain)).filter(Boolean))].sort(),_arr(F.drive)[0]||"");
   if(typeof msRefreshAll==="function")msRefreshAll();
-  if(!(FACET_MAKES&&FACET_MAKES.length))scanFacets();}
+  if(!(FACET_MAKES&&FACET_MAKES.length))scheduleFacetScan();}
+// Defer the heavy full-catalogue facet scan (~80 sequential fetches) until the browser is idle,
+// so the initial 30-row grid + photos paint first instead of competing for the network.
+let _facetSched=false;
+function scheduleFacetScan(){
+  if(_facetSched||(FACET_MAKES&&FACET_MAKES.length)||_facetScan)return; _facetSched=true;
+  const kick=()=>{_facetSched=false;scanFacets();};
+  if("requestIdleCallback" in window)requestIdleCallback(kick,{timeout:2500}); else setTimeout(kick,1200);
+}
 
 const LIST_COLS="car_id,source,country,make,model,year,engine_l,fuel,gearbox,body,drivetrain,last_mileage,last_price,location,posted,first_seen,source_url";
 let sampleCars=[];
@@ -1164,26 +1133,14 @@ let FACET_MAKES=null; const FACET_MODELS={}; let _facetScan=false;
    newest 25 000 rows only: "Dīzelis" reported 16 842 cars when the catalogue holds 54 813. */
 let FACET_VOCAB=null;
 const VOCAB_SEED={
- fuel:{
-   "Benzīns":["petrol","Benzinas","benzinas"],
-   "Dīzelis":["diesel","Dyzelinas","Dyzelis"],
-   "Elektrība":["electric","Elektriskais","Elektra"],
-   "Hibrīds":["hybrid","Benzīns / elektrība","Dīzelis / elektrība","Benzīns / elektrība / gāze","benzins-elektra","benzinas-elektra","benzinas-elektra-dujos","dyzelinas-elektra"],
-   "Gāze":["gas","lpg","Dujos"],
-   "Benzīns / gāze":["benzins-gaze","benzinas-dujos","Benzīns / gāze"],
-   "Cits":["other","cits","vandenilis","Ūdeņradis","hydrogen","Bioetanols (E85)","ethanol","e85"]},
- gear:{"Automātiskā":["automatic","Automatinė"],"Mehāniskā":["manual","Mehaniskā","Mechaninė","Rankinė"]},
- body:{"Sedans":["sedan"],"Hečbeks":["hatchback"],"Kupeja":["coupe","Kupeja (Coupe)","kupeja-coupe"],
-   "Kabriolets":["cabriolet","convertible","roadster","Kabriolets / Roadster","kabriolets-roadster"],
-   "Pikaps":["pickup","apvidus-pikaps","Apvidus Pikaps"],
-   "Apvidus / SUV":["Apvidus","Visurgājējs / Krosovers","Visurgājējs / krosovers","suv","crossover"],
-   "Universālis":["Universalas","touring","estate","wagon","kombi","caravan"],
-   "Mikroautobuss / minivens":["Minivens","Mikroautobuss","minivan","minibus","van","precu-mikroautobuss","pasazieru-mikroautobuss","Pasažieru mikroautobuss","Preču mikroautobuss"],
-   "Komerciāls":["komerctransports","Komerctransports","commercial"],
-   "Limuzīns":["limousine"]},
- drive:{"Pilnpiedziņa":["Pilnpiedziņa (4x4)","all","awd","4wd","4x4","Visi rati"],
-   "Priekšpiedziņa":["Priekšējā","front","fwd"],
-   "Aizmugurpiedziņa":["Aizmugurējā","rear","rwd"]}};
+ fuel:{"Benz\u012bns":["petrol"],"D\u012bzelis":["diesel"],"Elektr\u012bba":["electric","Elektriskais"],"Hibr\u012bds":["hybrid"],"G\u0101ze":["gas","lpg"]},
+ gear:{"Autom\u0101tisk\u0101":["automatic"],"Meh\u0101nisk\u0101":["manual","Mehanisk\u0101"]},
+ body:{"Sedans":["sedan"],"He\u010dbeks":["hatchback"],"Kupeja":["coupe","Kupeja (Coupe)"],
+   "Kabriolets":["cabriolet","convertible","roadster"],"Pikaps":["pickup"],
+   "Apvidus / SUV":["Apvidus","Visurg\u0101j\u0113js / Krosovers","Visurg\u0101j\u0113js / krosovers","suv","crossover"],
+   "Univers\u0101lis":["Universalas","touring","estate","wagon","kombi","caravan"],
+   "Mikroautobuss / minivens":["Minivens","Mikroautobuss","minivan","minibus","van"]},
+ drive:{}};
 function vocabRaws(kind,sel){          // selected buckets -> every raw DB value that normalises into them
   const a=_arr(sel); if(!a.length)return [];
   const V=(FACET_VOCAB&&FACET_VOCAB[kind])||{}, S=VOCAB_SEED[kind]||{}, out=new Set();
@@ -1205,9 +1162,9 @@ function srvModelOK(){                 // can the model pick go server-side? (ne
   if(!(FACET_MAKES&&FACET_MAKES.length))return false;
   const n=modelRaws().length; return n>0&&n<=300;
 }
-try{const _c=JSON.parse(localStorage.getItem("br_facets5")||"null");
+try{const _c=JSON.parse(localStorage.getItem("br_facets3")||"null");
   if(_c&&_c.t&&(Date.now()-_c.t<86400000)){FACET_MAKES=_c.m||null; Object.assign(FACET_MODELS,_c.mm||{}); FACET_VOCAB=_c.v||null;}}catch(e){}
-function _saveFacets(){try{localStorage.setItem("br_facets5",JSON.stringify({t:Date.now(),m:FACET_MAKES,mm:FACET_MODELS,v:FACET_VOCAB}));}catch(e){}}
+function _saveFacets(){try{localStorage.setItem("br_facets3",JSON.stringify({t:Date.now(),m:FACET_MAKES,mm:FACET_MODELS,v:FACET_VOCAB}));}catch(e){}}
 async function scanFacets(){                      // one keyset pass over the whole catalogue; cached 24h
   if((FACET_MAKES&&FACET_MAKES.length)||_facetScan)return; _facetScan=true;
   const cnt={}, models={}; let after="";
@@ -1449,7 +1406,7 @@ async function tick(){
   try{
     if(wasFirst){
       const cached=parseInt(localStorage.getItem("br_total")||"0",10); if(cached>0){catalogTotal=cached;setCount();}
-      try{const rs=await fetch(`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&order=first_seen.desc`,{headers:{...SBH,Range:"0-1499"},cache:"no-store"});
+      try{const rs=await fetch(`${SB_URL}/rest/v1/v_listings?select=${LIST_COLS}&order=first_seen.desc`,{headers:{...SBH,Range:"0-599"},cache:"no-store"});   // trimmed 1500->600: dropdown fallback + featured only; full facets come from scanFacets
         if(rs.ok){const d=await rs.json(); if(Array.isArray(d))sampleCars=cleanRows(d);}}catch(e){}
       refreshControls();setFeatured(sampleCars);
       brOpenDeepLink();               // fire-and-forget: the modal must not wait for the grid
@@ -1541,7 +1498,7 @@ async function loadHistory(carId){
   // CSS by gateHistory(), which is trivially bypassable (remove display:none in devtools, or read it
   // straight off the network tab). Here we fetch and render NOTHING; gateHistory() paints the
   // lock-box + "Uzzināt vairāk" CTA. The moment BR.profile.is_premium is true, the chart loads.
-  if(!(window.BR && BR.profile && BR.profile.is_premium)){ try{ if(typeof gateHistory==="function") gateHistory(carId); }catch(e){} return; }
+  if(!(window.BR && BR.profile && BR.profile.is_premium)) return;
   try{
     const r=await fetch(`${SB_URL}/rest/v1/price_history?car_id=eq.${encodeURIComponent(carId)}&select=ts,price,mileage&order=ts.asc`,{headers:SBH});
     let pts=(await r.json()).filter(p=>p.price!=null);
@@ -1738,11 +1695,8 @@ function msOptions(k){          // -> [{g:"groupLabel"|"", items:[...]}]
     });
   }
   const VK=(kind,fb)=>{const v=FACET_VOCAB&&FACET_VOCAB[kind];
-    const raw=(v&&Object.keys(v).length)?Object.keys(v):fb();
-    // DEFENSIVE: re-normalise every option to its canonical label at render time, so even a stale
-    // localStorage facet cache (built by older code) can NEVER leak raw DB values into the dropdown.
-    const items=[...new Set(raw.map(x=>norm(kind,x)).filter(x=>x&&!junkVal(x)))].sort();
-    return [{g:"",items}];};
+    const items=(v&&Object.keys(v).length)?Object.keys(v):fb();
+    return [{g:"",items:items.filter(x=>x&&!junkVal(x)).sort()}];};
   if(k==="fuel")  return VK("fuel", ()=>[...new Set(A.map(c=>norm("fuel",c.fuel)).filter(Boolean))]);
   if(k==="gear")  return VK("gear", ()=>[...new Set(A.map(c=>norm("gear",c.gearbox)).filter(Boolean))]);
   if(k==="bodyf") return VK("body", ()=>[...new Set(A.filter(c=>c.body&&!BODYJUNK.has(String(deent(c.body)).toLowerCase().trim())).map(c=>norm("body",c.body)).filter(Boolean))]);
@@ -1819,6 +1773,7 @@ function msOpen(k,btn){
   if(_msOpen===k){msClose();return;}
   _msOpen=k; _msSel=_arr(F[k]).slice();
   const dd=_msDDEl(), si=dd.querySelector("#msddS");
+  dd.classList.toggle("msdd-list", k==="model");   // models render as a vertical multi-select list, not a chip grid
   dd.querySelector("#msddCLR").textContent=MST().clr;
   dd.querySelector("#msddDONE").textContent=MST().done;
   si.value=""; si.placeholder=MST().find;
@@ -1919,8 +1874,8 @@ function applyTheme(){let t=localStorage.getItem("br_theme")||"auto";
 const CONTENT={
  lv:{nav:["Sludinājumi","Kā tas strādā","BUJ"],cta:["Skatīt sludinājumus","Saņemt paziņojumus"],
   makesT:"Populārākās markas",makesS:"Izvēlies marku un uzreiz redzi visus pieejamos sludinājumus visā Baltijā.",
-  aboutT:"Visi Baltijas auto vienā meklēšanā",
-  about:["Norādi, ko meklē — Konkrēts modelis, budžets, gads. Viss vienuviet — LV, LT un EE sludinājumi, bez vairākiem dažādiem saitiem. Nepalaid garām — Paziņojums uzreiz, kad parādās tavs auto vai krīt cena.","BalticRadar apkopo auto sludinājumus no trim lielākajiem Baltijas portāliem: ss.lv Latvijā, autoplius.lt Lietuvā un auto24.ee Igaunijā, un parāda tos vienā vietā. Vairs nav jāpārlūko trīs lapas atsevišķi.","Pēc filtra iestatīšanas BalticRadar automātiski pārbauda jaunos sludinājumus. Tiklīdz parādās auto, kas atbilst kritērijiem, vai tiek pazemināta cena, uz e-pastu pienāk paziņojums.","Katram auto tiek rādīta cenas un nobraukuma vēsture, kā arī datums, kad sludinājums ievietots. Tā uzreiz redzams, vai cena ir kritusi un cik ilgi auto jau atrodas tirgū. Cenas vērtējums tiek aprēķināts, salīdzinot auto ar tā paša modeļa un gada sludinājumiem datubāzē."],
+  aboutT:"Visi Baltijas lietotie auto vienā meklēšanā",
+  about:["BalticRadar apkopo lietoto auto sludinājumus no trim lielākajiem Baltijas portāliem — ss.lv Latvijā, autoplius.lt Lietuvā un auto24.ee Igaunijā — un parāda tos vienuviet. Vairs nav jāatver trīs lapas atsevišķi.","Katram auto sekojam cenas vēsturei. Ja pārdevējs pazemina cenu, tu to redzi uzreiz, kā arī datumu, kad sludinājums tika ievietots. Tā vieglāk pamanīt patiesi izdevīgus piedāvājumus.","Cenas vērtējums tiek aprēķināts, salīdzinot auto ar līdzīgiem tā paša modeļa un gada sludinājumiem mūsu datubāzē. Tas dod ātru priekšstatu, vai cena atbilst tirgum."],
   pcT:"Lietota auto plusi un mīnusi",proT:"Plusi",conT:"Mīnusi",
   pros:["Zemāka cena nekā jaunam auto","Mazāks vērtības kritums pēc iegādes","Plaša izvēle dažādos cenu līmeņos","Pieejams uzreiz, bez gaidīšanas","Augstākas klases auto par mazāku naudu"],
   cons:["Var būt nepieciešama apkope vai remonts","Īsāka vai nereti nekāda garantija","Lielāks nobraukums","Svarīgi pārbaudīt auto vēsturi un VIN"],
@@ -1928,7 +1883,7 @@ const CONTENT={
   steps:[["Meklē","Filtrē pēc markas, modeļa, cenas, gada un degvielas visā Baltijā."],["Salīdzini","Skati cenas vērtējumu un līdzīgus piedāvājumus, lai saprastu tirgus cenu."],["Seko cenai","Redzi cenas vēsturi un pamani, kad pārdevējs pazemina cenu."],["Saņem paziņojumus","Piesakies un saņem e-pastu, tiklīdz parādās piemērots auto."],["Sazinies","Atver oriģinālo sludinājumu un sazinies ar pārdevēju tieši."]],
   faqT:"Biežāk uzdotie jautājumi",
   faq:[["Cik bieži dati tiek atjaunoti?","Latvijas (ss.lv) sludinājumi tiek pārbaudīti ik pēc dažām minūtēm visu diennakti. Lietuvas un Igaunijas dati tiek atjaunoti vairākas reizes dienā."],["Vai cenas vērtējums ir precīzs?","Tā ir aplēse, balstīta uz līdzīgiem sludinājumiem mūsu datubāzē. Jo vairāk auto, jo precīzāk. Tas neaizstāj auto klātienes pārbaudi."],["Vai redzēšu VIN numuru?","Detaļās rādām pieejamo informāciju. Pilnu VIN un vēstures pārbaudi parasti nodrošina pats portāls vai atsevišķs vēstures serviss."],["Vai lapa ir bez maksas?","Jā, auto meklēšana un cenu vēstures skatīšana ir bez maksas."],["No kurienes nāk sludinājumi?","No ss.lv (Latvija), autoplius.lt (Lietuva) un auto24.ee (Igaunija). Katrā sludinājumā ir saite uz oriģinālu."]],
-  footAbout:"Visi Baltijas auto sludinājumi vienuviet: ss.lv, autoplius.lt un auto24.ee, ar cenu vēsturi un godīgu cenas vērtējumu.",footSrc:"Dati: ss.lv · autoplius.lt · auto24.ee · © BalticRadar",footLegal:"Lietošanas noteikumi un privātums"},
+  footAbout:"Visi Baltijas lietoto auto sludinājumi vienuviet — ss.lv, autoplius.lt un auto24.ee — ar cenu vēsturi un godīgu cenas vērtējumu.",footSrc:"Dati: ss.lv · autoplius.lt · auto24.ee · © BalticRadar"},
  en:{nav:["Listings","How it works","FAQ"],cta:["Browse listings","Get alerts"],
   makesT:"Popular makes",makesS:"Pick a make and instantly see every available listing across the Baltics.",
   aboutT:"All Baltic used cars in one search",
@@ -1940,7 +1895,7 @@ const CONTENT={
   steps:[["Search","Filter by make, model, price, year and fuel across the Baltics."],["Compare","See the price rating and similar offers to understand the market price."],["Track price","View the price history and notice when a seller lowers the price."],["Get alerts","Subscribe and get an email as soon as a matching car appears."],["Contact","Open the original listing and contact the seller directly."]],
   faqT:"Frequently asked questions",
   faq:[["How often is data updated?","Latvian (ss.lv) listings are checked every few minutes around the clock. Lithuanian and Estonian data is refreshed several times a day."],["Is the price rating accurate?","It is an estimate based on similar listings in our database. The more cars, the better. It does not replace inspecting the car in person."],["Will I see the VIN?","We show the available info in the details. The full VIN and history check are usually provided by the portal itself or a separate history service."],["Is the site free?","Yes, searching cars and viewing price history is free."],["Where do listings come from?","From ss.lv (Latvia), autoplius.lt (Lithuania) and auto24.ee (Estonia). Each listing links to the original."]],
-  footAbout:"All Baltic used-car listings in one place — ss.lv, autoplius.lt and auto24.ee — with price history and a fair price rating.",footSrc:"Data: ss.lv · autoplius.lt · auto24.ee · © BalticRadar",footLegal:"Terms of Use & Privacy"},
+  footAbout:"All Baltic used-car listings in one place — ss.lv, autoplius.lt and auto24.ee — with price history and a fair price rating.",footSrc:"Data: ss.lv · autoplius.lt · auto24.ee · © BalticRadar"},
  ru:{nav:["Объявления","Как это работает","Вопросы"],cta:["Смотреть объявления","Уведомления"],
   makesT:"Популярные марки",makesS:"Выберите марку и сразу увидите все доступные объявления по всей Балтии.",
   aboutT:"Все б/у авто Балтии в одном поиске",
@@ -1952,7 +1907,7 @@ const CONTENT={
   steps:[["Поиск","Фильтруйте по марке, модели, цене, году и топливу по всей Балтии."],["Сравните","Смотрите оценку цены и похожие предложения, чтобы понять рыночную цену."],["Следите за ценой","Смотрите историю цены и замечайте, когда продавец её снижает."],["Уведомления","Подпишитесь и получайте письмо, как только появится подходящее авто."],["Связь","Откройте оригинальное объявление и свяжитесь с продавцом напрямую."]],
   faqT:"Частые вопросы",
   faq:[["Как часто обновляются данные?","Латвийские (ss.lv) объявления проверяются каждые несколько минут круглосуточно. Данные Литвы и Эстонии обновляются несколько раз в день."],["Точна ли оценка цены?","Это оценка на основе похожих объявлений в нашей базе. Чем больше авто, тем точнее. Она не заменяет осмотр авто лично."],["Увижу ли я VIN?","В деталях показываем доступную информацию. Полный VIN и проверку истории обычно предоставляет сам портал или отдельный сервис истории."],["Сайт бесплатный?","Да, поиск авто и просмотр истории цен бесплатны."],["Откуда объявления?","С ss.lv (Латвия), autoplius.lt (Литва) и auto24.ee (Эстония). В каждом объявлении есть ссылка на оригинал."]],
-  footAbout:"Все объявления о б/у авто Балтии в одном месте — ss.lv, autoplius.lt и auto24.ee — с историей цен и честной оценкой цены.",footSrc:"Данные: ss.lv · autoplius.lt · auto24.ee · © BalticRadar",footLegal:"Условия использования и конфиденциальность"},
+  footAbout:"Все объявления о б/у авто Балтии в одном месте — ss.lv, autoplius.lt и auto24.ee — с историей цен и честной оценкой цены.",footSrc:"Данные: ss.lv · autoplius.lt · auto24.ee · © BalticRadar"},
  lt:{nav:["Skelbimai","Kaip veikia","DUK"],cta:["Žiūrėti skelbimus","Gauti pranešimus"],
   makesT:"Populiariausios markės",makesS:"Pasirink markę ir iškart matyk visus skelbimus visoje Baltijoje.",
   aboutT:"Visi Baltijos naudoti automobiliai vienoje paieškoje",
@@ -1964,7 +1919,7 @@ const CONTENT={
   steps:[["Ieškok","Filtruok pagal markę, modelį, kainą, metus ir kurą visoje Baltijoje."],["Palygink","Žiūrėk kainos vertinimą ir panašius pasiūlymus, kad suprastum rinkos kainą."],["Sek kainą","Matyk kainos istoriją ir pastebėk, kai pardavėjas ją sumažina."],["Gauk pranešimus","Užsiprenumeruok ir gauk laišką, vos atsiradus tinkamam auto."],["Susisiek","Atidaryk originalų skelbimą ir susisiek su pardavėju tiesiogiai."]],
   faqT:"Dažniausiai užduodami klausimai",
   faq:[["Kaip dažnai atnaujinami duomenys?","Latvijos (ss.lv) skelbimai tikrinami kas kelias minutes visą parą. Lietuvos ir Estijos duomenys atnaujinami kelis kartus per dieną."],["Ar kainos vertinimas tikslus?","Tai įvertis, paremtas panašiais skelbimais mūsų bazėje. Kuo daugiau auto, tuo tiksliau. Jis nepakeičia automobilio apžiūros vietoje."],["Ar matysiu VIN?","Detalėse rodome prieinamą informaciją. Pilną VIN ir istorijos patikrą paprastai teikia pats portalas ar atskira istorijos paslauga."],["Ar svetainė nemokama?","Taip, automobilių paieška ir kainų istorijos peržiūra yra nemokama."],["Iš kur skelbimai?","Iš ss.lv (Latvija), autoplius.lt (Lietuva) ir auto24.ee (Estija). Kiekviename skelbime yra nuoroda į originalą."]],
-  footAbout:"Visi Baltijos naudotų auto skelbimai vienoje vietoje — ss.lv, autoplius.lt ir auto24.ee — su kainų istorija ir sąžiningu kainos vertinimu.",footSrc:"Duomenys: ss.lv · autoplius.lt · auto24.ee · © BalticRadar",footLegal:"Naudojimo taisyklės ir privatumas"},
+  footAbout:"Visi Baltijos naudotų auto skelbimai vienoje vietoje — ss.lv, autoplius.lt ir auto24.ee — su kainų istorija ir sąžiningu kainos vertinimu.",footSrc:"Duomenys: ss.lv · autoplius.lt · auto24.ee · © BalticRadar"},
  et:{nav:["Kuulutused","Kuidas töötab","KKK"],cta:["Vaata kuulutusi","Saa teateid"],
   makesT:"Populaarsed margid",makesS:"Vali mark ja näe kohe kõiki saadaolevaid kuulutusi üle Baltikumi.",
   aboutT:"Kõik Balti kasutatud autod ühes otsingus",
@@ -1976,23 +1931,27 @@ const CONTENT={
   steps:[["Otsi","Filtreeri margi, mudeli, hinna, aasta ja kütuse järgi üle Baltikumi."],["Võrdle","Vaata hinnahinnangut ja sarnaseid pakkumisi, et mõista turuhinda."],["Jälgi hinda","Vaata hinnaajalugu ja märka, kui müüja hinda langetab."],["Saa teateid","Telli ja saa e-kiri kohe, kui sobiv auto ilmub."],["Võta ühendust","Ava algne kuulutus ja võta müüjaga otse ühendust."]],
   faqT:"Korduma kippuvad küsimused",
   faq:[["Kui sageli andmeid uuendatakse?","Läti (ss.lv) kuulutusi kontrollitakse iga paari minuti tagant ööpäev läbi. Leedu ja Eesti andmeid värskendatakse mitu korda päevas."],["Kas hinnahinnang on täpne?","See on hinnang, mis põhineb sarnastel kuulutustel meie andmebaasis. Mida rohkem autosid, seda täpsem. See ei asenda auto kohapealset ülevaatust."],["Kas näen VIN-koodi?","Näitame detailides saadaolevat infot. Täis-VIN-i ja ajaloo kontrolli pakub tavaliselt portaal ise või eraldi ajalooteenus."],["Kas sait on tasuta?","Jah, autode otsimine ja hinnaajaloo vaatamine on tasuta."],["Kust kuulutused pärinevad?","Saitidelt ss.lv (Läti), autoplius.lt (Leedu) ja auto24.ee (Eesti). Iga kuulutus viitab originaalile."]],
-  footAbout:"Kõik Balti kasutatud autode kuulutused ühes kohas — ss.lv, autoplius.lt ja auto24.ee — koos hinnaajaloo ja ausa hinnahinnanguga.",footSrc:"Andmed: ss.lv · autoplius.lt · auto24.ee · © BalticRadar",footLegal:"Kasutustingimused ja privaatsus"}
+  footAbout:"Kõik Balti kasutatud autode kuulutused ühes kohas — ss.lv, autoplius.lt ja auto24.ee — koos hinnaajaloo ja ausa hinnahinnanguga.",footSrc:"Andmed: ss.lv · autoplius.lt · auto24.ee · © BalticRadar"}
 };
 function setT(id,v){const el=document.getElementById(id);if(el)el.textContent=v;}
 function renderContent(){
   const c=CONTENT[lang]||CONTENT.en;
   setT("navList",c.nav[0]);setT("navHow",c.nav[1]);setT("navFaq",c.nav[2]);
   setT("ctaBrowse",c.cta[0]);setT("ctaAlerts",c.cta[1]);
-  setT("footAbout",c.footAbout);setT("footSrc",c.footSrc);setT("footLegal",c.footLegal);
+  setT("footAbout",c.footAbout);setT("footSrc",c.footSrc);
   const counts={};AGG().forEach(x=>{if(x.make)counts[x.make]=(counts[x.make]||0)+1;});
   const top=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).slice(0,16);
   const chips=top.map(m=>`<span class="chip" onclick='pickMake(${JSON.stringify(m)})'>${m} <b style="color:var(--mut);font-weight:600">${counts[m]}</b></span>`).join("");
+  const pros=c.pros.map(x=>`<li>${x}</li>`).join("");
+  const cons=c.cons.map(x=>`<li>${x}</li>`).join("");
   const steps=c.steps.map((s,i)=>`<div class="step"><div class="n">${i+1}</div><h4>${s[0]}</h4><p>${s[1]}</p></div>`).join("");
   const faq=c.faq.map(f=>`<details class="qa"><summary>${f[0]}</summary><div class="ans">${f[1]}</div></details>`).join("");
   const about=c.about.map(p=>`<p>${p}</p>`).join("");
   document.getElementById("content").innerHTML=`
     ${chips?`<section class="section reveal"><div class="wrap"><h2 class="secttl">${c.makesT}</h2><p class="secsub">${c.makesS}</p><div class="chips2">${chips}</div></div></section>`:""}
     <section class="section reveal alt"><div class="wrap"><h2 class="secttl">${c.aboutT}</h2><div class="article">${about}</div>
+      <h2 class="secttl" style="margin-top:38px">${c.pcT}</h2>
+      <div class="pc"><div class="pccard pro"><h4>${c.proT}</h4><ul>${pros}</ul></div><div class="pccard con"><h4>${c.conT}</h4><ul>${cons}</ul></div></div>
     </div></section>
     <section class="section reveal" id="s-how"><div class="wrap"><h2 class="secttl">${c.howT}</h2><p class="secsub">${c.howS}</p><div class="steps">${steps}</div></div></section>
     <section class="section reveal alt" id="s-faq"><div class="wrap"><h2 class="secttl">${c.faqT}</h2><div class="faq">${faq}</div></div></section>`;
@@ -2077,7 +2036,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
     + '<h4>1. Par pakalpojumu</h4>BalticRadar apkopo publiski pieejamus sludinājumus par lietotām automašīnām Latvijā, Lietuvā un Igaunijā. Mēs neesam pārdevējs, starpnieks vai darījuma puse.'
     + '<h4>2. Datu precizitāte</h4>Sludinājumu dati un cenu vēsture tiek iegūti automatizēti no trešo pušu avotiem. Mēs cenšamies nodrošināt precizitāti, taču negarantējam, ka informācija ir pilnīga vai aktuāla. Pirms darījuma vienmēr pārbaudiet datus pie pārdevēja.'
     + '<h4>3. Konts</h4>Jūs esat atbildīgs par sava konta un paroles drošību. Viens konts – viena persona. Aizliegts automatizēti nolasīt (scrapot) vietnes saturu.'
-    + '<h4>4. Jūsu dati un sīkdatnes</h4>Mēs glabājam jūsu e-pastu, vārdu, saglabātās automašīnas un saglabātos filtrus, lai sniegtu pakalpojumu. Mēs nepārdodam jūsu datus. Jūs jebkurā brīdī varat pieprasīt konta dzēšanu. Vietne izmanto sīkdatnes (cookies) un līdzīgas tehnoloģijas, lai nodrošinātu pamatfunkcijas un atcerētos Tavas izvēles (piemēram, valodu un piekrišanu sīkdatnēm). Nepieciešamās sīkdatnes ir vienmēr aktīvas; pārējām vari nepiekrist, izvēloties “Tikai nepieciešamās”.'
+    + '<h4>4. Jūsu dati</h4>Mēs glabājam jūsu e-pastu, vārdu, saglabātās automašīnas un saglabātos filtrus, lai sniegtu pakalpojumu. Mēs nepārdodam jūsu datus. Jūs jebkurā brīdī varat pieprasīt konta dzēšanu.'
     + '<h4>5. Paziņojumi</h4>Reģistrējoties jūs piekrītat saņemt ar kontu saistītus e-pastus (apstiprinājums, paroles atjaunošana). Cenu paziņojumi tiek sūtīti tikai tad, ja esat izveidojis saglabātu filtru.'
     + '<h4>6. Maksas funkcijas</h4>Daļa funkciju (pilna cenu vēsture, e-pasta paziņojumi) nākotnē būs pieejama maksas plānā. Cenas un noteikumi tiks paziņoti pirms maksājumu ieviešanas.'
     + '<h4>7. Atbildības ierobežojums</h4>Pakalpojums tiek sniegts "kāds tas ir". Mēs neatbildam par zaudējumiem, kas radušies, paļaujoties uz vietnē sniegto informāciju.'
@@ -2130,7 +2089,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
   /* --- forgot --- */
   + '<div class="br-view" id="brV-forgot">'
     + '<div class="br-h">Atjaunot paroli</div>'
-    + '<div class="br-tag">Ievadi e-pastu, nosūtīsim saiti paroles maiņai.</div>'
+    + '<div class="br-tag">Ievadi e-pastu — nosūtīsim saiti paroles maiņai.</div>'
     + '<div class="br-msg" id="brM-forgot"></div>'
     + '<input class="br-inp" id="brFoEmail" type="email" placeholder="E-pasts" autocomplete="email">'
     + '<button class="br-btn" id="brFoBtn" onclick="BR.forgot()">Nosūtīt saiti</button>'
@@ -2326,107 +2285,10 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
     refresh(session);
   });
 
-  /* ---------------- auth callback (email confirm / Google / password reset) ----------------
-     The e-mail "Apstiprināt e-pasta adresi" link, the Google return and the password-reset link
-     all come back to THIS origin with the session material in the URL (PKCE `?code=`, a
-     `?token_hash=&type=` pair, or an implicit `#access_token=`). supabase-js
-     (detectSessionInUrl) normally consumes it, but when that silently fails - e.g. the PKCE code
-     verifier was written on a DIFFERENT origin (balticradar.com vs the workers.dev fallback when a
-     redirect URL isn't allow-listed), or an e-mail link-scanner already spent the one-time code -
-     the visitor used to land logged OUT with no explanation and had to press "Pieslēgties" again.
-     This resolves the callback explicitly: establish the session, surface any error, strip the
-     tokens from the address bar, and leave the user SIGNED IN. */
-  function cleanAuthUrl(){
-    try{
-      var u = new URL(window.location.href);
-      ['code','token_hash','type','error','error_code','error_description','redirect_to'].forEach(function(k){ u.searchParams.delete(k); });
-      history.replaceState(null, document.title, u.pathname + (u.search || ''));   // also drops the #hash
-    }catch(e){}
-  }
-  function brToast(text){
-    try{
-      var t = document.createElement('div');
-      t.textContent = text;
-      t.style.cssText = 'position:fixed;left:50%;top:20px;transform:translateX(-50%);z-index:100000;'
-        + 'background:#16a06a;color:#fff;font-family:Manrope,system-ui,sans-serif;font-weight:600;'
-        + 'font-size:14px;padding:12px 20px;border-radius:12px;box-shadow:0 10px 30px -8px rgba(0,0,0,.4)';
-      document.body.appendChild(t);
-      setTimeout(function(){ t.style.transition='opacity .4s'; t.style.opacity='0'; }, 3200);
-      setTimeout(function(){ t.remove(); }, 3700);
-    }catch(e){}
-  }
-  function hashParams(){ return new URLSearchParams((window.location.hash || '').replace(/^#/, '')); }
-  async function handleAuthCallback(){
-    var q, hp;
-    try{ q = new URL(window.location.href).searchParams; hp = hashParams(); }
-    catch(e){ return false; }
-
-    var errDesc  = q.get('error_description') || hp.get('error_description');
-    var errCode  = q.get('error') || q.get('error_code') || hp.get('error') || hp.get('error_code');
-    var code     = q.get('code');
-    var tokenHash= q.get('token_hash');
-    var type     = q.get('type') || hp.get('type');
-    var implicit = hp.get('access_token');
-
-    if(!errDesc && !errCode && !code && !tokenHash && !implicit) return false;   // ordinary page load
-
-    if(errDesc || errCode){                          // expired / already-used link, etc.
-      cleanAuthUrl();
-      BR.openAuth('signin');
-      msg('signin', errDesc ? decodeURIComponent(errDesc).replace(/\+/g,' ')
-                            : 'Saite nav derīga vai tai beidzies termiņš. Lūdzu pieslēdzies vēlreiz.', 'err');
-      return true;
-    }
-
-    var isRecovery = (type === 'recovery');
-    try{
-      if(tokenHash && type){
-        // token_hash links verify server-side and need NO PKCE verifier (work across devices).
-        var vr = await supa.auth.verifyOtp({ type: type, token_hash: tokenHash });
-        if(vr.error) throw vr.error;
-      } else {
-        // `?code` (PKCE: confirm / Google / recovery) or `#access_token` (implicit). supabase-js
-        // consumes these during init - wait for it to settle instead of racing it.
-        var settled = null;
-        for(var i=0;i<25;i++){
-          settled = (await supa.auth.getSession()).data.session;
-          if(settled) break;
-          await new Promise(function(r){ setTimeout(r,120); });
-        }
-        // Fallback: init didn't establish a session but a fresh code is still here -> exchange it.
-        if(!settled && code){
-          var ex = await supa.auth.exchangeCodeForSession(code);
-          if(ex.error) throw ex.error;
-        }
-      }
-    }catch(e){
-      cleanAuthUrl();
-      BR.openAuth('signin');
-      msg('signin', (e && e.message) || 'Apstiprināšana neizdevās. Lūdzu pieslēdzies vēlreiz.', 'err');
-      return true;
-    }
-
-    var sess = (await supa.auth.getSession()).data.session;
-    cleanAuthUrl();
-    if(!sess){
-      BR.openAuth('signin');
-      msg('signin', 'Apstiprinājums neizdevās. Lūdzu pieslēdzies vēlreiz.', 'err');
-      return true;
-    }
-    await refresh(sess);
-    if(isRecovery){ BR.view('reset'); }              // reset link -> let them set a new password
-    else { BR.close(); brToast('E-pasts apstiprināts. Tu esi pieslēdzies!'); }
-    return true;
-  }
-
   function boot(){
     mountHeader();
     applyGoogleFlag();
-    // Resolve a confirm / Google / recovery callback FIRST; only fall back to the plain session
-    // read on an ordinary load, so the header never gets stuck on "Pieslēgties" after a confirm.
-    handleAuthCallback().then(function(handled){
-      if(!handled){ supa.auth.getSession().then(function(r){ refresh(r.data.session); }); }
-    }).catch(function(){ supa.auth.getSession().then(function(r){ refresh(r.data.session); }); });
+    supa.auth.getSession().then(function(r){ refresh(r.data.session); });
 
     // ONE path for alerts (Henrijs' bug: a logged-in user was still asked for an e-mail).
     //   signed OUT -> sign up / log in
@@ -2784,8 +2646,8 @@ BR.toggleFav = async function(id, btn){
 var HEART = '<span class="o">♡</span><span class="f">♥</span>';
 function decorate(){
   document.querySelectorAll('#grid .card').forEach(function(card){
-    var id = card.dataset.cid;
-    if(!id){ var img = card.querySelector('img'); id = img ? PHOTO2ID[img.getAttribute('src')||img.dataset.src||''] : null; }
+    var img = card.querySelector('img'); if(!img) return;
+    var id = PHOTO2ID[img.getAttribute('src')||img.dataset.src||''];
     if(!id) return;
     var b = card.querySelector('.br-heart');
     if(!b){
@@ -2816,7 +2678,7 @@ async function gateHistory(id){
   // so #hist would otherwise be left stuck on its "Ielādē…" placeholder - hide it too, and show a
   // single clean lock-box. Idempotent: re-checks for an existing lock-box instead of a stale flag.
   var pch = $('pchgcard'), hist = $('hist');
-  var anchor = hist || pch;   // prefer the full-width #hist slot so the lock-box is not squished into the narrow price-change card
+  var anchor = pch || hist;
   if(!anchor) return;
   var prev = anchor.previousElementSibling;
   var existingLock = (prev && prev.classList && prev.classList.contains('lockbox')) ? prev : null;
@@ -2860,7 +2722,7 @@ async function addMileageHistory(id, card){
 var TC = '<h4>1. Par pakalpojumu</h4>BalticRadar apkopo publiski pieejamus sludinājumus. Mēs neesam pārdevējs vai darījuma puse.'
  + '<h4>2. Datu precizitāte</h4>Dati tiek iegūti automatizēti no trešo pušu avotiem. Pirms darījuma pārbaudiet datus pie pārdevēja.'
  + '<h4>3. Konts</h4>Jūs esat atbildīgs par sava konta drošību. Viens konts – viena persona.'
- + '<h4>4. Jūsu dati un sīkdatnes</h4>Glabājam jūsu e-pastu, vārdu, saglabātās automašīnas un filtrus. Mēs nepārdodam jūsu datus. Vietne izmanto sīkdatnes pamatfunkcijām un Tavu izvēļu atcerēšanai; pārējām sīkdatnēm vari nepiekrist.'
+ + '<h4>4. Jūsu dati</h4>Glabājam jūsu e-pastu, vārdu, saglabātās automašīnas un filtrus. Mēs nepārdodam jūsu datus.'
  + '<h4>5. Paziņojumi</h4>Cenu paziņojumi tiek sūtīti tikai par saglabātajiem filtriem (maksas funkcija).'
  + '<h4>6. Maksas funkcijas</h4>Saglabātie filtri, e-pasta paziņojumi un pilna cenu/nobraukuma vēsture ir Premium funkcijas.'
  + '<h4>7. Atbildības ierobežojums</h4>Pakalpojums tiek sniegts "kāds tas ir".'
@@ -2993,14 +2855,6 @@ function cardsHtml(rows, rm){
       + '<div class="p">'+eur(c.last_price)+'</div></div></div>';
   }).join('') + '</div>';
 }
-window._mfCars = window._mfCars || {};
-function mfCardsHtml(rows){
-  if(!rows.length) return '<div class="br2empty">Nav rezultātu.</div>';
-  return '<div class="mfrows">'+rows.map(function(c){ window._mfCars[c.car_id]=c;
-    return '<div class="mfrow" data-cid="'+esc(c.car_id)+'" onclick="mfToggle(this)">'+innerRow(c,false)+'</div>';
-  }).join('')+'</div>';
-}
-window.mfToggle = function(el){ var id=el.dataset.cid; var c=window._mfCars&&window._mfCars[id]; if(!c)return; var open=el.classList.toggle('open'); if(open&&!el._exp){el._exp=true; fillRowExp(el,c);} };
 BRProfile.unfav = async function(id){
   FAV.delete(id);
   await supa.from('favourites').delete().eq('user_id',BR.user.id).eq('car_id',id);
@@ -3417,8 +3271,7 @@ BRProfile.runFilter = async function(id, sort){
     +   '<div style="font-size:12.5px;font-weight:700;color:#86868b">' + rows.length + (capped?'+':'') + ' atbilstoši auto</div>'
     +   fsortSelect(id, sort)
     + '</div>'
-    + mfCardsHtml(rows);
-  if(typeof paintRatings==='function'){ try{ paintRatings(rows); }catch(e){} }
+    + cardsHtml(rows,false);
 };
 
 /* ---- boot ---- */
@@ -3457,7 +3310,7 @@ header{background:var(--surf);backdrop-filter:blur(16px);-webkit-backdrop-filter
 .langsel:hover{background:var(--card2)}
 .hero{position:relative;min-height:0;display:block;text-align:center;color:var(--ink);background:var(--bg);overflow:hidden;padding:62px 0 26px}
 .heroImg,.heroOverlay{display:none!important}
-.rings{position:absolute;top:-48px;left:50%;transform:translateX(-50%);width:300px;height:300px;max-width:none;opacity:.4;pointer-events:none}
+.rings{position:absolute;top:-70px;left:50%;transform:translateX(-50%);width:460px;height:460px;max-width:none;opacity:.5;pointer-events:none}
 .heroInner{position:relative;z-index:2;padding:0 20px;max-width:860px;margin:0 auto}
 .flags{display:flex;gap:10px;justify-content:center;align-items:center;margin-bottom:18px}
 .flags .fdot{width:30px;height:20px;border-radius:3px}
@@ -3465,8 +3318,8 @@ header{background:var(--surf);backdrop-filter:blur(16px);-webkit-backdrop-filter
 .hero p{font-size:19px;line-height:1.45;font-weight:500;color:var(--ink2);text-shadow:none;max-width:520px;margin:0 auto}
 .herocta{margin-top:26px;gap:8px}
 .herocta button{border-radius:999px;font-size:14px;font-weight:600;padding:13px 24px;font-family:inherit}
-.herocta .primary{background:var(--ink);color:var(--bg);box-shadow:none}
-.herocta .primary:hover{filter:none;opacity:.86;transform:none}
+.herocta .primary{background:var(--accent);color:#fff;box-shadow:none}   /* primary CTA uses the radar-green accent so the main action is unmistakable */
+.herocta .primary:hover{filter:none;opacity:.88;transform:none}
 .herocta .ghost{background:none;border:none;color:var(--ink);padding:13px 10px}
 .herocta .ghost:hover{background:none;opacity:.65}
 .herosearch{max-width:520px;margin:22px auto 0;gap:8px}
@@ -3636,7 +3489,7 @@ html[data-theme="dark"] .br-heart .o{color:#fff}   /* white heart outline on the
 .hero{padding:38px 0 20px}
 .hero h1{font-size:38px;letter-spacing:-.035em}
 .hero p{font-size:15.5px}
-.rings{width:210px;height:210px;top:-28px}
+.rings{width:340px;height:340px;top:-45px}
 .flags .fdot{width:26px;height:17px}
 .herocta{flex-direction:column}
 .herocta button{width:100%}
@@ -3661,14 +3514,14 @@ body{overflow-x:hidden}
 }
 
 /* ---------- animated radar hero backdrop (crisp SVG, no blur) ---------- */
-.rings.radar{opacity:.4}
+.rings.radar{opacity:.6}
 .rdr-sweep{transform-origin:360px 360px;animation:brSpin 7s linear infinite;will-change:transform}
 @keyframes brSpin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 .rdr-pulse circle{transform-origin:360px 360px;transform:scale(.12);opacity:0;animation:brPulse 5s ease-out infinite;will-change:transform,opacity}
 .rdr-pulse .p2{animation-delay:2.5s}
 @keyframes brPulse{0%{transform:scale(.12);opacity:.5}70%{opacity:.10}100%{transform:scale(1);opacity:0}}
-html[data-theme="dark"] .rings.radar{opacity:.5}
-@media(max-width:860px){.rings.radar{opacity:.32}.rdr-sweep{animation-duration:9s}}
+html[data-theme="dark"] .rings.radar{opacity:.75}
+@media(max-width:860px){.rings.radar{opacity:.5}.rdr-sweep{animation-duration:9s}}
 @media(prefers-reduced-motion:reduce){.rdr-sweep{animation:none}.rdr-pulse circle{animation:none;opacity:0}}
 </style>
 <script>
@@ -3677,47 +3530,5 @@ html[data-theme="dark"] .rings.radar{opacity:.5}
 </script>
 
 
-<style id="dify-rows">
-.mfrow{display:block;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:visible;margin:0 0 8px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
-.mfrow:hover{box-shadow:var(--shadow);border-color:var(--line2)}
-.lrow-head{display:flex;align-items:center;gap:12px;padding:10px 12px}
-.lthumb{flex:none;width:88px;height:62px;border-radius:8px;overflow:hidden;background:var(--card2);position:relative}
-.lthumb img{width:100%;height:100%;object-fit:cover;display:block}
-.lthumb .noimg{display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-size:10px;color:var(--mut);text-align:center;padding:4px}
-.lthumb .badge{position:absolute;top:4px;left:4px;background:var(--accent);color:#fff;font-size:9px;font-weight:800;padding:2px 5px;border-radius:5px;letter-spacing:.03em}
-.lmain{flex:1;min-width:0}
-.ltitle{font-weight:700;font-size:15px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.ltitle .yr{color:var(--mut);font-weight:600;font-size:13px;margin-left:6px}
-.lspecs{color:var(--mut);font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.lprate{margin-top:4px}
-.lright{flex:none;display:flex;align-items:center;gap:12px}
-.lprice{font-weight:800;font-size:17px;color:#1668dc;white-space:nowrap}
-html[data-theme="dark"] .lprice{color:#5b9bf5}
-.lflag .fdot{width:20px;height:13px}
-.lchev{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:var(--mut);transition:transform .2s;font-size:11px;background:var(--card2)}
-.mfrow.open .lchev{transform:rotate(180deg)}
-.lrow-exp{display:none;border-top:1px solid var(--line);padding:0 12px}
-.mfrow.open .lrow-exp{display:block}
-.lexp-inner{padding:14px 0}
-.lbtn{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:11px 18px;font-weight:700;font-size:14px;text-decoration:none;cursor:pointer;font-family:inherit;margin-bottom:14px}
-.lbtn:hover{opacity:.9}
-.lhist-cap{font-weight:800;font-size:13.5px;margin-bottom:8px;color:var(--ink)}
-.lhist-t{width:100%;border-collapse:collapse;font-size:13px}
-.lhist-t th{text-align:left;color:var(--mut);font-weight:600;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;padding:6px 8px;border-bottom:1px solid var(--line)}
-.lhist-t td{padding:7px 8px;border-bottom:1px solid var(--line);color:var(--ink)}
-.lhist-t .dn,.lhist-foot .dn{color:#16a06a;font-weight:700}
-.lhist-t .up,.lhist-foot .up{color:#d2492f;font-weight:700}
-.lhist-foot{margin-top:10px;font-size:12.5px;color:var(--mut);font-weight:600}
-.lhist-lock{position:relative;border:1px dashed var(--line2);border-radius:12px;padding:20px;text-align:center;background:var(--card2)}
-.lhist-lock .ic{font-size:22px;margin-bottom:6px}
-.lhist-lock h4{font-size:13.5px;font-weight:800;margin:0 0 4px;color:var(--ink)}
-.lhist-lock p{font-size:12.5px;color:var(--mut);margin:0 0 12px}
-@media(max-width:560px){
-.lrow-head{gap:10px;padding:9px 10px}
-.lthumb{width:66px;height:50px}
-.ltitle{font-size:13.5px}.lprice{font-size:15px}.lspecs{font-size:11px}
-.lright{gap:8px}.lflag{display:none}
-}
-</style>
 </body>
 </html>
