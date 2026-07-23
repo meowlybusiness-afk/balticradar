@@ -243,6 +243,10 @@
   .foot .fb b{color:#fff;font-size:16px}
   .foot a{color:var(--gold);text-decoration:none}
   .foot .src{font-size:12.5px;color:#7c8799}
+  /* RED disclaimer callout (data-history start + ownership/credit) */
+  .br-disc{display:block;background:rgba(210,73,47,.08);border:1px solid rgba(210,73,47,.35);border-left:4px solid #d2492f;color:#d2492f;border-radius:10px;padding:11px 14px;font-size:13px;font-weight:600;line-height:1.55;margin:0 0 14px}
+  .br-disc a{color:#d2492f;text-decoration:underline}
+  .foot .br-disc{margin-top:6px;max-width:520px}
   .cookie{position:fixed;bottom:0;left:0;right:0;z-index:70;background:var(--dark);color:#e4edfb;
     padding:14px 18px;display:none;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;box-shadow:0 -4px 22px rgba(0,0,0,.3)}
   .cookie.show{display:flex}
@@ -297,8 +301,10 @@
     padding:9px 0;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
   #msdd .msdd-ok{flex:2;background:var(--accent);color:#fff;border:none;border-radius:10px;
     padding:10px 8px;font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit}
-  #msdd .msdd-clr{flex:1;background:transparent;color:var(--ink);border:1px solid var(--line);
-    border-radius:10px;padding:10px 8px;font-weight:700;font-size:13px;cursor:pointer;font-family:inherit}
+  /* RED exit/cancel action so it clearly reads as the close/clear control next to "Gatavs" */
+  #msdd .msdd-clr{flex:1;background:rgba(210,73,47,.07);color:#d2492f;border:1px solid rgba(210,73,47,.55);
+    border-radius:10px;padding:10px 8px;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
+  #msdd .msdd-clr:hover{background:rgba(210,73,47,.14)}
   #msdd .msdd-empty{color:var(--mut,#888);font-size:13px;padding:10px 4px}
 </style>
 </head>
@@ -466,6 +472,7 @@
 <footer><div class="foot">
   <div class="fb"><b>BalticRadar</b><br><span id="footAbout">Visi Baltijas lietoto auto sludinājumi vienuviet — ss.lv, autoplius.lt un auto24.ee — ar cenu vēsturi un godīgu cenas vērtējumu.</span></div>
   <div class="fb"><span id="footSrc" class="src"></span></div>
+  <div class="fb" style="flex-basis:100%;max-width:100%"><span id="footDisc" class="br-disc"></span></div>
 </div></footer>
 <div class="cookie" id="cookie"><span id="cookieTxt"></span><div style="display:flex;gap:9px">
   <button class="dec" id="cookieDec" onclick="cookieChoice(0)"></button>
@@ -1506,10 +1513,16 @@ async function loadHistory(carId){
     // anchor the line to the ad's ORIGINAL posting date on the source site: extend the earliest
     // known price back to when the ad was placed (we can't know prices from before we first saw it).
     const _car=(allCars||[]).concat(sampleCars||[]).find(c=>c.car_id===carId);
-    if(_car&&_car.posted&&pts.length&&new Date(_car.posted)<new Date(pts[0].ts)){
-      pts=[{ts:_car.posted,price:pts[0].price,mileage:pts[0].mileage},...pts];
+    // Anchor the earliest price point back to when the ad was first placed / first seen, so the tracked
+    // span is real and never collapses to 0 days when there is only a single recorded price point.
+    const _anchorCand=[_car&&_car.posted,_car&&_car.first_seen].filter(Boolean).map(d=>new Date(d)).filter(d=>!isNaN(d.getTime()));
+    const _anchor=_anchorCand.length?new Date(Math.min.apply(null,_anchorCand.map(d=>d.getTime()))):null;
+    if(_anchor&&pts.length&&_anchor<new Date(pts[0].ts)){
+      pts=[{ts:_anchor.toISOString(),price:pts[0].price,mileage:pts[0].mileage},...pts];
     }
-    if(!pts.length){box.innerHTML=`<h3>${T().priceHist}</h3><div class="muted">${T().histOne}</div>`;return;}
+    const _disc=(CONTENT[lang]||CONTENT.en).discHist||"";
+    const _discHtml=_disc?`<div class="br-disc">${_disc}</div>`:"";
+    if(!pts.length){box.innerHTML=`<h3>${T().priceHist}</h3>${_discHtml}<div class="muted">${T().histOne}</div>`;return;}
     const first=pts[0],last=pts[pts.length-1];
     const dp=last.price-first.price,dpct=first.price?Math.round(dp/first.price*100):0;
     const pchg=document.getElementById("pchgcard");
@@ -1519,17 +1532,21 @@ async function loadHistory(carId){
     const gpts=pts.length<2?[pts[0],Object.assign({},pts[0])]:pts;
     const dm=(last.mileage!=null&&first.mileage!=null)?last.mileage-first.mileage:null;
     const pcl=dp<0?"dn":dp>0?"up":"";
-    const summary=pts.length<2?"":`<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:2px 0 12px;font-size:13.5px;color:var(--mut)">
+    // Duration = whole days from the earliest tracked date to now (never 0 for an older ad, even with one price point)
+    const _days=Math.max(0,Math.round((Date.now()-new Date(first.ts).getTime())/86400000));
+    const _dlbl=(_days%10===1&&_days%100!==11)?'diena':'dienas';
+    const summary=`<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:2px 0 12px;font-size:13.5px;color:var(--mut)">
       <span>Kopš ${dt(first.ts)}:</span>
       <span class="chg ${pcl}" style="font-weight:800">Cena ${dp>0?'+':''}${eur(dp)} (${dp>0?'+':''}${dpct}%)</span>
-      ${dm!=null?`<span style="font-weight:800;color:var(--ink)">Nobraukums ${dm>0?'+':''}${km(dm)}</span>`:''}</div>`;
+      ${dm!=null?`<span style="font-weight:800;color:var(--ink)">Nobraukums ${dm>0?'+':''}${km(dm)}</span>`:''}
+      <span style="font-weight:800;color:var(--ink)">Ilgums: ${_days} ${_dlbl}</span></div>`;
     const rows=pts.slice().reverse().map((p,i,arr)=>{
       const prev=arr[i+1];const ch=prev?p.price-prev.price:null;
       const cl=ch==null?"":ch<0?"dn":"up";const sign=ch>0?"+":"";
       const mp=prev&&p.mileage!=null&&prev.mileage!=null?p.mileage-prev.mileage:null;
       const mtxt=p.mileage!=null?km(p.mileage)+(mp?` (${mp>0?'+':''}${km(mp)})`:""):"";
       return `<tr><td>${dt(p.ts)}</td><td><b>${eur(p.price)}</b></td><td class="chg ${cl}">${ch!=null?sign+eur(ch):""}</td><td>${mtxt}</td></tr>`;}).join("");
-    box.innerHTML=`<h3>Cenu un nobraukuma vēsture</h3>${summary}${sparkline(gpts)}<table class="htable">${rows}</table>`;
+    box.innerHTML=`<h3>Cenu un nobraukuma vēsture</h3>${_discHtml}${summary}${sparkline(gpts)}<table class="htable">${rows}</table>`;
   }catch(e){box.innerHTML="";}
 }
 const TXC=JSON.parse(localStorage.getItem("br_tx")||"{}");
@@ -1665,11 +1682,11 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();
    Zero selections = NO FILTER (match all) - inPred() turns [] into "", never an empty IN-list.
    ========================================================================= */
 const MSTXT={
- lv:{clr:"Notīrīt",find:"Meklēt…",none:"Nav opciju",done:"Gatavs"},
- en:{clr:"Clear",find:"Search…",none:"No options",done:"Done"},
- ru:{clr:"Очистить",find:"Поиск…",none:"Нет опций",done:"Готово"},
- lt:{clr:"Išvalyti",find:"Ieškoti…",none:"Nėra parinkčių",done:"Baigta"},
- et:{clr:"Tühjenda",find:"Otsi…",none:"Valikuid pole",done:"Valmis"}};
+ lv:{clr:"Notīrīt",find:"Meklēt…",none:"Nav opciju",done:"Gatavs",mk1:"Vispirms izvēlies marku"},
+ en:{clr:"Clear",find:"Search…",none:"No options",done:"Done",mk1:"Choose a brand first"},
+ ru:{clr:"Очистить",find:"Поиск…",none:"Нет опций",done:"Готово",mk1:"Сначала выберите марку"},
+ lt:{clr:"Išvalyti",find:"Ieškoti…",none:"Nėra parinkčių",done:"Baigta",mk1:"Pirmiausia pasirinkite markę"},
+ et:{clr:"Tühjenda",find:"Otsi…",none:"Valikuid pole",done:"Valmis",mk1:"Vali esmalt mark"}};
 const MST=()=>MSTXT[lang]||MSTXT.en;
 const MSDEF={
  make: {ph:()=>T().allMakes||"All makes",   search:true},
@@ -1746,6 +1763,8 @@ function _msDDEl(){
 }
 function msPaintBody(q){
   const dd=_msDDEl(), body=dd.querySelector("#msddB");
+  // MANDATORY mark-before-model: the model picker stays empty until a brand is chosen
+  if(_msOpen==="model" && !_arr(F.make).length){ body.innerHTML='<div class="msdd-empty">'+esc(MST().mk1)+'</div>'; return; }
   const groups=msOptions(_msOpen);
   const s=(q||"").trim().toLowerCase();
   let html="", any=false;
@@ -1774,7 +1793,7 @@ function msOpen(k,btn){
   if(_msOpen===k){msClose();return;}
   _msOpen=k; _msSel=_arr(F[k]).slice();
   const dd=_msDDEl(), si=dd.querySelector("#msddS");
-  dd.classList.toggle("msdd-list", k==="model");   // models render as a vertical multi-select list, not a chip grid
+  dd.classList.toggle("msdd-list", k==="model"||k==="make");   // brand AND model render as a vertical multi-select list, not a chip grid
   dd.querySelector("#msddCLR").textContent=MST().clr;
   dd.querySelector("#msddDONE").textContent=MST().done;
   si.value=""; si.placeholder=MST().find;
@@ -1883,7 +1902,7 @@ const CONTENT={
   howT:"Kā tas strādā",howS:"No meklēšanas līdz darījumam dažos soļos.",
   steps:[["Meklē","Filtrē pēc markas, modeļa, cenas, gada un degvielas visā Baltijā."],["Salīdzini","Skati cenas vērtējumu un līdzīgus piedāvājumus, lai saprastu tirgus cenu."],["Seko cenai","Redzi cenas vēsturi un pamani, kad pārdevējs pazemina cenu."],["Saņem paziņojumus","Piesakies un saņem e-pastu, tiklīdz parādās piemērots auto."],["Sazinies","Atver oriģinālo sludinājumu un sazinies ar pārdevēju tieši."]],
   faqT:"Biežāk uzdotie jautājumi",
-  faq:[["Cik bieži dati tiek atjaunoti?","Latvijas (ss.lv) sludinājumi tiek pārbaudīti ik pēc dažām minūtēm visu diennakti. Lietuvas un Igaunijas dati tiek atjaunoti vairākas reizes dienā."],["Vai cenas vērtējums ir precīzs?","Tā ir aplēse, balstīta uz līdzīgiem sludinājumiem mūsu datubāzē. Jo vairāk auto, jo precīzāk. Tas neaizstāj auto klātienes pārbaudi."],["Vai redzēšu VIN numuru?","Detaļās rādām pieejamo informāciju. Pilnu VIN un vēstures pārbaudi parasti nodrošina pats portāls vai atsevišķs vēstures serviss."],["Vai lapa ir bez maksas?","Jā, auto meklēšana un cenu vēstures skatīšana ir bez maksas."],["No kurienes nāk sludinājumi?","No ss.lv (Latvija), autoplius.lt (Lietuva) un auto24.ee (Igaunija). Katrā sludinājumā ir saite uz oriģinālu."]],
+  faq:[["Cik bieži dati tiek atjaunoti?","Latvijas (ss.lv) sludinājumi tiek pārbaudīti ik pēc dažām minūtēm visu diennakti. Lietuvas un Igaunijas dati tiek atjaunoti vairākas reizes dienā."],["Vai cenas vērtējums ir precīzs?","Tā ir aplēse, balstīta uz līdzīgiem sludinājumiem mūsu datubāzē. Jo vairāk auto, jo precīzāk. Tas neaizstāj auto klātienes pārbaudi."],["Vai redzēšu VIN numuru?","Detaļās rādām pieejamo informāciju. Pilnu VIN un vēstures pārbaudi parasti nodrošina pats portāls vai atsevišķs vēstures serviss."],["Vai lapa ir bez maksas?","Jā. Meklēt auto un skatīt visus Baltijas sludinājumus ar filtriem ir bez maksas. Premium versija paredzēta tiem, kas grib paziņojumus par konkrētiem modeļiem un piekļuvi cenas un nobraukuma vēsturei."],["No kurienes nāk sludinājumi?","No trim lielākajiem Baltijas portāliem — ss.lv (Latvija), autoplius.lt (Lietuva) un auto24.ee (Igaunija) — apkopotiem vienā vietā."],["Kam pieder dati?","Visi sludinājumi un to saturs pieder to autoriem un attiecīgajiem portāliem — ss.lv, autoplius.lt un auto24.ee. Baltic Radar tos neveido, bet tikai apkopo publiski pieejamos sludinājumus vienuviet un vienmēr norāda oriģinālo avotu, novirzot uz konkrēto portālu. Visi nopelni un tiesības pieder šiem portāliem kā datu pirmavotiem."],["No kura brīža redzamas cenas izmaiņas?","Baltic Radar rāda cenas un nobraukuma izmaiņas tikai no brīža, kad sludinājums parādās mūsu platformā. Izmaiņas, kas notikušas agrāk, netiek attēlotas."]],discHist:"⚠️ Cenu un nobraukuma vēsture pieejama no 2026. gada 25. jūnija — datiem pirms šī datuma mums nav.",discOwn:"⚠️ Baltic Radar nav datu īpašnieks. Visi sludinājumi pieder to autoriem un portāliem ss.lv, autoplius.lt un auto24.ee. Apmeklējiet oriģinālo avotu.",
   footAbout:"Visi Baltijas lietoto auto sludinājumi vienuviet — ss.lv, autoplius.lt un auto24.ee — ar cenu vēsturi un godīgu cenas vērtējumu.",footSrc:"Dati: ss.lv · autoplius.lt · auto24.ee · © BalticRadar"},
  en:{nav:["Listings","How it works","FAQ"],cta:["Browse listings","Get alerts"],
   makesT:"Popular makes",makesS:"Pick a make and instantly see every available listing across the Baltics.",
@@ -1895,7 +1914,7 @@ const CONTENT={
   howT:"How it works",howS:"From search to deal in a few steps.",
   steps:[["Search","Filter by make, model, price, year and fuel across the Baltics."],["Compare","See the price rating and similar offers to understand the market price."],["Track price","View the price history and notice when a seller lowers the price."],["Get alerts","Subscribe and get an email as soon as a matching car appears."],["Contact","Open the original listing and contact the seller directly."]],
   faqT:"Frequently asked questions",
-  faq:[["How often is data updated?","Latvian (ss.lv) listings are checked every few minutes around the clock. Lithuanian and Estonian data is refreshed several times a day."],["Is the price rating accurate?","It is an estimate based on similar listings in our database. The more cars, the better. It does not replace inspecting the car in person."],["Will I see the VIN?","We show the available info in the details. The full VIN and history check are usually provided by the portal itself or a separate history service."],["Is the site free?","Yes, searching cars and viewing price history is free."],["Where do listings come from?","From ss.lv (Latvia), autoplius.lt (Lithuania) and auto24.ee (Estonia). Each listing links to the original."]],
+  faq:[["How often is data updated?","Latvian (ss.lv) listings are checked every few minutes around the clock. Lithuanian and Estonian data is refreshed several times a day."],["Is the price rating accurate?","It is an estimate based on similar listings in our database. The more cars, the better. It does not replace inspecting the car in person."],["Will I see the VIN?","We show the available info in the details. The full VIN and history check are usually provided by the portal itself or a separate history service."],["Is the site free?","Yes. Searching cars and viewing all Baltic listings with filters is free. The Premium version is for those who want alerts about specific models and access to price and mileage history."],["Where do listings come from?","From the three largest Baltic portals — ss.lv (Latvia), autoplius.lt (Lithuania) and auto24.ee (Estonia) — gathered in one place."],["Who owns the data?","All listings and their content belong to their authors and the respective portals — ss.lv, autoplius.lt and auto24.ee. Baltic Radar does not create them; it only gathers publicly available listings in one place and always indicates the original source, linking to the specific portal. All credit and rights belong to these portals as the primary sources of the data."],["From what point are price changes shown?","Baltic Radar shows price and mileage changes only from the moment a listing appears on our platform. Changes that happened earlier are not displayed."]],discHist:"⚠️ Price and mileage history is available only from 25 June 2026 — we have no data from before that date.",discOwn:"⚠️ Baltic Radar is not the owner of the data. All listings belong to their authors and to the portals ss.lv, autoplius.lt and auto24.ee. Please visit the original source.",
   footAbout:"All Baltic used-car listings in one place — ss.lv, autoplius.lt and auto24.ee — with price history and a fair price rating.",footSrc:"Data: ss.lv · autoplius.lt · auto24.ee · © BalticRadar"},
  ru:{nav:["Объявления","Как это работает","Вопросы"],cta:["Смотреть объявления","Уведомления"],
   makesT:"Популярные марки",makesS:"Выберите марку и сразу увидите все доступные объявления по всей Балтии.",
@@ -1907,7 +1926,7 @@ const CONTENT={
   howT:"Как это работает",howS:"От поиска до сделки за несколько шагов.",
   steps:[["Поиск","Фильтруйте по марке, модели, цене, году и топливу по всей Балтии."],["Сравните","Смотрите оценку цены и похожие предложения, чтобы понять рыночную цену."],["Следите за ценой","Смотрите историю цены и замечайте, когда продавец её снижает."],["Уведомления","Подпишитесь и получайте письмо, как только появится подходящее авто."],["Связь","Откройте оригинальное объявление и свяжитесь с продавцом напрямую."]],
   faqT:"Частые вопросы",
-  faq:[["Как часто обновляются данные?","Латвийские (ss.lv) объявления проверяются каждые несколько минут круглосуточно. Данные Литвы и Эстонии обновляются несколько раз в день."],["Точна ли оценка цены?","Это оценка на основе похожих объявлений в нашей базе. Чем больше авто, тем точнее. Она не заменяет осмотр авто лично."],["Увижу ли я VIN?","В деталях показываем доступную информацию. Полный VIN и проверку истории обычно предоставляет сам портал или отдельный сервис истории."],["Сайт бесплатный?","Да, поиск авто и просмотр истории цен бесплатны."],["Откуда объявления?","С ss.lv (Латвия), autoplius.lt (Литва) и auto24.ee (Эстония). В каждом объявлении есть ссылка на оригинал."]],
+  faq:[["Как часто обновляются данные?","Латвийские (ss.lv) объявления проверяются каждые несколько минут круглосуточно. Данные Литвы и Эстонии обновляются несколько раз в день."],["Точна ли оценка цены?","Это оценка на основе похожих объявлений в нашей базе. Чем больше авто, тем точнее. Она не заменяет осмотр авто лично."],["Увижу ли я VIN?","В деталях показываем доступную информацию. Полный VIN и проверку истории обычно предоставляет сам портал или отдельный сервис истории."],["Сайт бесплатный?","Да. Поиск авто и просмотр всех объявлений Балтии с фильтрами бесплатны. Premium-версия — для тех, кто хочет уведомления о конкретных моделях и доступ к истории цены и пробега."],["Откуда объявления?","С трёх крупнейших порталов Балтии — ss.lv (Латвия), autoplius.lt (Литва) и auto24.ee (Эстония) — собранных в одном месте."],["Кому принадлежат данные?","Все объявления и их содержание принадлежат их авторам и соответствующим порталам — ss.lv, autoplius.lt и auto24.ee. Baltic Radar их не создаёт, а лишь собирает публично доступные объявления в одном месте и всегда указывает оригинальный источник, направляя на конкретный портал. Все заслуги и права принадлежат этим порталам как первоисточникам данных."],["С какого момента показываются изменения цены?","Baltic Radar показывает изменения цены и пробега только с момента, когда объявление появляется на нашей платформе. Изменения, произошедшие ранее, не отображаются."]],discHist:"⚠️ История цены и пробега доступна только с 25 июня 2026 года — данных за более ранний период у нас нет.",discOwn:"⚠️ Baltic Radar не является владельцем данных. Все объявления принадлежат их авторам и порталам ss.lv, autoplius.lt и auto24.ee. Посетите оригинальный источник.",
   footAbout:"Все объявления о б/у авто Балтии в одном месте — ss.lv, autoplius.lt и auto24.ee — с историей цен и честной оценкой цены.",footSrc:"Данные: ss.lv · autoplius.lt · auto24.ee · © BalticRadar"},
  lt:{nav:["Skelbimai","Kaip veikia","DUK"],cta:["Žiūrėti skelbimus","Gauti pranešimus"],
   makesT:"Populiariausios markės",makesS:"Pasirink markę ir iškart matyk visus skelbimus visoje Baltijoje.",
@@ -1919,7 +1938,7 @@ const CONTENT={
   howT:"Kaip veikia",howS:"Nuo paieškos iki sandorio per kelis žingsnius.",
   steps:[["Ieškok","Filtruok pagal markę, modelį, kainą, metus ir kurą visoje Baltijoje."],["Palygink","Žiūrėk kainos vertinimą ir panašius pasiūlymus, kad suprastum rinkos kainą."],["Sek kainą","Matyk kainos istoriją ir pastebėk, kai pardavėjas ją sumažina."],["Gauk pranešimus","Užsiprenumeruok ir gauk laišką, vos atsiradus tinkamam auto."],["Susisiek","Atidaryk originalų skelbimą ir susisiek su pardavėju tiesiogiai."]],
   faqT:"Dažniausiai užduodami klausimai",
-  faq:[["Kaip dažnai atnaujinami duomenys?","Latvijos (ss.lv) skelbimai tikrinami kas kelias minutes visą parą. Lietuvos ir Estijos duomenys atnaujinami kelis kartus per dieną."],["Ar kainos vertinimas tikslus?","Tai įvertis, paremtas panašiais skelbimais mūsų bazėje. Kuo daugiau auto, tuo tiksliau. Jis nepakeičia automobilio apžiūros vietoje."],["Ar matysiu VIN?","Detalėse rodome prieinamą informaciją. Pilną VIN ir istorijos patikrą paprastai teikia pats portalas ar atskira istorijos paslauga."],["Ar svetainė nemokama?","Taip, automobilių paieška ir kainų istorijos peržiūra yra nemokama."],["Iš kur skelbimai?","Iš ss.lv (Latvija), autoplius.lt (Lietuva) ir auto24.ee (Estija). Kiekviename skelbime yra nuoroda į originalą."]],
+  faq:[["Kaip dažnai atnaujinami duomenys?","Latvijos (ss.lv) skelbimai tikrinami kas kelias minutes visą parą. Lietuvos ir Estijos duomenys atnaujinami kelis kartus per dieną."],["Ar kainos vertinimas tikslus?","Tai įvertis, paremtas panašiais skelbimais mūsų bazėje. Kuo daugiau auto, tuo tiksliau. Jis nepakeičia automobilio apžiūros vietoje."],["Ar matysiu VIN?","Detalėse rodome prieinamą informaciją. Pilną VIN ir istorijos patikrą paprastai teikia pats portalas ar atskira istorijos paslauga."],["Ar svetainė nemokama?","Taip. Automobilių paieška ir visų Baltijos skelbimų peržiūra su filtrais yra nemokama. Premium versija skirta tiems, kurie nori pranešimų apie konkrečius modelius ir prieigos prie kainos bei ridos istorijos."],["Iš kur skelbimai?","Iš trijų didžiausių Baltijos portalų — ss.lv (Latvija), autoplius.lt (Lietuva) ir auto24.ee (Estija) — surinktų vienoje vietoje."],["Kam priklauso duomenys?","Visi skelbimai ir jų turinys priklauso jų autoriams ir atitinkamiems portalams — ss.lv, autoplius.lt ir auto24.ee. Baltic Radar jų nekuria, o tik surenka viešai prieinamus skelbimus vienoje vietoje ir visada nurodo originalų šaltinį, nukreipdamas į konkretų portalą. Visi nuopelnai ir teisės priklauso šiems portalams kaip pirminiams duomenų šaltiniams."],["Nuo kada rodomi kainos pokyčiai?","Baltic Radar rodo kainos ir ridos pokyčius tik nuo momento, kai skelbimas atsiranda mūsų platformoje. Anksčiau įvykę pokyčiai nerodomi."]],discHist:"⚠️ Kainos ir ridos istorija pasiekiama tik nuo 2026 m. birželio 25 d. — ankstesnių duomenų neturime.",discOwn:"⚠️ Baltic Radar nėra duomenų savininkas. Visi skelbimai priklauso jų autoriams ir portalams ss.lv, autoplius.lt ir auto24.ee. Apsilankykite originaliame šaltinyje.",
   footAbout:"Visi Baltijos naudotų auto skelbimai vienoje vietoje — ss.lv, autoplius.lt ir auto24.ee — su kainų istorija ir sąžiningu kainos vertinimu.",footSrc:"Duomenys: ss.lv · autoplius.lt · auto24.ee · © BalticRadar"},
  et:{nav:["Kuulutused","Kuidas töötab","KKK"],cta:["Vaata kuulutusi","Saa teateid"],
   makesT:"Populaarsed margid",makesS:"Vali mark ja näe kohe kõiki saadaolevaid kuulutusi üle Baltikumi.",
@@ -1931,7 +1950,7 @@ const CONTENT={
   howT:"Kuidas see töötab",howS:"Otsingust tehinguni mõne sammuga.",
   steps:[["Otsi","Filtreeri margi, mudeli, hinna, aasta ja kütuse järgi üle Baltikumi."],["Võrdle","Vaata hinnahinnangut ja sarnaseid pakkumisi, et mõista turuhinda."],["Jälgi hinda","Vaata hinnaajalugu ja märka, kui müüja hinda langetab."],["Saa teateid","Telli ja saa e-kiri kohe, kui sobiv auto ilmub."],["Võta ühendust","Ava algne kuulutus ja võta müüjaga otse ühendust."]],
   faqT:"Korduma kippuvad küsimused",
-  faq:[["Kui sageli andmeid uuendatakse?","Läti (ss.lv) kuulutusi kontrollitakse iga paari minuti tagant ööpäev läbi. Leedu ja Eesti andmeid värskendatakse mitu korda päevas."],["Kas hinnahinnang on täpne?","See on hinnang, mis põhineb sarnastel kuulutustel meie andmebaasis. Mida rohkem autosid, seda täpsem. See ei asenda auto kohapealset ülevaatust."],["Kas näen VIN-koodi?","Näitame detailides saadaolevat infot. Täis-VIN-i ja ajaloo kontrolli pakub tavaliselt portaal ise või eraldi ajalooteenus."],["Kas sait on tasuta?","Jah, autode otsimine ja hinnaajaloo vaatamine on tasuta."],["Kust kuulutused pärinevad?","Saitidelt ss.lv (Läti), autoplius.lt (Leedu) ja auto24.ee (Eesti). Iga kuulutus viitab originaalile."]],
+  faq:[["Kui sageli andmeid uuendatakse?","Läti (ss.lv) kuulutusi kontrollitakse iga paari minuti tagant ööpäev läbi. Leedu ja Eesti andmeid värskendatakse mitu korda päevas."],["Kas hinnahinnang on täpne?","See on hinnang, mis põhineb sarnastel kuulutustel meie andmebaasis. Mida rohkem autosid, seda täpsem. See ei asenda auto kohapealset ülevaatust."],["Kas näen VIN-koodi?","Näitame detailides saadaolevat infot. Täis-VIN-i ja ajaloo kontrolli pakub tavaliselt portaal ise või eraldi ajalooteenus."],["Kas sait on tasuta?","Jah. Autode otsimine ja kõigi Balti kuulutuste vaatamine filtritega on tasuta. Premium-versioon on neile, kes soovivad teavitusi konkreetsete mudelite kohta ning ligipääsu hinna- ja läbisõiduajaloole."],["Kust kuulutused pärinevad?","Kolmest suurimast Balti portaalist — ss.lv (Läti), autoplius.lt (Leedu) ja auto24.ee (Eesti) — koondatuna ühte kohta."],["Kellele andmed kuuluvad?","Kõik kuulutused ja nende sisu kuuluvad nende autoritele ja vastavatele portaalidele — ss.lv, autoplius.lt ja auto24.ee. Baltic Radar ei loo neid, vaid üksnes koondab avalikult kättesaadavad kuulutused ühte kohta ja viitab alati algsele allikale, suunates konkreetsele portaalile. Kõik au ja õigused kuuluvad neile portaalidele kui andmete esmastele allikatele."],["Mis hetkest näidatakse hinnamuutusi?","Baltic Radar näitab hinna- ja läbisõidumuutusi alles hetkest, mil kuulutus ilmub meie platvormile. Varem toimunud muutusi ei kuvata."]],discHist:"⚠️ Hinna- ja läbisõiduajalugu on saadaval alates 25. juunist 2026 — varasemaid andmeid meil ei ole.",discOwn:"⚠️ Baltic Radar ei ole andmete omanik. Kõik kuulutused kuuluvad nende autoritele ja portaalidele ss.lv, autoplius.lt ja auto24.ee. Külastage algset allikat.",
   footAbout:"Kõik Balti kasutatud autode kuulutused ühes kohas — ss.lv, autoplius.lt ja auto24.ee — koos hinnaajaloo ja ausa hinnahinnanguga.",footSrc:"Andmed: ss.lv · autoplius.lt · auto24.ee · © BalticRadar"}
 };
 function setT(id,v){const el=document.getElementById(id);if(el)el.textContent=v;}
@@ -1939,7 +1958,7 @@ function renderContent(){
   const c=CONTENT[lang]||CONTENT.en;
   setT("navList",c.nav[0]);setT("navHow",c.nav[1]);setT("navFaq",c.nav[2]);
   setT("ctaBrowse",c.cta[0]);setT("ctaAlerts",c.cta[1]);
-  setT("footAbout",c.footAbout);setT("footSrc",c.footSrc);
+  setT("footAbout",c.footAbout);setT("footSrc",c.footSrc);setT("footDisc",c.discOwn);
   const counts={};AGG().forEach(x=>{if(x.make)counts[x.make]=(counts[x.make]||0)+1;});
   const top=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]).slice(0,16);
   const chips=top.map(m=>`<span class="chip" onclick='pickMake(${JSON.stringify(m)})'>${m} <b style="color:var(--mut);font-weight:600">${counts[m]}</b></span>`).join("");
@@ -1955,7 +1974,7 @@ function renderContent(){
       <div class="pc"><div class="pccard pro"><h4>${c.proT}</h4><ul>${pros}</ul></div><div class="pccard con"><h4>${c.conT}</h4><ul>${cons}</ul></div></div>
     </div></section>
     <section class="section reveal" id="s-how"><div class="wrap"><h2 class="secttl">${c.howT}</h2><p class="secsub">${c.howS}</p><div class="steps">${steps}</div></div></section>
-    <section class="section reveal alt" id="s-faq"><div class="wrap"><h2 class="secttl">${c.faqT}</h2><div class="faq">${faq}</div></div></section>`;
+    <section class="section reveal alt" id="s-faq"><div class="wrap"><h2 class="secttl">${c.faqT}</h2>${c.discHist?`<div class="br-disc">${c.discHist}</div>`:""}${c.discOwn?`<div class="br-disc">${c.discOwn}</div>`:""}<div class="faq">${faq}</div></div></section>`;
   observeReveals();
 }
 applyI18n();
@@ -2522,6 +2541,8 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 .br2c .t{font-weight:700;font-size:13.5px}
 .br2c .m{font-size:11.5px;color:var(--mut);font-weight:500;margin-top:3px}
 .br2c .p{font-weight:800;font-size:14.5px;margin-top:7px}
+.br2c .br2src{display:block;margin-top:9px;text-align:center;background:var(--accent);color:#fff;border-radius:9px;padding:8px 10px;font-size:12.5px;font-weight:700;text-decoration:none}
+.br2c .br2src:hover{opacity:.88}
 .br2c .br2flag{position:absolute;top:8px;left:8px;z-index:2;display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.92);color:#1d1d1f;border-radius:999px;padding:3px 8px;font-size:10.5px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.15)}
 .br2c .rm{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;
   background:rgba(255,255,255,.94);cursor:pointer;font-size:13px;display:grid;place-items:center}
@@ -2937,7 +2958,7 @@ async function renderFavs(){
   if(!FAV.size){ box.innerHTML='<div class="br2empty"><span class="e">♡</span>Nav saglabātu auto.<br>Nospied sirsniņu uz sludinājuma.</div>'; return; }
   box.innerHTML='<div class="br2empty">Ielādē…</div>';
   var r = await supa.from('v_listings')
-    .select('car_id,make,model,year,last_price,last_mileage,fuel,photos,country').in('car_id',[...FAV]);
+    .select('car_id,make,model,year,last_price,last_mileage,fuel,photos,country,source_url').in('car_id',[...FAV]);
   if(r.error){ box.innerHTML='<div class="br2empty">Kļūda</div>'; return; }
   box.innerHTML = cardsHtml(r.data||[], true);
 }
@@ -2950,7 +2971,12 @@ function cardsHtml(rows, rm){
       + (rm ? '<button class="rm" onclick="event.stopPropagation();BRProfile.unfav(\''+esc(c.car_id)+'\')">✕</button>' : '')
       + '<div class="cb"><div class="t">'+esc(c.make)+' '+esc(c.model)+'</div>'
       + '<div class="m">'+esc(c.year||'')+' · '+(c.last_mileage!=null?nf(c.last_mileage)+' km':'—')+' · '+esc(c.fuel||'')+'</div>'
-      + '<div class="p">'+eur(c.last_price)+'</div></div></div>';
+      + '<div class="p">'+eur(c.last_price)+'</div>'
+      // direct link to the ORIGINAL ad on ss.lv / autoplius.lt / auto24.ee (same source_url the main cards use)
+      + ((c.source_url && c.source_url!=='#')
+          ? '<a class="br2src" href="'+esc(c.source_url)+'" target="_blank" rel="noopener nofollow" onclick="event.stopPropagation()">Atvērt sludinājumu ↗</a>'
+          : '')
+      + '</div></div>';
   }).join('') + '</div>';
 }
 BRProfile.unfav = async function(id){
@@ -3073,9 +3099,11 @@ function msPickedHtml(key){
   }).join('');
 }
 function msAllRow(key, label){
+  // ONE brand per filter: no "select all brands" button in the make field
+  var allBtn = (key==='make') ? '' : '<button type="button" class="br2btn o" onclick="BRProfile.msAll(\''+key+'\')">'+label+'</button>';
   return '<div style="display:flex;gap:8px;margin:2px 0 10px">'
-       + '<button type="button" class="br2btn o" onclick="BRProfile.msAll(\''+key+'\')">'+label+'</button>'
-       + '<button type="button" class="br2btn o" onclick="BRProfile.msNone(\''+key+'\')">Notīrīt</button></div>';
+       + allBtn
+       + '<button type="button" class="br2btn o" style="color:#d2492f;border-color:rgba(210,73,47,.55)" onclick="BRProfile.msNone(\''+key+'\')">Notīrīt</button></div>';
 }
 BRProfile.msAll = async function(key){
   if(key==='model'){
@@ -3104,11 +3132,15 @@ function msWire(box){
   box.querySelectorAll('.br2chip').forEach(function(b){
     b.onclick=function(){
       var k=b.dataset.k, v=b.dataset.v, i=MS[k].indexOf(v);
-      if(i===-1) MS[k].push(v); else MS[k].splice(i,1);
       if(k==='make'){
+        // saved-filter builder: EXACTLY ONE brand per filter (but multiple models under it).
+        MS.make = (i===-1) ? [v] : [];                       // click selects the brand; click again clears it
         MS.model = MS.model.filter(function(mm){ return MS.make.indexOf(mm.split('|')[0])!==-1; });
         msRender('make'); msRender('model');
-      } else msRender(k);
+        return;
+      }
+      if(i===-1) MS[k].push(v); else MS[k].splice(i,1);
+      msRender(k);
     };
   });
 }
@@ -3206,7 +3238,7 @@ async function showForm(name, c, notify, freq){
     '<div class="br2sec">'
     + '<button class="br2back" onclick="BRProfile.cancelForm()">← Atpakaļ uz filtriem</button>'
     + '<h3>'+(EDIT_ID?'Labot filtru':'Jauns filtrs')+'</h3>'
-    + '<div class="s">Marka un modelis ir obligāti. Katrā laukā vari izvēlēties vairākas vērtības.</div>'
+    + '<div class="s">Marka un modelis ir obligāti. Vienam filtram — viena marka, bet vari izvēlēties vairākus modeļus. Pārējos laukos vari izvēlēties vairākas vērtības.</div>'
     + '<div class="br2msg" id="br2m-flt"></div>'
     + '<label class="br2l">Nosaukums</label><input class="br2i" id="f_name" placeholder="Piem. Lēts dīzeļa universālis">'
     + fields
@@ -3333,7 +3365,7 @@ BRProfile.runFilter = async function(id, sort){
     + '<div style="font-size:12px;color:#86868b;font-weight:500;margin-bottom:16px">'+esc(describe(c))+'</div>'
     + '<div id="br2Res"><div class="br2empty">Meklē…</div></div>';
 
-  var q = supa.from('v_listings').select('car_id,make,model,year,last_price,last_mileage,fuel,photos,first_seen,country');
+  var q = supa.from('v_listings').select('car_id,make,model,year,last_price,last_mileage,fuel,photos,first_seen,country,source_url');
   var arr = function(a, one){ return (a && a.length) ? a : (one ? [one] : []); };
   var IN = function(col, vals){ if(vals.length) q = q.in(col, vals); };
   // A saved filter stores the NORMALISED label ("Dīzelis"), but auto24 writes "diesel". Matching the
