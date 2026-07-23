@@ -9,6 +9,41 @@ import os, re, time, json, hashlib, datetime, requests, warnings
 warnings.filterwarnings("ignore")   # keep the log clean (hide harmless deprecation notices)
 from bs4 import BeautifulSoup
 
+# ============================================================ make normalization
+# ONE canonical brand mapping so every source (ss.lv, autoplius, auto24) writes the
+# SAME brand spelling and never reintroduces the duplicates cleaned up in the DB.
+# Match is on the WHOLE trimmed make value, case-insensitive on the variant key, so
+# "Mansory" is NOT folded to "MAN" and "Landini" is NOT folded to "Land Rover".
+# Deliberately NOT normalized (left exactly as scraped): Cupra, VAZ, Lada, Rover,
+# Mercedes-AMG. KGM and SsangYong are kept distinct (not folded into each other).
+# Keep this table IN SYNC with balticradar.py. To extend: add a variant:Canonical line.
+_MAKE_CANON = {
+    "mercedes":  "Mercedes-Benz",
+    "land":      "Land Rover",
+    "seat":      "SEAT",
+    "mini":      "MINI",
+    "alfa":      "Alfa Romeo",
+    "ssangyong": "SsangYong",
+    "ram":       "RAM",
+    "ds":        "DS Automobiles",
+    "man":       "MAN",
+    "aston":     "Aston Martin",
+    "gwm":       "GWM",
+    "lynk":      "Lynk & Co",
+    "uaz":       "UAZ",
+    "mclaren":   "McLaren",
+    "zaz":       "ZAZ",
+    "dfsk":      "DFSK",
+    "kgm":       "KGM",
+    "xev":       "XEV",
+}
+def normalize_make(make):
+    """Canonicalize a brand name to the DB's canonical spelling.
+    Whole-value, case-insensitive match against _MAKE_CANON; any value that is not
+    an exact variant is returned unchanged (preserving None/empty)."""
+    if not make: return make
+    return _MAKE_CANON.get(str(make).strip().lower(), make)
+
 # ============================================================ identity
 PRICE_TOLERANCE = 0.35
 def strong_signal_match(inc, car):
@@ -137,7 +172,7 @@ def sane_price(v):
         return None
     return v if 100 <= v <= 2000000 else None
 
-_AP_PRICE_RE = re.compile(r'class="price"[^>]*>\s*([\d][\d\s ]*)', re.I)
+_AP_PRICE_RE = re.compile(r'class="price"[^>]*>\s*([\d][\d\s ]*)', re.I)
 def _ap_price(html):
     """Current asking price from the main <div class="announcement-price"> block.
 
@@ -470,6 +505,9 @@ if USE_SB:
             if f.get(k) not in (None,""): p[k]=f"eq.{f[k]}"
         return _get("cars",p)
     def save(f):
+        # Canonicalize brand at WRITE time so no source reintroduces duplicate
+        # spellings. Done before dedup (_cands queries by make) and before insert.
+        f["make"]=normalize_make(f.get("make"))
         if has_ad(f["ad_id"]): return "SAME_AD"
         cands=[c for c in _cands(f) if specs_match(f,c)]
         for car in cands:
@@ -600,6 +638,7 @@ else:
     _MEM={"ads":{}}; _CARS={}
     def has_ad(ad_id): return ad_id in _MEM["ads"]
     def save(f):
+        f["make"]=normalize_make(f.get("make"))
         d,cid,_=decide(f,{"ads":_MEM["ads"],"cars":_CARS})
         if d=="NEW_CAR":
             cid=f"car_{f['ad_id']}"; f["car_id"]=cid; f["first_seen"]=now_iso(); f["last_price"]=f.get("price_eur"); f["active"]=True
