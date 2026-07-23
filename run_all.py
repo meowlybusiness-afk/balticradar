@@ -57,22 +57,6 @@ def specs_match(inc, car):
 def price_sane(inc_price, car_price):
     if not inc_price or not car_price: return True
     return car_price*(1-PRICE_TOLERANCE) <= inc_price <= car_price*(1+PRICE_TOLERANCE)
-def engine_l_of(f):
-    """autoplius only ever parses cubic centimetres ("Dzinējs: 1998 cm3"), never litres, so every
-    Lithuanian car landed with engine_l = NULL and was invisible to the "Tilpums no/līdz" filter -
-    combining SUV + automatic + 2.0 L returned ZERO cars. Derive the litres when they are missing."""
-    l = f.get("engine_l")
-    if l not in (None, "", 0):
-        return l
-    cc = f.get("engine_cc")
-    try:
-        cc = int(cc)
-    except (TypeError, ValueError):
-        return None
-    if not 200 <= cc <= 12000:      # obvious mis-parse -> leave it NULL rather than invent a value
-        return None
-    return f"{round(cc/1000.0, 1):.1f}"
-
 def fingerprint(f):
     parts=[(f.get("make") or "").lower().strip(),(f.get("model") or "").lower().strip(),
            str(f.get("year") or ""),str(f.get("engine_cc") or ""),
@@ -172,7 +156,7 @@ def sane_price(v):
         return None
     return v if 100 <= v <= 2000000 else None
 
-_AP_PRICE_RE = re.compile(r'class="price"[^>]*>\s*([\d][\d\s ]*)', re.I)
+_AP_PRICE_RE = re.compile(r'class="price"[^>]*>\s*([\d][\d\s ]*)', re.I)
 def _ap_price(html):
     """Current asking price from the main <div class="announcement-price"> block.
 
@@ -528,7 +512,7 @@ if USE_SB:
         cid=f"car_{f['ad_id']}"
         _post("cars",[{"car_id":cid,"fingerprint":fingerprint(f)[0],"source":f.get("source"),"country":f.get("country"),
             "make":f.get("make"),"model":f.get("model"),"year":f.get("year"),"engine_cc":f.get("engine_cc"),
-            "engine_l":engine_l_of(f),"power_kw":f.get("power_kw"),"fuel":f.get("fuel"),"gearbox":f.get("gearbox"),
+            "engine_l":f.get("engine_l"),"power_kw":f.get("power_kw"),"fuel":f.get("fuel"),"gearbox":f.get("gearbox"),
             "body":f.get("body"),"drivetrain":f.get("drivetrain"),"color":f.get("color"),"owner_code":f.get("owner_code"),
             "vin_prefix":f.get("vin_prefix"),"location":f.get("location"),"photos":f.get("photos") or [],
             "source_url":f.get("source_url"),"description":f.get("description"),"posted":f.get("posted"),"last_price":sane_price(f.get("price_eur")),
@@ -678,21 +662,20 @@ def ss_brand_slugs():
         print("brand list err",repr(e)); return []
 def ss_brand_page(slug,n): return f"{SS_ALL}{slug}/" if n==1 else f"{SS_ALL}{slug}/page{n}.html"
 
-def run():
-    if USE_SB and os.environ.get("REACTIVATE")=="1":
-        try:
-            _patch("cars",{"active":"eq.false"},{"active":True}); _patch("ads",{"active":"eq.false"},{"active":True})
-            print("REACTIVATE: falsely-hidden cars set back to active")
-        except Exception as e: print("reactivate err",repr(e))
-    new=seen=0; seen_ids=set()
-    for n in range(1,SS_PAGES+1):
+def scan_today(pages):
+    """Light freshness pass: scan the newest ss.lv 'today' listing pages (page 1 =
+    newest first) with per-listing detail fetch. Reuses save()/has_ad() so brand
+    normalization, dedup and upsert behave EXACTLY as in run(). Cheap enough to run
+    every ~60-90s so brand-new listings land within one pass. Returns (new, seen_ids)."""
+    new=0; seen_ids=set()
+    for n in range(1,pages+1):
         try: r=_ss.get(ss_page(n),timeout=25); html=r.text
         except Exception as e: print("ss.lv page",n,"ERR",e); break
         rows=ss_list(html)["ads"]
         print(f"ss.lv page {n}: HTTP {r.status_code}, {len(rows)} rows")
         if not rows: break
         for f in rows:
-            seen+=1; seen_ids.add(f["ad_id"])
+            seen_ids.add(f["ad_id"])
             if has_ad(f["ad_id"]): continue
             f["source"]="ss.lv"
             if SS_DETAIL:
@@ -710,6 +693,18 @@ def run():
             try: save(f); new+=1
             except Exception as e: print("  skip",f["ad_id"],repr(e))
         time.sleep(PAUSE)
+    return new, seen_ids
+
+def run():
+    if USE_SB and os.environ.get("REACTIVATE")=="1":
+        try:
+            _patch("cars",{"active":"eq.false"},{"active":True}); _patch("ads",{"active":"eq.false"},{"active":True})
+            print("REACTIVATE: falsely-hidden cars set back to active")
+        except Exception as e: print("reactivate err",repr(e))
+    new=seen=0; seen_ids=set()
+    # newest 'today' pages first (page 1 = brand-new listings) - factored out so the
+    # FAST_LOOP job can call the same code path every ~90s without the heavy sweep below.
+    _n,_ids=scan_today(SS_PAGES); new+=_n; seen_ids|=_ids; seen+=len(_ids)
     # full-catalogue sweep across all brands (list-level only, fast, no detail fetch)
     if os.environ.get("SS_FULL")=="1":
         brands=ss_brand_slugs()
@@ -800,8 +795,38 @@ def run():
     if not USE_SB: export_json()
 
 if __name__=="__main__":
+    fast=int(os.environ.get("FAST_LOOP_MIN",0))
     loop=int(os.environ.get("LOOP_MINUTES",0))
-    if loop>0:
+    if fast>0:
+        # Self-sustaining freshness loop for a single GitHub Actions job.
+        # GitHub throttles the */5 schedule to ~1 trigger every 1-3 h, so instead of
+        # relying on frequent triggers we keep ONE job alive: scan the newest pages
+        # every FAST_SLEEP seconds (so new listings land within ~1 pass) and fold in
+        # the heavy full sweep / backfill / deactivate every HEAVY_EVERY passes.
+        fp=int(os.environ.get("FAST_PAGES",2))
+        fs=int(os.environ.get("FAST_SLEEP",90))
+        he=int(os.environ.get("HEAVY_EVERY",20))
+        end=time.time()+fast*60; k=0; heavy_done=False
+        print(f"FAST_LOOP: {fast} min budget, newest {fp} pages every {fs}s, heavy sweep every {he} passes")
+        while time.time()<end:
+            k+=1
+            try:
+                nw,ids=scan_today(fp)
+                if ids: bump_seen(ids)
+                print(f"fast pass {k}: new={nw}, seen={len(ids)}")
+            except Exception as e: print("fast pass error:",repr(e))
+            if he>0 and k%he==0:
+                print(f"----- heavy sweep at fast pass {k} -----")
+                try: run(); heavy_done=True
+                except Exception as e: print("heavy run error:",repr(e))
+            if time.time()>=end: break
+            time.sleep(fs)
+        if not heavy_done:
+            # guarantee the sweep/backfill/deactivate runs at least once per job
+            try: run()
+            except Exception as e: print("final heavy run error:",repr(e))
+        print(f"FAST_LOOP done after {k} passes")
+    elif loop>0:
         print(f"LOOP MODE every {loop} min. Ctrl+C to stop."); k=0
         while True:
             k+=1; print(f"\n===== cycle {k} =====")
