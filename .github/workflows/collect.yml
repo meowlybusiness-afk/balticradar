@@ -1,15 +1,26 @@
 name: BalticRadar collect (ss.lv)
 
-# ss.lv only - direct + free, no proxy. Runs every 5 min in GitHub's cloud; PC can be OFF.
+# ss.lv only - direct + free, no proxy. Runs in GitHub's cloud; PC can be OFF.
+# NOTE: GitHub HEAVILY throttles high-frequency schedules - the "*/5" below actually
+# fires only ~once every 1-3 h on this free-tier public repo (verified in run history).
+# So instead of relying on frequent triggers, ONE job now stays alive for ~5.5 h and
+# internally re-scans the newest ss.lv pages every ~90 s (see FAST_LOOP_* env below).
+# The concurrency block makes the next scheduled trigger queue and start the instant
+# the current job ends, so scanning is effectively continuous. Public repo = unlimited
+# Actions minutes, so the long-lived job costs nothing.
 on:
   schedule:
-    - cron: "*/5 * * * *"     # every 5 min (GitHub min; may be delayed under load)
+    - cron: "*/5 * * * *"     # throttled by GitHub to ~1 trigger / 1-3 h; kept as the keep-alive tick
   workflow_dispatch: {}        # also runnable manually from the Actions tab
+
+concurrency:
+  group: collect-sslv          # at most one running + one pending; pending starts the moment
+  cancel-in-progress: false    # the running job ends -> minimal gap between jobs
 
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 350       # long-lived keep-alive job (hosted-runner hard limit is 360)
     steps:
       - uses: actions/checkout@v4
 
@@ -26,14 +37,19 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
-          SS_PAGES: "10"        # ss.lv "today" scan (with details) for new listings
+          # --- FAST_LOOP: keep this single job alive and re-scan newest pages continuously ---
+          FAST_LOOP_MIN: "330"  # loop for 5.5 h (< 350-min job timeout) then let the next trigger take over
+          FAST_PAGES: "2"       # each fast pass scans ONLY the newest 2 "today" pages (page 1 = brand-new) with detail
+          FAST_SLEEP: "90"      # ~90 s between fast passes -> a new listing is ingested within ~1.5-3 min
+          HEAVY_EVERY: "20"     # every 20 fast passes (~30-45 min) run the full sweep/backfill/deactivate below
+          SS_PAGES: "10"        # ss.lv "today" scan (with details) used by the periodic HEAVY pass
           SS_FULL: "1"          # also sweep the full ss.lv catalogue brand-by-brand
           SS_BRANDS_PER_RUN: "12"  # cursor advances every run; finishes well under 30-min timeout
           SS_BRAND_PAGES: "7"
           SS_SWEEP_DET: "1000"  # detail-fetch up to 1000 new swept cars/run (ss.lv is fast/direct)
           SKIP_LTEE: "1"        # autoplius/auto24 handled by the separate proxied workflow
           BACKFILL: "500"       # drain the remaining 1-photo/undated backlog faster (free, direct)
-          DEACTIVATE: "0"   # OFF: time-based rule hid live cars. revalidate.py replaces it.       # ON: sold/withdrawn cars stop showing on the site.
+          DEACTIVATE: "0"       # OFF: time-based rule hid live cars. revalidate.py replaces it. # ON: sold/withdrawn cars stop showing on the site.
           DEACTIVATE_DAYS: "14" # 14d (not 3d): the cron needs time to re-visit all 93k cars.
                                 # A car is hidden only after 14 days of never being seen again.
                                 # Nothing is DELETED - active=false only. All history is kept, and
