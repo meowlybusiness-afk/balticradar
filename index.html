@@ -19,12 +19,14 @@
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script>try{var _t=localStorage.getItem("br_theme")||"auto";var _e=_t==="auto"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):_t;document.documentElement.setAttribute("data-theme",_e);}catch(_){}</script>
 <style>
-  :root{--bg:#0d1117;--card:#161b22;--card2:#1c232d;--ink:#e6edf3;--mut:#9aa6b2;--line:#262c36;
-    --accent:#ff4605;--accent2:#ff6a32;--gold:#ff7a3c;--orange:#ff4605;--up:#ff6b6b;--down:#3fb950;
-    --dark:#0a0e14;--dark2:#11161e;
-    --lv:#c0314f;--lt:#f5b301;--ee:#2b9fe6;--shadow:0 8px 28px rgba(0,0,0,.45);}
-  html[data-theme="light"]{--bg:#f2f5f9;--card:#ffffff;--card2:#eef2f7;--ink:#18202c;--mut:#5a6573;
-    --line:#e1e7ee;--dark:#e7ecf3;--dark2:#dde4ee;--shadow:0 10px 30px rgba(30,55,95,.10);}
+  /* First-paint palette = the current (Henry) theme, so the very first frame is already the
+     new green-radar design — no orange/black flash before the henry-skin block parses. */
+  :root{--bg:#0f0f11;--card:#161618;--card2:#1c1c20;--ink:#f5f5f7;--ink2:#c7c7cc;--mut:#8e8e93;--line:#26262a;--line2:#33333a;
+    --accent:#1eb47a;--accent2:#1eb47a;--gold:#1eb47a;--orange:#1eb47a;--up:#e0674c;--down:#1eb47a;
+    --dark:#141416;--dark2:#0f0f11;
+    --lv:#c0314f;--lt:#f5b301;--ee:#2b9fe6;--shadow:0 18px 40px -22px rgba(0,0,0,.8);--surf:rgba(20,20,22,.80);}
+  html[data-theme="light"]{--bg:#ffffff;--card:#ffffff;--card2:#fbfbfd;--ink:#1d1d1f;--ink2:#424245;--mut:#86868b;--line:#ededf0;--line2:#dfdfe4;--accent:#16a06a;--accent2:#16a06a;--gold:#16a06a;--orange:#16a06a;--down:#16a06a;--up:#d2492f;--dark:#ffffff;--dark2:#fbfbfd;--shadow:0 14px 34px -20px rgba(0,0,0,.30);--surf:rgba(255,255,255,.82);}
+  html[data-theme="dark"]{--bg:#0f0f11;--card:#161618;--card2:#1c1c20;--ink:#f5f5f7;--ink2:#c7c7cc;--mut:#8e8e93;--line:#26262a;--line2:#33333a;--accent:#1eb47a;--accent2:#1eb47a;--gold:#1eb47a;--orange:#1eb47a;--down:#1eb47a;--up:#e0674c;--dark:#141416;--dark2:#0f0f11;--shadow:0 18px 40px -22px rgba(0,0,0,.8);--surf:rgba(20,20,22,.80);}
   html{transition:background .2s,color .2s}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
@@ -69,10 +71,9 @@
   .controls .search{flex:1;min-width:180px}
   .topright{margin-left:auto;display:flex;gap:10px;align-items:center}
   .hero{position:relative;min-height:540px;display:flex;align-items:center;justify-content:center;
-    text-align:center;color:#fff;overflow:hidden;background:#0f1620}
-  .heroImg{position:absolute;inset:0;background-size:cover;background-position:center;transform:scale(1.04);
-    background-image:url('https://d8j0ntlcm91z4.cloudfront.net/user_3FDtrg0wR4KXcm4Ea2lC8Affxbr/hf_20260626_085100_7687a277-062f-4732-abcf-45eadd729340.png')}
-  .heroOverlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,13,22,.42) 0%,rgba(8,13,22,.5) 40%,rgba(8,13,22,.86) 100%)}
+    text-align:center;color:var(--ink);overflow:hidden;background:var(--bg)}
+  /* old AI-generated car hero image + dark overlay removed (new design uses the SVG radar rings) */
+  .heroImg,.heroOverlay{display:none!important}
   .heroInner{position:relative;z-index:2;padding:54px 20px;max-width:860px;width:100%}
   .hero h1{margin:0 0 12px;font-size:44px;font-weight:800;letter-spacing:-.8px;line-height:1.1;text-shadow:0 2px 22px rgba(0,0,0,.4)}
   .hero p{margin:0 auto;font-size:18px;color:#e9eff7;max-width:700px;text-shadow:0 1px 12px rgba(0,0,0,.35)}
@@ -392,8 +393,6 @@
     </g>
     <circle cx="360" cy="360" r="5" fill="#16a06a" fill-opacity=".4"/>
   </svg>
-  <div class="heroImg" id="heroImg"></div>
-  <div class="heroOverlay"></div>
   <div class="heroInner">
     <div class="flags"><span class="fdot LV"></span><span class="fdot EE"></span><span class="fdot LT"></span></div>
     <h1 id="heroT">Visi Baltijas auto vienuviet</h1>
@@ -1993,7 +1992,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 .br-hdr{display:inline-flex;align-items:center;gap:8px;font-family:Manrope,system-ui,sans-serif;vertical-align:middle}
 .br-pill{border:1px solid var(--brline2);border-radius:999px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;background:var(--brbg);color:var(--brink);transition:.15s;white-space:nowrap;font-family:Manrope,sans-serif}
 .br-pill:hover{background:var(--brbg2)}
-.br-pill.solid{background:var(--brink);color:#fff;border-color:var(--brink)}
+.br-pill.solid{background:var(--brink);color:var(--brbg);border-color:var(--brink)}
 .br-pill.solid:hover{opacity:.86}
 .br-ava{width:34px;height:34px;border-radius:50%;background:var(--bracc);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px;cursor:pointer;border:none;font-family:Manrope,sans-serif}
 
@@ -2005,11 +2004,11 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 .br-inr{padding:32px 30px}
 .br-x{position:absolute;top:14px;right:16px;border:none;background:none;font-size:19px;cursor:pointer;color:var(--brmut);line-height:1;padding:6px}
 .br-logo{display:flex;align-items:center;justify-content:center;gap:9px;font-weight:800;font-size:19px;margin-bottom:8px}
-.br-logo .m{width:28px;height:28px;border-radius:8px;background:var(--brink);color:#fff;display:grid;place-items:center;font-size:15px}
+.br-logo .m{width:28px;height:28px;border-radius:8px;background:var(--brink);color:var(--brbg);display:grid;place-items:center;font-size:15px}
 .br-tag{text-align:center;color:var(--brink2);font-size:14px;line-height:1.5;margin-bottom:22px;font-weight:500}
 .br-inp{width:100%;background:var(--brbg);border:1px solid var(--brline2);border-radius:12px;padding:13px 15px;font-size:14px;margin-bottom:10px;font-family:Manrope,sans-serif;font-weight:500;color:var(--brink)}
 .br-inp:focus{outline:none;border-color:var(--brink)}
-.br-btn{width:100%;background:var(--brink);color:#fff;border:none;border-radius:999px;padding:14px;font-weight:600;font-size:14px;cursor:pointer;font-family:Manrope,sans-serif;transition:.18s;margin-top:4px}
+.br-btn{width:100%;background:var(--brink);color:var(--brbg);border:none;border-radius:999px;padding:14px;font-weight:600;font-size:14px;cursor:pointer;font-family:Manrope,sans-serif;transition:.18s;margin-top:4px}
 .br-btn:hover{opacity:.87}
 .br-btn:disabled{opacity:.45;cursor:default}
 .br-gbtn{width:100%;background:var(--brbg);border:1px solid var(--brline2);border-radius:999px;padding:12px;font-weight:600;font-size:14px;cursor:pointer;margin-bottom:14px;font-family:Manrope,sans-serif;display:flex;align-items:center;justify-content:center;gap:8px;color:var(--brink)}
