@@ -2875,8 +2875,8 @@ host.innerHTML =
 +         '<div><label class="br2l">Atkārto</label><input class="br2i" id="br2Pw2" type="password"></div>'
 +       '</div><button class="br2btn" onclick="BRProfile.changePw()">Mainīt paroli</button>'
 +     '</div>'
-+     '<div class="br2sec"><h3>Sesija</h3><div class="s">Izrakstīties no šīs ierīces.</div>'
-+       '<button class="br2btn o" onclick="BR.signOut()">Iziet</button></div>'
++     '<div class="br2sec"><h3 id="br2SesT">BalticRadar sesija</h3><div class="s" id="br2SesB">Esi pieteicies šajā ierīcē. Tavi saglabātie sludinājumi un filtri ir piesaistīti šim kontam.</div>'
++       '<button class="br2btn o" id="br2SesBtn" onclick="BR.signOut()">Iziet no konta</button></div>'
 +   '</div>'
 +   '<div class="br2v" id="br2v-favs"><div id="br2FavBox"></div></div>'
 +   '<div class="br2v" id="br2v-filters"><div id="br2FltWrap"></div></div>'
@@ -2897,11 +2897,30 @@ var BRProfile = window.BRProfile = {};
 var PICKED = [];      // chosen models (chips)
 var EDIT_ID = null;
 
+// Session box copy — branded + trust framing, translated for all 5 languages.
+// Painted on profile open (reads br_lang) so it always matches the chosen UI language.
+var SESI18N = {
+ lv:{t:"BalticRadar sesija", b:"Esi pieteicies šajā ierīcē. Tavi saglabātie sludinājumi un filtri ir piesaistīti šim kontam.", btn:"Iziet no konta"},
+ en:{t:"BalticRadar session", b:"You're signed in on this device. Your saved listings and filters stay tied to this account.", btn:"Sign out"},
+ ru:{t:"Сессия BalticRadar", b:"Вы вошли на этом устройстве. Сохранённые объявления и фильтры привязаны к этому аккаунту.", btn:"Выйти"},
+ lt:{t:"BalticRadar sesija", b:"Esate prisijungę šiame įrenginyje. Jūsų išsaugoti skelbimai ir filtrai susieti su šia paskyra.", btn:"Atsijungti"},
+ et:{t:"BalticRadar sessioon", b:"Oled sisse logitud selles seadmes. Sinu salvestatud kuulutused ja filtrid on seotud selle kontoga.", btn:"Logi välja"}
+};
+function paintSession(){
+  var lg; try{ lg = localStorage.getItem("br_lang") || "lv"; }catch(e){ lg = "lv"; }
+  var s = SESI18N[lg] || SESI18N.lv;
+  var a=$('br2SesT'), b=$('br2SesB'), c=$('br2SesBtn');
+  if(a) a.textContent = s.t;
+  if(b) b.textContent = s.b;
+  if(c) c.textContent = s.btn;
+}
+
 BRProfile.open = function(tab){
   if(!BR.user) return BR.openAuth('signin');
   $('br2ov').classList.add('on'); $('br2p').classList.add('on');
   document.body.style.overflow='hidden';
   fillAcct();
+  paintSession();
   BRProfile.tab(tab||'acct');
 };
 BRProfile.close = function(){
