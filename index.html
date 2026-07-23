@@ -2065,61 +2065,61 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
   var html = ''
   + '<div class="br-ov" id="brOv" onclick="BR.close()"></div>'
   + '<div class="br-modal br-scope" id="brModal" role="dialog" aria-modal="true">'
-  + '<button class="br-x" onclick="BR.close()" aria-label="Aizvērt">&#10005;</button>'
+  + '<button class="br-x" id="brX" onclick="BR.close()" aria-label="Aizvērt">&#10005;</button>'
   + '<div class="br-inr">'
 
   /* --- sign in --- */
   + '<div class="br-view" id="brV-signin">'
     + '<div class="br-logo"><span class="m">B</span> BalticRadar</div>'
-    + '<div class="br-tag">Pieslēdzies, lai saglabātu automašīnas un filtrus.</div>'
+    + '<div class="br-tag" id="brT-signin">Pieslēdzies, lai saglabātu automašīnas un filtrus.</div>'
     + '<div class="br-msg" id="brM-signin"></div>'
-    + '<button class="br-gbtn" onclick="BR.google()"><svg width="17" height="17" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.1-3.8 6.6-9.4 6.6-16.1z"/><path fill="#34A853" d="M24 46c6 0 11-2 14.6-5.4l-7.1-5.5c-2 1.3-4.5 2.1-7.5 2.1-5.8 0-10.7-3.9-12.400-9.1H4.2v5.7C7.8 41.1 15.3 46 24 46z"/><path fill="#FBBC05" d="M11.6 28.1c-.3-.9-.5-1.9-.5-3.1s.2-2.2.5-3.1v-5.7H4.2C2.8 19.1 2 21.9 2 25s.8 5.9 2.2 8.7l7.4-5.6z"/><path fill="#EA4335" d="M24 11.9c3.3 0 6.2 1.1 8.5 3.3l6.3-6.3C35 5.3 30 3 24 3 15.3 3 7.8 8 4.2 16.3l7.4 5.7c1.7-5.2 6.6-10.1 12.4-10.1z"/></svg> Turpināt ar Google</button>'
+    + '<button class="br-gbtn" onclick="BR.google()"><svg width="17" height="17" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.1-3.8 6.6-9.4 6.6-16.1z"/><path fill="#34A853" d="M24 46c6 0 11-2 14.6-5.4l-7.1-5.5c-2 1.3-4.5 2.1-7.5 2.1-5.8 0-10.7-3.9-12.400-9.1H4.2v5.7C7.8 41.1 15.3 46 24 46z"/><path fill="#FBBC05" d="M11.6 28.1c-.3-.9-.5-1.9-.5-3.1s.2-2.2.5-3.1v-5.7H4.2C2.8 19.1 2 21.9 2 25s.8 5.9 2.2 8.7l7.4-5.6z"/><path fill="#EA4335" d="M24 11.9c3.3 0 6.2 1.1 8.5 3.3l6.3-6.3C35 5.3 30 3 24 3 15.3 3 7.8 8 4.2 16.3l7.4 5.7c1.7-5.2 6.6-10.1 12.4-10.1z"/></svg> <span class="br-gtxt">Turpināt ar Google</span></button>'
     + '<div class="br-div">VAI</div>'
     + '<input class="br-inp" id="brSiEmail" type="email" placeholder="E-pasts" autocomplete="email">'
     + '<input class="br-inp" id="brSiPass" type="password" placeholder="Parole" autocomplete="current-password">'
-    + '<button class="br-link" onclick="BR.view(\'forgot\')">Aizmirsi paroli?</button>'
+    + '<button class="br-link" id="brLnkForgot" onclick="BR.view(\'forgot\')">Aizmirsi paroli?</button>'
     + '<button class="br-btn" id="brSiBtn" onclick="BR.signIn()">Pieslēgties</button>'
-    + '<div class="br-alt">Nav konta? <a onclick="BR.view(\'signup\')">Reģistrēties</a></div>'
+    + '<div class="br-alt"><span id="brNoAcct">Nav konta?</span> <a id="brToSignup" onclick="BR.view(\'signup\')">Reģistrēties</a></div>'
   + '</div>'
 
   /* --- sign up --- */
   + '<div class="br-view" id="brV-signup">'
     + '<div class="br-logo"><span class="m">B</span> BalticRadar</div>'
-    + '<div class="br-tag">Izveido bezmaksas kontu.</div>'
+    + '<div class="br-tag" id="brT-signup">Izveido bezmaksas kontu.</div>'
     + '<div class="br-msg" id="brM-signup"></div>'
-    + '<button class="br-gbtn" onclick="BR.google()"><svg width="17" height="17" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.1-3.8 6.6-9.4 6.6-16.1z"/><path fill="#34A853" d="M24 46c6 0 11-2 14.6-5.4l-7.1-5.5c-2 1.3-4.5 2.1-7.5 2.1-5.8 0-10.7-3.9-12.4-9.1H4.2v5.7C7.8 41.1 15.3 46 24 46z"/><path fill="#FBBC05" d="M11.6 28.1c-.3-.9-.5-1.9-.5-3.1s.2-2.2.5-3.1v-5.7H4.2C2.8 19.1 2 21.9 2 25s.8 5.9 2.2 8.7l7.4-5.6z"/><path fill="#EA4335" d="M24 11.9c3.3 0 6.2 1.1 8.5 3.3l6.3-6.3C35 5.3 30 3 24 3 15.3 3 7.8 8 4.2 16.3l7.4 5.7c1.7-5.2 6.6-10.1 12.4-10.1z"/></svg> Turpināt ar Google</button>'
+    + '<button class="br-gbtn" onclick="BR.google()"><svg width="17" height="17" viewBox="0 0 48 48"><path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h11.8c-.5 2.7-2 5-4.4 6.6v5.5h7.1c4.1-3.8 6.6-9.4 6.6-16.1z"/><path fill="#34A853" d="M24 46c6 0 11-2 14.6-5.4l-7.1-5.5c-2 1.3-4.5 2.1-7.5 2.1-5.8 0-10.7-3.9-12.4-9.1H4.2v5.7C7.8 41.1 15.3 46 24 46z"/><path fill="#FBBC05" d="M11.6 28.1c-.3-.9-.5-1.9-.5-3.1s.2-2.2.5-3.1v-5.7H4.2C2.8 19.1 2 21.9 2 25s.8 5.9 2.2 8.7l7.4-5.6z"/><path fill="#EA4335" d="M24 11.9c3.3 0 6.2 1.1 8.5 3.3l6.3-6.3C35 5.3 30 3 24 3 15.3 3 7.8 8 4.2 16.3l7.4 5.7c1.7-5.2 6.6-10.1 12.4-10.1z"/></svg> <span class="br-gtxt">Turpināt ar Google</span></button>'
     + '<div class="br-div">VAI</div>'
     + '<input class="br-inp" id="brSuName" type="text" placeholder="Vārds" autocomplete="name">'
     + '<input class="br-inp" id="brSuEmail" type="email" placeholder="E-pasts" autocomplete="email">'
     + '<input class="br-inp" id="brSuPass" type="password" placeholder="Parole (vismaz 8 zīmes)" autocomplete="new-password">'
-    + '<label class="br-chk"><input type="checkbox" id="brSuTc"><span>Piekrītu <a onclick="BR.view(\'tc\')">lietošanas noteikumiem</a> un privātuma politikai.</span></label>'
+    + '<label class="br-chk"><input type="checkbox" id="brSuTc"><span id="brSuTcTxt">Piekrītu <a onclick="BR.view(\'tc\')">lietošanas noteikumiem</a> un privātuma politikai.</span></label>'
     + '<button class="br-btn" id="brSuBtn" onclick="BR.signUp()">Izveidot kontu</button>'
-    + '<div class="br-alt">Jau ir konts? <a onclick="BR.view(\'signin\')">Pieslēgties</a></div>'
+    + '<div class="br-alt"><span id="brHaveAcct">Jau ir konts?</span> <a id="brToSignin" onclick="BR.view(\'signin\')">Pieslēgties</a></div>'
   + '</div>'
 
   /* --- check your email --- */
   + '<div class="br-view" id="brV-verify">'
     + '<div class="br-big">&#128231;</div>'
-    + '<div class="br-h">Pārbaudi e-pastu</div>'
-    + '<div class="br-tag">Nosūtījām apstiprinājuma saiti uz <b id="brVerifyEmail"></b>. Atver to, lai aktivizētu kontu.</div>'
-    + '<button class="br-btn" onclick="BR.close()">Labi</button>'
-    + '<div class="br-note">Nesaņēmi? Pārbaudi mēstuļu mapi.</div>'
+    + '<div class="br-h" id="brH-verify">Pārbaudi e-pastu</div>'
+    + '<div class="br-tag"><span id="brVerifyTag1">Nosūtījām apstiprinājuma saiti uz </span><b id="brVerifyEmail"></b><span id="brVerifyTag2">. Atver to, lai aktivizētu kontu.</span></div>'
+    + '<button class="br-btn" id="brVerifyOk" onclick="BR.close()">Labi</button>'
+    + '<div class="br-note" id="brVerifyNote">Nesaņēmi? Pārbaudi mēstuļu mapi.</div>'
   + '</div>'
 
   /* --- forgot --- */
   + '<div class="br-view" id="brV-forgot">'
-    + '<div class="br-h">Atjaunot paroli</div>'
-    + '<div class="br-tag">Ievadi e-pastu — nosūtīsim saiti paroles maiņai.</div>'
+    + '<div class="br-h" id="brH-forgot">Atjaunot paroli</div>'
+    + '<div class="br-tag" id="brT-forgot">Ievadi e-pastu — nosūtīsim saiti paroles maiņai.</div>'
     + '<div class="br-msg" id="brM-forgot"></div>'
     + '<input class="br-inp" id="brFoEmail" type="email" placeholder="E-pasts" autocomplete="email">'
     + '<button class="br-btn" id="brFoBtn" onclick="BR.forgot()">Nosūtīt saiti</button>'
-    + '<div class="br-alt"><a onclick="BR.view(\'signin\')">Atpakaļ</a></div>'
+    + '<div class="br-alt"><a id="brFoBack" onclick="BR.view(\'signin\')">Atpakaļ</a></div>'
   + '</div>'
 
   /* --- set new password (after reset link, and from profile) --- */
   + '<div class="br-view" id="brV-reset">'
-    + '<div class="br-h">Jauna parole</div>'
-    + '<div class="br-tag">Izvēlies jaunu paroli savam kontam.</div>'
+    + '<div class="br-h" id="brH-reset">Jauna parole</div>'
+    + '<div class="br-tag" id="brT-reset">Izvēlies jaunu paroli savam kontam.</div>'
     + '<div class="br-msg" id="brM-reset"></div>'
     + '<input class="br-inp" id="brRsPass" type="password" placeholder="Jaunā parole (vismaz 8 zīmes)" autocomplete="new-password">'
     + '<input class="br-inp" id="brRsPass2" type="password" placeholder="Atkārto paroli" autocomplete="new-password">'
@@ -2128,9 +2128,9 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 
   /* --- T&C --- */
   + '<div class="br-view" id="brV-tc">'
-    + '<div class="br-h">Lietošanas noteikumi</div>'
-    + '<div class="br-tc">' + TC_HTML + '</div>'
-    + '<button class="br-btn" onclick="BR.view(BR._back||\'signup\')">Aizvērt</button>'
+    + '<div class="br-h" id="brH-tc">Lietošanas noteikumi</div>'
+    + '<div class="br-tc" id="brTcBody">' + TC_HTML + '</div>'
+    + '<button class="br-btn" id="brTcClose" onclick="BR.view(BR._back||\'signup\')">Aizvērt</button>'
   + '</div>'
 
   + '</div></div>';
@@ -2140,6 +2140,141 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
   document.body.appendChild(host);
 
   var $ = function(id){ return document.getElementById(id); };
+
+  /* ---------------- i18n for the auth modal (visible when logged OUT) ---------------- */
+  var AUTHI18N = {
+   lv:{signinTag:"Pieslēdzies, lai saglabātu automašīnas un filtrus.",google:"Turpināt ar Google",or:"VAI",emailPh:"E-pasts",passPh:"Parole",
+     forgotLink:"Aizmirsi paroli?",signinBtn:"Pieslēgties",noAcct:"Nav konta?",toSignup:"Reģistrēties",
+     signupTag:"Izveido bezmaksas kontu.",namePh:"Vārds",passPh8:"Parole (vismaz 8 zīmes)",
+     tcCheck:'Piekrītu <a onclick="BR.view(\'tc\')">lietošanas noteikumiem</a> un privātuma politikai.',createBtn:"Izveidot kontu",haveAcct:"Jau ir konts?",toSignin:"Pieslēgties",
+     verifyH:"Pārbaudi e-pastu",verifyTag1:"Nosūtījām apstiprinājuma saiti uz ",verifyTag2:". Atver to, lai aktivizētu kontu.",verifyOk:"Labi",verifyNote:"Nesaņēmi? Pārbaudi mēstuļu mapi.",
+     forgotH:"Atjaunot paroli",forgotTag:"Ievadi e-pastu — nosūtīsim saiti paroles maiņai.",forgotBtn:"Nosūtīt saiti",back:"Atpakaļ",
+     resetH:"Jauna parole",resetTag:"Izvēlies jaunu paroli savam kontam.",resetPass1Ph:"Jaunā parole (vismaz 8 zīmes)",resetPass2Ph:"Atkārto paroli",resetBtn:"Saglabāt paroli",
+     tcH:"Lietošanas noteikumi",tcClose:"Aizvērt",close:"Aizvērt",wait:"Lūdzu uzgaidi…",
+     hSignIn:"Pieslēgties",hSignUp:"Reģistrēties",hSignOut:"Iziet",hProfile:"Profils",
+     needEmailPass:"Ievadi e-pastu un paroli.",pwShort:"Parolei jābūt vismaz 8 zīmes garai.",needTc:"Lūdzu piekrīti lietošanas noteikumiem.",
+     googleSoon:"Google pieslēgšanās vēl nav pieejama. Lūdzu izmanto e-pastu.",googleFail:"Google pieslēgšanās neizdevās. Lūdzu izmanto e-pastu.",
+     needEmail:"Ievadi e-pastu.",resetSent:"Ja konts pastāv, saite ir nosūtīta uz e-pastu.",pwMismatch:"Paroles nesakrīt.",pwChanged:"Parole nomainīta.",
+     linkExpired:"Saite nav derīga vai tai beidzies termiņš. Lūdzu pieslēdzies vēlreiz.",confirmFail:"Apstiprināšana neizdevās. Lūdzu pieslēdzies vēlreiz.",confirmFail2:"Apstiprinājums neizdevās. Lūdzu pieslēdzies vēlreiz.",emailConfirmed:"E-pasts apstiprināts. Tu esi pieslēdzies!",
+     tcBody:'<h4>1. Par pakalpojumu</h4>BalticRadar apkopo publiski pieejamus sludinājumus par lietotām automašīnām Latvijā, Lietuvā un Igaunijā. Mēs neesam pārdevējs, starpnieks vai darījuma puse.'
+      +'<h4>2. Datu precizitāte</h4>Sludinājumu dati un cenu vēsture tiek iegūti automatizēti no trešo pušu avotiem. Mēs cenšamies nodrošināt precizitāti, taču negarantējam, ka informācija ir pilnīga vai aktuāla. Pirms darījuma vienmēr pārbaudiet datus pie pārdevēja.'
+      +'<h4>3. Konts</h4>Jūs esat atbildīgs par sava konta un paroles drošību. Viens konts – viena persona. Aizliegts automatizēti nolasīt (scrapot) vietnes saturu.'
+      +'<h4>4. Jūsu dati</h4>Mēs glabājam jūsu e-pastu, vārdu, saglabātās automašīnas un saglabātos filtrus, lai sniegtu pakalpojumu. Mēs nepārdodam jūsu datus. Jūs jebkurā brīdī varat pieprasīt konta dzēšanu.'
+      +'<h4>5. Paziņojumi</h4>Reģistrējoties jūs piekrītat saņemt ar kontu saistītus e-pastus (apstiprinājums, paroles atjaunošana). Cenu paziņojumi tiek sūtīti tikai tad, ja esat izveidojis saglabātu filtru.'
+      +'<h4>6. Maksas funkcijas</h4>Daļa funkciju (pilna cenu vēsture, e-pasta paziņojumi) nākotnē būs pieejama maksas plānā. Cenas un noteikumi tiks paziņoti pirms maksājumu ieviešanas.'
+      +'<h4>7. Atbildības ierobežojums</h4>Pakalpojums tiek sniegts "kāds tas ir". Mēs neatbildam par zaudējumiem, kas radušies, paļaujoties uz vietnē sniegto informāciju.'
+      +'<h4>8. Izmaiņas</h4>Noteikumi var tikt mainīti. Būtiskas izmaiņas paziņosim pa e-pastu.'},
+   en:{signinTag:"Sign in to save cars and filters.",google:"Continue with Google",or:"OR",emailPh:"Email",passPh:"Password",
+     forgotLink:"Forgot password?",signinBtn:"Sign in",noAcct:"No account?",toSignup:"Sign up",
+     signupTag:"Create a free account.",namePh:"Name",passPh8:"Password (at least 8 characters)",
+     tcCheck:'I agree to the <a onclick="BR.view(\'tc\')">terms of use</a> and privacy policy.',createBtn:"Create account",haveAcct:"Already have an account?",toSignin:"Sign in",
+     verifyH:"Check your email",verifyTag1:"We sent a confirmation link to ",verifyTag2:". Open it to activate your account.",verifyOk:"OK",verifyNote:"Didn't get it? Check your spam folder.",
+     forgotH:"Reset password",forgotTag:"Enter your email — we'll send a link to change your password.",forgotBtn:"Send link",back:"Back",
+     resetH:"New password",resetTag:"Choose a new password for your account.",resetPass1Ph:"New password (at least 8 characters)",resetPass2Ph:"Repeat password",resetBtn:"Save password",
+     tcH:"Terms of use",tcClose:"Close",close:"Close",wait:"Please wait…",
+     hSignIn:"Sign in",hSignUp:"Sign up",hSignOut:"Sign out",hProfile:"Profile",
+     needEmailPass:"Enter your email and password.",pwShort:"Password must be at least 8 characters.",needTc:"Please accept the terms of use.",
+     googleSoon:"Google sign-in is not available yet. Please use email.",googleFail:"Google sign-in failed. Please use email.",
+     needEmail:"Enter your email.",resetSent:"If the account exists, a link has been sent to the email.",pwMismatch:"Passwords do not match.",pwChanged:"Password changed.",
+     linkExpired:"The link is invalid or has expired. Please sign in again.",confirmFail:"Confirmation failed. Please sign in again.",confirmFail2:"Confirmation failed. Please sign in again.",emailConfirmed:"Email confirmed. You're signed in!",
+     tcBody:'<h4>1. About the service</h4>BalticRadar aggregates publicly available listings for used cars in Latvia, Lithuania and Estonia. We are not a seller, intermediary or party to any transaction.'
+      +'<h4>2. Data accuracy</h4>Listing data and price history are collected automatically from third-party sources. We strive for accuracy but do not guarantee that the information is complete or current. Always verify the details with the seller before any deal.'
+      +'<h4>3. Account</h4>You are responsible for the security of your account and password. One account – one person. Automated reading (scraping) of the site content is prohibited.'
+      +'<h4>4. Your data</h4>We store your email, name, saved cars and saved filters to provide the service. We do not sell your data. You may request account deletion at any time.'
+      +'<h4>5. Alerts</h4>By registering you agree to receive account-related emails (confirmation, password reset). Price alerts are sent only if you have created a saved filter.'
+      +'<h4>6. Paid features</h4>Some features (full price history, email alerts) will be available on a paid plan in the future. Prices and terms will be announced before payments are introduced.'
+      +'<h4>7. Limitation of liability</h4>The service is provided "as is". We are not liable for losses arising from reliance on information provided on the site.'
+      +'<h4>8. Changes</h4>These terms may change. We will announce material changes by email.'},
+   ru:{signinTag:"Войдите, чтобы сохранять авто и фильтры.",google:"Продолжить с Google",or:"ИЛИ",emailPh:"E-mail",passPh:"Пароль",
+     forgotLink:"Забыли пароль?",signinBtn:"Войти",noAcct:"Нет аккаунта?",toSignup:"Регистрация",
+     signupTag:"Создайте бесплатный аккаунт.",namePh:"Имя",passPh8:"Пароль (минимум 8 символов)",
+     tcCheck:'Я согласен с <a onclick="BR.view(\'tc\')">условиями использования</a> и политикой конфиденциальности.',createBtn:"Создать аккаунт",haveAcct:"Уже есть аккаунт?",toSignin:"Войти",
+     verifyH:"Проверьте e-mail",verifyTag1:"Мы отправили ссылку для подтверждения на ",verifyTag2:". Откройте её, чтобы активировать аккаунт.",verifyOk:"Хорошо",verifyNote:"Не пришло? Проверьте папку «Спам».",
+     forgotH:"Восстановить пароль",forgotTag:"Введите e-mail — пришлём ссылку для смены пароля.",forgotBtn:"Отправить ссылку",back:"Назад",
+     resetH:"Новый пароль",resetTag:"Выберите новый пароль для аккаунта.",resetPass1Ph:"Новый пароль (минимум 8 символов)",resetPass2Ph:"Повторите пароль",resetBtn:"Сохранить пароль",
+     tcH:"Условия использования",tcClose:"Закрыть",close:"Закрыть",wait:"Пожалуйста, подождите…",
+     hSignIn:"Войти",hSignUp:"Регистрация",hSignOut:"Выйти",hProfile:"Профиль",
+     needEmailPass:"Введите e-mail и пароль.",pwShort:"Пароль должен быть не менее 8 символов.",needTc:"Пожалуйста, примите условия использования.",
+     googleSoon:"Вход через Google пока недоступен. Используйте e-mail.",googleFail:"Вход через Google не удался. Используйте e-mail.",
+     needEmail:"Введите e-mail.",resetSent:"Если аккаунт существует, ссылка отправлена на e-mail.",pwMismatch:"Пароли не совпадают.",pwChanged:"Пароль изменён.",
+     linkExpired:"Ссылка недействительна или срок её истёк. Пожалуйста, войдите снова.",confirmFail:"Подтверждение не удалось. Пожалуйста, войдите снова.",confirmFail2:"Подтверждение не удалось. Пожалуйста, войдите снова.",emailConfirmed:"E-mail подтверждён. Вы вошли!",
+     tcBody:'<h4>1. О сервисе</h4>BalticRadar собирает публично доступные объявления о подержанных автомобилях в Латвии, Литве и Эстонии. Мы не являемся продавцом, посредником или стороной сделки.'
+      +'<h4>2. Точность данных</h4>Данные объявлений и история цен собираются автоматически из сторонних источников. Мы стремимся к точности, но не гарантируем полноту или актуальность информации. Перед сделкой всегда проверяйте данные у продавца.'
+      +'<h4>3. Аккаунт</h4>Вы несёте ответственность за безопасность своего аккаунта и пароля. Один аккаунт – один человек. Автоматическое считывание (скрейпинг) содержимого сайта запрещено.'
+      +'<h4>4. Ваши данные</h4>Мы храним ваш e-mail, имя, сохранённые авто и сохранённые фильтры для предоставления сервиса. Мы не продаём ваши данные. Вы можете запросить удаление аккаунта в любой момент.'
+      +'<h4>5. Уведомления</h4>Регистрируясь, вы соглашаетесь получать связанные с аккаунтом письма (подтверждение, восстановление пароля). Уведомления о цене отправляются только если вы создали сохранённый фильтр.'
+      +'<h4>6. Платные функции</h4>Часть функций (полная история цен, e-mail-уведомления) в будущем будет доступна в платном плане. Цены и условия будут объявлены до внедрения платежей.'
+      +'<h4>7. Ограничение ответственности</h4>Сервис предоставляется «как есть». Мы не несём ответственности за убытки, возникшие из-за доверия к информации на сайте.'
+      +'<h4>8. Изменения</h4>Условия могут быть изменены. О существенных изменениях мы сообщим по e-mail.'},
+   lt:{signinTag:"Prisijunk, kad išsaugotum automobilius ir filtrus.",google:"Tęsti su Google",or:"ARBA",emailPh:"El. paštas",passPh:"Slaptažodis",
+     forgotLink:"Pamiršai slaptažodį?",signinBtn:"Prisijungti",noAcct:"Neturi paskyros?",toSignup:"Registruotis",
+     signupTag:"Sukurk nemokamą paskyrą.",namePh:"Vardas",passPh8:"Slaptažodis (bent 8 simboliai)",
+     tcCheck:'Sutinku su <a onclick="BR.view(\'tc\')">naudojimo taisyklėmis</a> ir privatumo politika.',createBtn:"Sukurti paskyrą",haveAcct:"Jau turi paskyrą?",toSignin:"Prisijungti",
+     verifyH:"Patikrink el. paštą",verifyTag1:"Išsiuntėme patvirtinimo nuorodą į ",verifyTag2:". Atidaryk ją, kad aktyvuotum paskyrą.",verifyOk:"Gerai",verifyNote:"Negavai? Patikrink šlamšto aplanką.",
+     forgotH:"Atkurti slaptažodį",forgotTag:"Įvesk el. paštą — atsiųsime nuorodą slaptažodžiui keisti.",forgotBtn:"Siųsti nuorodą",back:"Atgal",
+     resetH:"Naujas slaptažodis",resetTag:"Pasirink naują savo paskyros slaptažodį.",resetPass1Ph:"Naujas slaptažodis (bent 8 simboliai)",resetPass2Ph:"Pakartok slaptažodį",resetBtn:"Išsaugoti slaptažodį",
+     tcH:"Naudojimo taisyklės",tcClose:"Uždaryti",close:"Uždaryti",wait:"Palauk…",
+     hSignIn:"Prisijungti",hSignUp:"Registruotis",hSignOut:"Atsijungti",hProfile:"Profilis",
+     needEmailPass:"Įvesk el. paštą ir slaptažodį.",pwShort:"Slaptažodį turi sudaryti bent 8 simboliai.",needTc:"Prašome sutikti su naudojimo taisyklėmis.",
+     googleSoon:"Prisijungimas su Google dar neveikia. Naudok el. paštą.",googleFail:"Prisijungimas su Google nepavyko. Naudok el. paštą.",
+     needEmail:"Įvesk el. paštą.",resetSent:"Jei paskyra egzistuoja, nuoroda išsiųsta el. paštu.",pwMismatch:"Slaptažodžiai nesutampa.",pwChanged:"Slaptažodis pakeistas.",
+     linkExpired:"Nuoroda negalioja arba pasibaigė jos galiojimas. Prisijunk dar kartą.",confirmFail:"Patvirtinti nepavyko. Prisijunk dar kartą.",confirmFail2:"Patvirtinti nepavyko. Prisijunk dar kartą.",emailConfirmed:"El. paštas patvirtintas. Esi prisijungęs!",
+     tcBody:'<h4>1. Apie paslaugą</h4>BalticRadar surenka viešai prieinamus naudotų automobilių skelbimus Latvijoje, Lietuvoje ir Estijoje. Mes nesame pardavėjas, tarpininkas ar sandorio šalis.'
+      +'<h4>2. Duomenų tikslumas</h4>Skelbimų duomenys ir kainų istorija renkami automatiškai iš trečiųjų šalių šaltinių. Siekiame tikslumo, tačiau negarantuojame, kad informacija yra išsami ar aktuali. Prieš sandorį visada patikrink duomenis pas pardavėją.'
+      +'<h4>3. Paskyra</h4>Jūs atsakingi už savo paskyros ir slaptažodžio saugumą. Viena paskyra – vienas asmuo. Draudžiama automatiškai nuskaityti (scrapinti) svetainės turinį.'
+      +'<h4>4. Jūsų duomenys</h4>Saugome jūsų el. paštą, vardą, išsaugotus automobilius ir išsaugotus filtrus, kad teiktume paslaugą. Mes neparduodame jūsų duomenų. Bet kada galite paprašyti ištrinti paskyrą.'
+      +'<h4>5. Pranešimai</h4>Registruodamiesi sutinkate gauti su paskyra susijusius laiškus (patvirtinimas, slaptažodžio atkūrimas). Kainos pranešimai siunčiami tik jei sukūrėte išsaugotą filtrą.'
+      +'<h4>6. Mokamos funkcijos</h4>Dalis funkcijų (pilna kainų istorija, el. pašto pranešimai) ateityje bus prieinama mokamame plane. Kainos ir sąlygos bus paskelbtos prieš įvedant mokėjimus.'
+      +'<h4>7. Atsakomybės ribojimas</h4>Paslauga teikiama "tokia, kokia yra". Neatsakome už nuostolius, atsiradusius pasikliaujant svetainėje pateikta informacija.'
+      +'<h4>8. Pakeitimai</h4>Taisyklės gali būti keičiamos. Apie esminius pakeitimus pranešime el. paštu.'},
+   et:{signinTag:"Logi sisse, et autosid ja filtreid salvestada.",google:"Jätka Google'iga",or:"VÕI",emailPh:"E-post",passPh:"Parool",
+     forgotLink:"Unustasid parooli?",signinBtn:"Logi sisse",noAcct:"Kontot pole?",toSignup:"Registreeru",
+     signupTag:"Loo tasuta konto.",namePh:"Nimi",passPh8:"Parool (vähemalt 8 tähemärki)",
+     tcCheck:'Nõustun <a onclick="BR.view(\'tc\')">kasutustingimustega</a> ja privaatsuspoliitikaga.',createBtn:"Loo konto",haveAcct:"Konto on juba olemas?",toSignin:"Logi sisse",
+     verifyH:"Kontrolli e-posti",verifyTag1:"Saatsime kinnituslingi aadressile ",verifyTag2:". Ava see, et konto aktiveerida.",verifyOk:"Selge",verifyNote:"Ei saanud? Kontrolli rämpsposti kausta.",
+     forgotH:"Lähtesta parool",forgotTag:"Sisesta e-post — saadame lingi parooli muutmiseks.",forgotBtn:"Saada link",back:"Tagasi",
+     resetH:"Uus parool",resetTag:"Vali oma kontole uus parool.",resetPass1Ph:"Uus parool (vähemalt 8 tähemärki)",resetPass2Ph:"Korda parooli",resetBtn:"Salvesta parool",
+     tcH:"Kasutustingimused",tcClose:"Sulge",close:"Sulge",wait:"Palun oota…",
+     hSignIn:"Logi sisse",hSignUp:"Registreeru",hSignOut:"Logi välja",hProfile:"Profiil",
+     needEmailPass:"Sisesta e-post ja parool.",pwShort:"Parool peab olema vähemalt 8 tähemärki.",needTc:"Palun nõustu kasutustingimustega.",
+     googleSoon:"Google'iga sisselogimine pole veel saadaval. Kasuta e-posti.",googleFail:"Google'iga sisselogimine ebaõnnestus. Kasuta e-posti.",
+     needEmail:"Sisesta e-post.",resetSent:"Kui konto on olemas, on link saadetud e-postile.",pwMismatch:"Paroolid ei kattu.",pwChanged:"Parool muudetud.",
+     linkExpired:"Link on kehtetu või aegunud. Palun logi uuesti sisse.",confirmFail:"Kinnitamine ebaõnnestus. Palun logi uuesti sisse.",confirmFail2:"Kinnitamine ebaõnnestus. Palun logi uuesti sisse.",emailConfirmed:"E-post kinnitatud. Oled sisse logitud!",
+     tcBody:'<h4>1. Teenusest</h4>BalticRadar koondab avalikult kättesaadavaid kasutatud autode kuulutusi Lätis, Leedus ja Eestis. Me ei ole müüja, vahendaja ega tehingu osapool.'
+      +'<h4>2. Andmete täpsus</h4>Kuulutuste andmed ja hinnaajalugu kogutakse automaatselt kolmandate osapoolte allikatest. Püüame tagada täpsuse, kuid ei garanteeri, et teave on täielik või ajakohane. Kontrolli enne tehingut andmeid alati müüja käest.'
+      +'<h4>3. Konto</h4>Sina vastutad oma konto ja parooli turvalisuse eest. Üks konto – üks isik. Saidi sisu automaatne lugemine (scraping) on keelatud.'
+      +'<h4>4. Sinu andmed</h4>Salvestame sinu e-posti, nime, salvestatud autod ja salvestatud filtrid, et teenust pakkuda. Me ei müü sinu andmeid. Võid igal ajal taotleda konto kustutamist.'
+      +'<h4>5. Teated</h4>Registreerudes nõustud saama kontoga seotud e-kirju (kinnitus, parooli lähtestamine). Hinnateated saadetakse ainult siis, kui oled loonud salvestatud filtri.'
+      +'<h4>6. Tasulised funktsioonid</h4>Osa funktsioone (täielik hinnaajalugu, e-posti teated) on tulevikus saadaval tasulises plaanis. Hinnad ja tingimused teatatakse enne maksete kasutuselevõttu.'
+      +'<h4>7. Vastutuse piiramine</h4>Teenust pakutakse "nagu on". Me ei vastuta kahjude eest, mis tulenevad saidil esitatud teabele tuginemisest.'
+      +'<h4>8. Muudatused</h4>Tingimusi võidakse muuta. Olulistest muudatustest teatame e-postiga.'}
+  };
+  function ALANG(){ try{ return localStorage.getItem("br_lang")||"lv"; }catch(e){ return "lv"; } }
+  function AT(){ return AUTHI18N[ALANG()] || AUTHI18N.lv; }
+  function _atxt(id,v){ var e=$(id); if(e) e.textContent=v; }
+  function _ahtml(id,v){ var e=$(id); if(e) e.innerHTML=v; }
+  function _aph(id,v){ var e=$(id); if(e) e.placeholder=v; }
+  function paintAuth(){
+    var a=AT();
+    _atxt('brT-signin',a.signinTag);
+    _atxt('brT-signup',a.signupTag);
+    document.querySelectorAll('.br-gtxt').forEach(function(g){ g.textContent=a.google; });
+    document.querySelectorAll('.br-div').forEach(function(d){ d.textContent=a.or; });
+    _aph('brSiEmail',a.emailPh); _aph('brSiPass',a.passPh);
+    _atxt('brLnkForgot',a.forgotLink); _atxt('brSiBtn',a.signinBtn);
+    _atxt('brNoAcct',a.noAcct); _atxt('brToSignup',a.toSignup);
+    _aph('brSuName',a.namePh); _aph('brSuEmail',a.emailPh); _aph('brSuPass',a.passPh8);
+    _ahtml('brSuTcTxt',a.tcCheck); _atxt('brSuBtn',a.createBtn);
+    _atxt('brHaveAcct',a.haveAcct); _atxt('brToSignin',a.toSignin);
+    _atxt('brH-verify',a.verifyH); _atxt('brVerifyTag1',a.verifyTag1); _atxt('brVerifyTag2',a.verifyTag2);
+    _atxt('brVerifyOk',a.verifyOk); _atxt('brVerifyNote',a.verifyNote);
+    _atxt('brH-forgot',a.forgotH); _atxt('brT-forgot',a.forgotTag); _atxt('brFoBtn',a.forgotBtn); _atxt('brFoBack',a.back);
+    _atxt('brH-reset',a.resetH); _atxt('brT-reset',a.resetTag); _aph('brRsPass',a.resetPass1Ph); _aph('brRsPass2',a.resetPass2Ph); _atxt('brRsBtn',a.resetBtn);
+    _atxt('brH-tc',a.tcH); _ahtml('brTcBody',a.tcBody); _atxt('brTcClose',a.tcClose);
+    var x=$('brX'); if(x) x.setAttribute('aria-label',a.close);
+    if(typeof paintHeader==='function') paintHeader();
+  }
+  window.BRPaintAuth = paintAuth;
 
   /* ---------------- view control ---------------- */
   BR._back = 'signup';
@@ -2162,7 +2297,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
   function busy(btnId, on, label){
     var b = $(btnId); if(!b) return;
     b.disabled = !!on;
-    if(on){ b.dataset.lbl = b.textContent; b.textContent = 'Lūdzu uzgaidi…'; }
+    if(on){ b.dataset.lbl = b.textContent; b.textContent = AT().wait; }
     else { b.textContent = label || b.dataset.lbl || b.textContent; }
   }
 
@@ -2173,16 +2308,16 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
     var pass = $('brSuPass').value;
     var tc = $('brSuTc').checked;
     msg('signup','');
-    if(!email || !pass){ return msg('signup','Ievadi e-pastu un paroli.'); }
-    if(pass.length < 8){ return msg('signup','Parolei jābūt vismaz 8 zīmes garai.'); }
-    if(!tc){ return msg('signup','Lūdzu piekrīti lietošanas noteikumiem.'); }
+    if(!email || !pass){ return msg('signup',AT().needEmailPass); }
+    if(pass.length < 8){ return msg('signup',AT().pwShort); }
+    if(!tc){ return msg('signup',AT().needTc); }
     busy('brSuBtn', true);
     var r = await supa.auth.signUp({
       email: email, password: pass,
       options:{ data:{ full_name:name, tc_accepted:'true' },
                 emailRedirectTo: window.location.origin }
     });
-    busy('brSuBtn', false, 'Izveidot kontu');
+    busy('brSuBtn', false);
     if(r.error){ return msg('signup', r.error.message); }
     if(r.data.session){ BR.close(); return; }           // confirmations off -> logged straight in
     $('brVerifyEmail').textContent = email;
@@ -2193,10 +2328,10 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
     var email = $('brSiEmail').value.trim();
     var pass = $('brSiPass').value;
     msg('signin','');
-    if(!email || !pass){ return msg('signin','Ievadi e-pastu un paroli.'); }
+    if(!email || !pass){ return msg('signin',AT().needEmailPass); }
     busy('brSiBtn', true);
     var r = await supa.auth.signInWithPassword({ email: email, password: pass });
-    busy('brSiBtn', false, 'Pieslēgties');
+    busy('brSiBtn', false);
     if(r.error){ return msg('signin', r.error.message); }
     BR.close();
   };
@@ -2208,8 +2343,8 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 
   BR.google = async function(){
     if(!GOOGLE_ENABLED){
-      msg('signin','Google pieslēgšanās vēl nav pieejama. Lūdzu izmanto e-pastu.','err');
-      msg('signup','Google pieslēgšanās vēl nav pieejama. Lūdzu izmanto e-pastu.','err');
+      msg('signin',AT().googleSoon,'err');
+      msg('signup',AT().googleSoon,'err');
       return;
     }
     var r = await supa.auth.signInWithOAuth({
@@ -2217,8 +2352,8 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
       options:{ redirectTo: window.location.origin }
     });
     if(r.error){
-      msg('signin','Google pieslēgšanās neizdevās. Lūdzu izmanto e-pastu.','err');
-      msg('signup','Google pieslēgšanās neizdevās. Lūdzu izmanto e-pastu.','err');
+      msg('signin',AT().googleFail,'err');
+      msg('signup',AT().googleFail,'err');
     }
   };
 
@@ -2231,24 +2366,24 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
   BR.forgot = async function(){
     var email = $('brFoEmail').value.trim();
     msg('forgot','');
-    if(!email){ return msg('forgot','Ievadi e-pastu.'); }
+    if(!email){ return msg('forgot',AT().needEmail); }
     busy('brFoBtn', true);
     var r = await supa.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin });
-    busy('brFoBtn', false, 'Nosūtīt saiti');
+    busy('brFoBtn', false);
     if(r.error){ return msg('forgot', r.error.message); }
-    msg('forgot','Ja konts pastāv, saite ir nosūtīta uz e-pastu.','ok');
+    msg('forgot',AT().resetSent,'ok');
   };
 
   BR.setPassword = async function(){
     var p1 = $('brRsPass').value, p2 = $('brRsPass2').value;
     msg('reset','');
-    if(p1.length < 8){ return msg('reset','Parolei jābūt vismaz 8 zīmes garai.'); }
-    if(p1 !== p2){ return msg('reset','Paroles nesakrīt.'); }
+    if(p1.length < 8){ return msg('reset',AT().pwShort); }
+    if(p1 !== p2){ return msg('reset',AT().pwMismatch); }
     busy('brRsBtn', true);
     var r = await supa.auth.updateUser({ password: p1 });
-    busy('brRsBtn', false, 'Saglabāt paroli');
+    busy('brRsBtn', false);
     if(r.error){ return msg('reset', r.error.message); }
-    msg('reset','Parole nomainīta.','ok');
+    msg('reset',AT().pwChanged,'ok');
     setTimeout(BR.close, 1200);
   };
 
@@ -2272,15 +2407,15 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
   function paintHeader(){
     var hdr = $('brHdr'); if(!hdr) return;
     if(BR.user){
-      hdr.innerHTML = '<button class="br-ava" id="brAva" title="Profils">'+initials()+'</button>'
-                    + '<button class="br-pill" onclick="BR.signOut()">Iziet</button>';
+      hdr.innerHTML = '<button class="br-ava" id="brAva" title="'+AT().hProfile+'">'+initials()+'</button>'
+                    + '<button class="br-pill" onclick="BR.signOut()">'+AT().hSignOut+'</button>';
       $('brAva').onclick = function(){
         if(window.BRProfile && window.BRProfile.open) window.BRProfile.open();   // Stage 2
         else BR.view('reset');
       };
     } else {
-      hdr.innerHTML = '<button class="br-pill" onclick="BR.openAuth(\'signin\')">Pieslēgties</button>'
-                    + '<button class="br-pill solid" onclick="BR.openAuth(\'signup\')">Reģistrēties</button>';
+      hdr.innerHTML = '<button class="br-pill" onclick="BR.openAuth(\'signin\')">'+AT().hSignIn+'</button>'
+                    + '<button class="br-pill solid" onclick="BR.openAuth(\'signup\')">'+AT().hSignUp+'</button>';
     }
   }
   BR.paintHeader = paintHeader;
@@ -2353,7 +2488,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
       cleanAuthUrl();
       BR.openAuth('signin');
       msg('signin', errDesc ? decodeURIComponent(errDesc).replace(/\+/g,' ')
-                            : 'Saite nav derīga vai tai beidzies termiņš. Lūdzu pieslēdzies vēlreiz.', 'err');
+                            : AT().linkExpired, 'err');
       return true;
     }
 
@@ -2381,7 +2516,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
     }catch(e){
       cleanAuthUrl();
       BR.openAuth('signin');
-      msg('signin', (e && e.message) || 'Apstiprināšana neizdevās. Lūdzu pieslēdzies vēlreiz.', 'err');
+      msg('signin', (e && e.message) || AT().confirmFail, 'err');
       return true;
     }
 
@@ -2389,18 +2524,19 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
     cleanAuthUrl();
     if(!sess){
       BR.openAuth('signin');
-      msg('signin', 'Apstiprinājums neizdevās. Lūdzu pieslēdzies vēlreiz.', 'err');
+      msg('signin', AT().confirmFail2, 'err');
       return true;
     }
     await refresh(sess);
     if(isRecovery){ BR.view('reset'); } // reset link -> let them set a new password
-    else { BR.close(); brToast('E-pasts apstiprināts. Tu esi pieslēdzies!'); }
+    else { BR.close(); brToast(AT().emailConfirmed); }
     return true;
   }
 
   function boot(){
     mountHeader();
     applyGoogleFlag();
+    paintAuth();   // paint the auth modal + header in the chosen language on load
     // Resolve a confirm / Google / recovery callback FIRST; only fall back to the plain session
     // read on an ordinary load, so the header never gets stuck on "Pieslēgties" after a confirm.
     handleAuthCallback().then(function(handled){
@@ -2426,7 +2562,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
     window.addEventListener('br:auth', paintAlertCtas);
     var _ai = window.applyI18n;
     if(typeof _ai === 'function'){
-      window.applyI18n = function(){ var r=_ai.apply(this,arguments); try{ paintAlertCtas(); }catch(e){} return r; };
+      window.applyI18n = function(){ var r=_ai.apply(this,arguments); try{ paintAlertCtas(); }catch(e){} try{ paintAuth(); }catch(e){} return r; };
     }
     window.updateNotifyBtn = paintAlertCtas;   // legacy hook: was driven by the old localStorage profile
     // renderContent() re-writes the hero CTA text from LANG, so repaint after it too
@@ -2771,7 +2907,7 @@ function decorate(){
     var b = card.querySelector('.br-heart');
     if(!b){
       b = document.createElement('button');
-      b.className='br-heart'; b.innerHTML=HEART; b.title='Saglabāt';
+      b.className='br-heart'; b.innerHTML=HEART; b.title=P().heartSave;
       b.onclick=function(e){ e.stopPropagation(); e.preventDefault(); BR.toggleFav(b.dataset.cid,b); };
       card.appendChild(b);
     }
@@ -2810,9 +2946,9 @@ async function gateHistory(id){
       box.style.marginTop = '10px';
       box.innerHTML = '<div class="lockrows"><div class="lockrow"></div><div class="lockrow"></div>'
         + '<div class="lockrow"></div><div class="lockrow"></div><div class="lockrow"></div></div>'
-        + '<div class="lockcta"><div class="ic">🔒</div><h4>Cenu un nobraukuma vēsture</h4>'
-        + '<p>Redzi, kā mainījusies šī auto cena un nobraukums. Pieejams Premium plānā.</p>'
-        + '<button class="btn" onclick="BRProfile.open(\'bill\')">Uzzināt vairāk</button></div>';
+        + '<div class="lockcta"><div class="ic">🔒</div><h4>'+P().histLockT+'</h4>'
+        + '<p>'+P().histLockB+'</p>'
+        + '<button class="btn" onclick="BRProfile.open(\'bill\')">'+P().learnMore+'</button></div>';
       anchor.parentNode.insertBefore(box, anchor);
     }
   } else {
@@ -2832,7 +2968,7 @@ async function addMileageHistory(id, card){
   d.className = 'br-mileage br2';
   d.style.cssText='margin-top:10px;font-family:Manrope,sans-serif;font-size:12.5px;font-weight:600';
   d.innerHTML = '<div style="color:#86868b;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:5px">'
-    + 'Nobraukuma vēsture</div>'
+    + P().milHist+'</div>'
     + pts.map(function(p){ return String(p.ts).slice(0,10)+' · '+nf(p.mileage)+' km'; }).join('<br>');
   card.appendChild(d);
 }
@@ -2851,29 +2987,29 @@ var host = document.createElement('div');
 host.innerHTML =
   '<div class="br2ov" id="br2ov" onclick="BRProfile.close()"></div>'
 + '<div class="br2p br2" id="br2p" role="dialog">'
-+  '<div class="br2h"><h2>Mans profils</h2><button class="br2x" onclick="BRProfile.close()">&#10005;</button></div>'
++  '<div class="br2h"><h2 id="br2Title">Mans profils</h2><button class="br2x" onclick="BRProfile.close()">&#10005;</button></div>'
 +  '<div class="br2tabs">'
-+    '<button class="br2tab on" data-t="acct">Konts</button>'
-+    '<button class="br2tab" data-t="favs">Saglabātās <span id="br2favN"></span></button>'
-+    '<button class="br2tab" data-t="filters">Mani filtri <span id="br2fltN"></span></button>'
-+    '<button class="br2tab" data-t="bill">Abonements</button>'
-+    '<button class="br2tab" data-t="tc">Noteikumi</button>'
++    '<button class="br2tab on" data-t="acct"><span class="br2tabL">Konts</span></button>'
++    '<button class="br2tab" data-t="favs"><span class="br2tabL">Saglabātās</span> <span id="br2favN"></span></button>'
++    '<button class="br2tab" data-t="filters"><span class="br2tabL">Mani filtri</span> <span id="br2fltN"></span></button>'
++    '<button class="br2tab" data-t="bill"><span class="br2tabL">Abonements</span></button>'
++    '<button class="br2tab" data-t="tc"><span class="br2tabL">Noteikumi</span></button>'
 +  '</div>'
 +  '<div class="br2b">'
 +   '<div class="br2v on" id="br2v-acct">'
-+     '<div class="br2sec"><h3>Konta informācija</h3><div class="s">E-pastu nevar mainīt.</div>'
++     '<div class="br2sec"><h3 id="br2AcctH">Konta informācija</h3><div class="s" id="br2AcctS">E-pastu nevar mainīt.</div>'
 +       '<div class="br2msg" id="br2m-acct"></div>'
-+       '<label class="br2l">E-pasts</label><input class="br2i" id="br2Email" disabled>'
-+       '<label class="br2l">Vārds</label><input class="br2i" id="br2Name" placeholder="Tavs vārds">'
++       '<label class="br2l" id="br2LEmail">E-pasts</label><input class="br2i" id="br2Email" disabled>'
++       '<label class="br2l" id="br2LName">Vārds</label><input class="br2i" id="br2Name" placeholder="Tavs vārds">'
 +       '<div><span class="br2plan" id="br2Plan"></span></div>'
-+       '<div style="margin-top:16px"><button class="br2btn" onclick="BRProfile.saveAcct()">Saglabāt</button></div>'
++       '<div style="margin-top:16px"><button class="br2btn" id="br2SaveAcct" onclick="BRProfile.saveAcct()">Saglabāt</button></div>'
 +     '</div>'
-+     '<div class="br2sec"><h3>Mainīt paroli</h3><div class="s">Vismaz 8 zīmes.</div>'
++     '<div class="br2sec"><h3 id="br2PwH">Mainīt paroli</h3><div class="s" id="br2PwS">Vismaz 8 zīmes.</div>'
 +       '<div class="br2msg" id="br2m-pw"></div>'
 +       '<div class="br2row">'
-+         '<div><label class="br2l">Jaunā parole</label><input class="br2i" id="br2Pw1" type="password"></div>'
-+         '<div><label class="br2l">Atkārto</label><input class="br2i" id="br2Pw2" type="password"></div>'
-+       '</div><button class="br2btn" onclick="BRProfile.changePw()">Mainīt paroli</button>'
++         '<div><label class="br2l" id="br2LPw1">Jaunā parole</label><input class="br2i" id="br2Pw1" type="password"></div>'
++         '<div><label class="br2l" id="br2LPw2">Atkārto</label><input class="br2i" id="br2Pw2" type="password"></div>'
++       '</div><button class="br2btn" id="br2ChPwBtn" onclick="BRProfile.changePw()">Mainīt paroli</button>'
 +     '</div>'
 +     '<div class="br2sec"><h3 id="br2SesT">BalticRadar sesija</h3><div class="s" id="br2SesB">Esi pieteicies šajā ierīcē. Tavi saglabātie sludinājumi un filtri ir piesaistīti šim kontam.</div>'
 +       '<button class="br2btn o" id="br2SesBtn" onclick="BR.signOut()">Iziet no konta</button></div>'
@@ -2881,15 +3017,15 @@ host.innerHTML =
 +   '<div class="br2v" id="br2v-favs"><div id="br2FavBox"></div></div>'
 +   '<div class="br2v" id="br2v-filters"><div id="br2FltWrap"></div></div>'
 +   '<div class="br2v" id="br2v-bill">'
-+     '<div class="br2bill"><span class="tag">DRĪZUMĀ</span>'
-+       '<h3 style="font-size:16px;font-weight:800;margin-bottom:6px">Abonements un norēķini</h3>'
-+       '<p style="font-size:13px;color:#86868b;font-weight:500;line-height:1.6;max-width:420px;margin:0 auto">'
++     '<div class="br2bill"><span class="tag" id="br2BillTag">DRĪZUMĀ</span>'
++       '<h3 id="br2BillH" style="font-size:16px;font-weight:800;margin-bottom:6px">Abonements un norēķini</h3>'
++       '<p id="br2BillP" style="font-size:13px;color:#86868b;font-weight:500;line-height:1.6;max-width:420px;margin:0 auto">'
 +       'Šī sadaļa ir rezervēta maksājumiem. Maksājumu apstrāde (Stripe / PayPal) vēl <b>nav ieviesta</b>.</p>'
 +       '<div style="margin-top:18px"><span class="br2plan" id="br2Plan2"></span></div>'
 +     '</div>'
 +   '</div>'
-+   '<div class="br2v" id="br2v-tc"><div class="br2sec"><h3>Lietošanas noteikumi</h3>'
-+     '<div class="br2tc">'+TC+'</div></div></div>'
++   '<div class="br2v" id="br2v-tc"><div class="br2sec"><h3 id="br2TcH">Lietošanas noteikumi</h3>'
++     '<div class="br2tc" id="br2TcBody">'+TC+'</div></div></div>'
 +  '</div></div>';
 document.body.appendChild(host);
 
@@ -2915,10 +3051,181 @@ function paintSession(){
   if(c) c.textContent = s.btn;
 }
 
+// ===== FULL PROFILE-MODAL i18n (LV/EN/RU/LT/ET). Painted on open + on language switch. =====
+var PROFI18N = {
+ lv:{title:"Mans profils",tAcct:"Konts",tFavs:"Saglabātās",tFilters:"Mani filtri",tBill:"Abonements",tTc:"Noteikumi",
+   acctH:"Konta informācija",acctS:"E-pastu nevar mainīt.",lEmail:"E-pasts",lName:"Vārds",namePh:"Tavs vārds",save:"Saglabāt",
+   pwH:"Mainīt paroli",pwS:"Vismaz 8 zīmes.",lPw1:"Jaunā parole",lPw2:"Atkārto",pwBtn:"Mainīt paroli",
+   billTag:"DRĪZUMĀ",billH:"Abonements un norēķini",billP:'Šī sadaļa ir rezervēta maksājumiem. Maksājumu apstrāde (Stripe / PayPal) vēl <b>nav ieviesta</b>.',
+   tcH:"Lietošanas noteikumi",
+   freePlan:"Bezmaksas plāns",savedOk:"Saglabāts.",pwShort:"Parolei jābūt vismaz 8 zīmes garai.",pwMismatch:"Paroles nesakrīt.",pwChanged:"Parole nomainīta.",
+   favEmpty1:"Nav saglabātu auto.",favEmpty2:"Nospied sirsniņu uz sludinājuma.",loading:"Ielādē…",err:"Kļūda",noRes:"Nav rezultātu.",openAd:"Atvērt sludinājumu ↗",
+   lockFltT:"Saglabātie filtri ir Premium funkcija",lockFltB:"Izveido filtrus un saņem e-pasta paziņojumus, tiklīdz parādās atbilstošs auto. Pieejams Premium plānā.",learnMore:"Uzzināt vairāk",
+   errPfx:"Kļūda: ",myFilters:"Mani filtri",createFilter:"+ Izveidot filtru",fltEmpty1:"Nav saglabātu filtru.",fltEmpty2:'Nospied "Izveidot filtru".',
+   view:"Skatīt",edit:"Labot",del:"Dzēst",freqInstant:"paziņojumi tūlītēji",freqFew:"paziņojumi ik pēc dažām stundām",freqDaily:"paziņojumi reizi dienā",allCars:"Visi auto",
+   fCountry:"Valsts",fMake:"Marka *",fModel:"Modeļi *",fFuel:"Degviela",fGear:"Ātrumkārba",fBody:"Virsbūve",fDrive:"Piedziņa",
+   picked:"izvēlēti",clear:"Notīrīt",allShort:"Visi",allModels:"Visi modeļi",pickMakeFirst:"Vispirms izvēlies vismaz vienu marku.",
+   modelSearchPh:"Meklēt modeli (piem. X5)",modelsW:"modeļi",makesW:"marka(s)",noModelsMatch:"Nav atbilstošu modeļu.",searchPh:"Meklēt…",allMakeSmall:"visi",
+   backFilters:"← Atpakaļ uz filtriem",editFilterH:"Labot filtru",newFilterH:"Jauns filtrs",
+   formHint:"Marka un modelis ir obligāti. Vienam filtram — viena marka, bet vari izvēlēties vairākus modeļus. Pārējos laukos vari izvēlēties vairākas vērtības.",
+   nameL:"Nosaukums",namePh2:"Piem. Lēts dīzeļa universālis",priceFrom:"Cena no",priceTo:"Cena līdz",yearFrom:"Gads no",yearTo:"Gads līdz",
+   milFrom:"Nobraukums no",milTo:"Nobraukums līdz",engFrom:"Tilpums no",engTo:"Tilpums līdz",notifyL:"Paziņojumi",on:"Ieslēgti",off:"Izslēgti",howOften:"Cik bieži sūtīt",
+   freqDailyOpt:"Reizi dienā — viens kopsavilkums",freqFewOpt:"Ik pēc dažām stundām",freqInstantOpt:"Tūlītēji — ne biežāk kā reizi stundā",premSuffix:" (Premium)",
+   digestNote:"Vienā e-pastā ir VISI jaunie auto — nekad viens e-pasts par katru auto. Vairāk par 6 e-pastiem dienā netiek sūtīti.",digestPrem:" Biežāk nekā reizi dienā — ar Premium.",
+   saveFilter:"Saglabāt filtru",cancel:"Atcelt",fltPrem:"Saglabātie filtri ir Premium funkcija.",needMake:"Jāizvēlas vismaz viena marka.",needModel:"Jāizvēlas vismaz viens modelis.",
+   searching:"Meklē…",matchCars:"atbilstoši auto",sNew:"Jaunākie",sPa:"Lētākie",sPd:"Dārgākie",sYd:"Gads ↓",sKm:"Mazākais nobraukums",
+   heartSave:"Saglabāt",histLockT:"Cenu un nobraukuma vēsture",histLockB:"Redzi, kā mainījusies šī auto cena un nobraukums. Pieejams Premium plānā.",milHist:"Nobraukuma vēsture",
+   tcBody:'<h4>1. Par pakalpojumu</h4>BalticRadar apkopo publiski pieejamus sludinājumus. Mēs neesam pārdevējs vai darījuma puse.'
+    +'<h4>2. Datu precizitāte</h4>Dati tiek iegūti automatizēti no trešo pušu avotiem. Pirms darījuma pārbaudiet datus pie pārdevēja.'
+    +'<h4>3. Konts</h4>Jūs esat atbildīgs par sava konta drošību. Viens konts – viena persona.'
+    +'<h4>4. Jūsu dati</h4>Glabājam jūsu e-pastu, vārdu, saglabātās automašīnas un filtrus. Mēs nepārdodam jūsu datus.'
+    +'<h4>5. Paziņojumi</h4>Cenu paziņojumi tiek sūtīti tikai par saglabātajiem filtriem (maksas funkcija).'
+    +'<h4>6. Maksas funkcijas</h4>Saglabātie filtri, e-pasta paziņojumi un pilna cenu/nobraukuma vēsture ir Premium funkcijas.'
+    +'<h4>7. Atbildības ierobežojums</h4>Pakalpojums tiek sniegts "kāds tas ir".'
+    +'<h4>8. Izmaiņas</h4>Noteikumi var tikt mainīti.'},
+ en:{title:"My profile",tAcct:"Account",tFavs:"Saved",tFilters:"My filters",tBill:"Subscription",tTc:"Terms",
+   acctH:"Account details",acctS:"Email cannot be changed.",lEmail:"Email",lName:"Name",namePh:"Your name",save:"Save",
+   pwH:"Change password",pwS:"At least 8 characters.",lPw1:"New password",lPw2:"Repeat",pwBtn:"Change password",
+   billTag:"COMING SOON",billH:"Subscription & billing",billP:'This section is reserved for payments. Payment processing (Stripe / PayPal) is <b>not yet implemented</b>.',
+   tcH:"Terms of use",
+   freePlan:"Free plan",savedOk:"Saved.",pwShort:"Password must be at least 8 characters.",pwMismatch:"Passwords do not match.",pwChanged:"Password changed.",
+   favEmpty1:"No saved cars.",favEmpty2:"Tap the heart on a listing.",loading:"Loading…",err:"Error",noRes:"No results.",openAd:"Open listing ↗",
+   lockFltT:"Saved filters are a Premium feature",lockFltB:"Create filters and get email alerts as soon as a matching car appears. Available on the Premium plan.",learnMore:"Learn more",
+   errPfx:"Error: ",myFilters:"My filters",createFilter:"+ Create filter",fltEmpty1:"No saved filters.",fltEmpty2:'Tap "Create filter".',
+   view:"View",edit:"Edit",del:"Delete",freqInstant:"instant alerts",freqFew:"alerts every few hours",freqDaily:"daily alerts",allCars:"All cars",
+   fCountry:"Country",fMake:"Make *",fModel:"Models *",fFuel:"Fuel",fGear:"Gearbox",fBody:"Body",fDrive:"Drive",
+   picked:"selected",clear:"Clear",allShort:"All",allModels:"All models",pickMakeFirst:"First choose at least one make.",
+   modelSearchPh:"Search model (e.g. X5)",modelsW:"models",makesW:"make(s)",noModelsMatch:"No matching models.",searchPh:"Search…",allMakeSmall:"all",
+   backFilters:"← Back to filters",editFilterH:"Edit filter",newFilterH:"New filter",
+   formHint:"Make and model are required. One make per filter, but you can pick several models. In the other fields you can select multiple values.",
+   nameL:"Name",namePh2:"E.g. Cheap diesel wagon",priceFrom:"Price from",priceTo:"Price to",yearFrom:"Year from",yearTo:"Year to",
+   milFrom:"Mileage from",milTo:"Mileage to",engFrom:"Engine from",engTo:"Engine to",notifyL:"Alerts",on:"On",off:"Off",howOften:"How often to send",
+   freqDailyOpt:"Once a day — one summary",freqFewOpt:"Every few hours",freqInstantOpt:"Instantly — no more than once an hour",premSuffix:" (Premium)",
+   digestNote:"One email contains ALL new cars — never one email per car. No more than 6 emails a day are sent.",digestPrem:" More often than once a day — with Premium.",
+   saveFilter:"Save filter",cancel:"Cancel",fltPrem:"Saved filters are a Premium feature.",needMake:"Choose at least one make.",needModel:"Choose at least one model.",
+   searching:"Searching…",matchCars:"matching cars",sNew:"Newest",sPa:"Cheapest",sPd:"Most expensive",sYd:"Year ↓",sKm:"Lowest mileage",
+   heartSave:"Save",histLockT:"Price & mileage history",histLockB:"See how this car's price and mileage have changed. Available on the Premium plan.",milHist:"Mileage history",
+   tcBody:'<h4>1. About the service</h4>BalticRadar aggregates publicly available listings. We are not a seller or party to any transaction.'
+    +'<h4>2. Data accuracy</h4>Data is collected automatically from third-party sources. Verify the details with the seller before any deal.'
+    +'<h4>3. Account</h4>You are responsible for the security of your account. One account – one person.'
+    +'<h4>4. Your data</h4>We store your email, name, saved cars and filters. We do not sell your data.'
+    +'<h4>5. Alerts</h4>Price alerts are sent only for saved filters (paid feature).'
+    +'<h4>6. Paid features</h4>Saved filters, email alerts and the full price/mileage history are Premium features.'
+    +'<h4>7. Limitation of liability</h4>The service is provided "as is".'
+    +'<h4>8. Changes</h4>These terms may change.'},
+ ru:{title:"Мой профиль",tAcct:"Аккаунт",tFavs:"Сохранённые",tFilters:"Мои фильтры",tBill:"Подписка",tTc:"Условия",
+   acctH:"Данные аккаунта",acctS:"E-mail изменить нельзя.",lEmail:"E-mail",lName:"Имя",namePh:"Ваше имя",save:"Сохранить",
+   pwH:"Сменить пароль",pwS:"Минимум 8 символов.",lPw1:"Новый пароль",lPw2:"Повторите",pwBtn:"Сменить пароль",
+   billTag:"СКОРО",billH:"Подписка и оплата",billP:'Этот раздел зарезервирован для платежей. Обработка платежей (Stripe / PayPal) <b>ещё не внедрена</b>.',
+   tcH:"Условия использования",
+   freePlan:"Бесплатный план",savedOk:"Сохранено.",pwShort:"Пароль должен быть не менее 8 символов.",pwMismatch:"Пароли не совпадают.",pwChanged:"Пароль изменён.",
+   favEmpty1:"Нет сохранённых авто.",favEmpty2:"Нажмите сердечко на объявлении.",loading:"Загрузка…",err:"Ошибка",noRes:"Нет результатов.",openAd:"Открыть объявление ↗",
+   lockFltT:"Сохранённые фильтры — функция Premium",lockFltB:"Создавайте фильтры и получайте уведомления на e-mail, как только появится подходящее авто. Доступно в плане Premium.",learnMore:"Подробнее",
+   errPfx:"Ошибка: ",myFilters:"Мои фильтры",createFilter:"+ Создать фильтр",fltEmpty1:"Нет сохранённых фильтров.",fltEmpty2:'Нажмите «Создать фильтр».',
+   view:"Смотреть",edit:"Изменить",del:"Удалить",freqInstant:"уведомления мгновенно",freqFew:"уведомления каждые несколько часов",freqDaily:"уведомления раз в день",allCars:"Все авто",
+   fCountry:"Страна",fMake:"Марка *",fModel:"Модели *",fFuel:"Топливо",fGear:"КПП",fBody:"Кузов",fDrive:"Привод",
+   picked:"выбрано",clear:"Очистить",allShort:"Все",allModels:"Все модели",pickMakeFirst:"Сначала выберите хотя бы одну марку.",
+   modelSearchPh:"Поиск модели (напр. X5)",modelsW:"моделей",makesW:"марок",noModelsMatch:"Нет подходящих моделей.",searchPh:"Поиск…",allMakeSmall:"все",
+   backFilters:"← Назад к фильтрам",editFilterH:"Изменить фильтр",newFilterH:"Новый фильтр",
+   formHint:"Марка и модель обязательны. Одна марка на фильтр, но можно выбрать несколько моделей. В остальных полях можно выбрать несколько значений.",
+   nameL:"Название",namePh2:"Напр. Дешёвый дизельный универсал",priceFrom:"Цена от",priceTo:"Цена до",yearFrom:"Год от",yearTo:"Год до",
+   milFrom:"Пробег от",milTo:"Пробег до",engFrom:"Объём от",engTo:"Объём до",notifyL:"Уведомления",on:"Вкл.",off:"Выкл.",howOften:"Как часто отправлять",
+   freqDailyOpt:"Раз в день — одна сводка",freqFewOpt:"Каждые несколько часов",freqInstantOpt:"Мгновенно — не чаще раза в час",premSuffix:" (Premium)",
+   digestNote:"В одном письме ВСЕ новые авто — никогда по одному письму на авто. Не более 6 писем в день.",digestPrem:" Чаще раза в день — с Premium.",
+   saveFilter:"Сохранить фильтр",cancel:"Отмена",fltPrem:"Сохранённые фильтры — функция Premium.",needMake:"Выберите хотя бы одну марку.",needModel:"Выберите хотя бы одну модель.",
+   searching:"Поиск…",matchCars:"подходящих авто",sNew:"Новые",sPa:"Дешевле",sPd:"Дороже",sYd:"Год ↓",sKm:"Меньший пробег",
+   heartSave:"Сохранить",histLockT:"История цены и пробега",histLockB:"Смотрите, как менялись цена и пробег этого авто. Доступно в плане Premium.",milHist:"История пробега",
+   tcBody:'<h4>1. О сервисе</h4>BalticRadar собирает публично доступные объявления. Мы не являемся продавцом или стороной сделки.'
+    +'<h4>2. Точность данных</h4>Данные собираются автоматически из сторонних источников. Перед сделкой проверьте данные у продавца.'
+    +'<h4>3. Аккаунт</h4>Вы несёте ответственность за безопасность своего аккаунта. Один аккаунт – один человек.'
+    +'<h4>4. Ваши данные</h4>Мы храним ваш e-mail, имя, сохранённые авто и фильтры. Мы не продаём ваши данные.'
+    +'<h4>5. Уведомления</h4>Уведомления о цене отправляются только по сохранённым фильтрам (платная функция).'
+    +'<h4>6. Платные функции</h4>Сохранённые фильтры, e-mail-уведомления и полная история цены/пробега — функции Premium.'
+    +'<h4>7. Ограничение ответственности</h4>Сервис предоставляется «как есть».'
+    +'<h4>8. Изменения</h4>Условия могут быть изменены.'},
+ lt:{title:"Mano profilis",tAcct:"Paskyra",tFavs:"Išsaugoti",tFilters:"Mano filtrai",tBill:"Prenumerata",tTc:"Taisyklės",
+   acctH:"Paskyros informacija",acctS:"El. pašto keisti negalima.",lEmail:"El. paštas",lName:"Vardas",namePh:"Tavo vardas",save:"Išsaugoti",
+   pwH:"Keisti slaptažodį",pwS:"Bent 8 simboliai.",lPw1:"Naujas slaptažodis",lPw2:"Pakartok",pwBtn:"Keisti slaptažodį",
+   billTag:"NETRUKUS",billH:"Prenumerata ir atsiskaitymai",billP:'Šis skyrius skirtas mokėjimams. Mokėjimų apdorojimas (Stripe / PayPal) <b>dar neįdiegtas</b>.',
+   tcH:"Naudojimo taisyklės",
+   freePlan:"Nemokamas planas",savedOk:"Išsaugota.",pwShort:"Slaptažodį turi sudaryti bent 8 simboliai.",pwMismatch:"Slaptažodžiai nesutampa.",pwChanged:"Slaptažodis pakeistas.",
+   favEmpty1:"Nėra išsaugotų automobilių.",favEmpty2:"Paspausk širdelę ant skelbimo.",loading:"Įkeliama…",err:"Klaida",noRes:"Nėra rezultatų.",openAd:"Atidaryti skelbimą ↗",
+   lockFltT:"Išsaugoti filtrai — Premium funkcija",lockFltB:"Kurk filtrus ir gauk pranešimus el. paštu, vos pasirodžius tinkamam automobiliui. Prieinama su Premium planu.",learnMore:"Sužinoti daugiau",
+   errPfx:"Klaida: ",myFilters:"Mano filtrai",createFilter:"+ Sukurti filtrą",fltEmpty1:"Nėra išsaugotų filtrų.",fltEmpty2:'Paspausk „Sukurti filtrą".',
+   view:"Žiūrėti",edit:"Redaguoti",del:"Ištrinti",freqInstant:"pranešimai iš karto",freqFew:"pranešimai kas kelias valandas",freqDaily:"pranešimai kartą per dieną",allCars:"Visi automobiliai",
+   fCountry:"Šalis",fMake:"Markė *",fModel:"Modeliai *",fFuel:"Kuras",fGear:"Pavarų dėžė",fBody:"Kėbulas",fDrive:"Pavara",
+   picked:"pasirinkta",clear:"Išvalyti",allShort:"Visi",allModels:"Visi modeliai",pickMakeFirst:"Pirmiausia pasirink bent vieną markę.",
+   modelSearchPh:"Ieškoti modelio (pvz. X5)",modelsW:"modelių",makesW:"markė (-ės)",noModelsMatch:"Nėra tinkamų modelių.",searchPh:"Ieškoti…",allMakeSmall:"visi",
+   backFilters:"← Atgal į filtrus",editFilterH:"Redaguoti filtrą",newFilterH:"Naujas filtras",
+   formHint:"Markė ir modelis privalomi. Vienam filtrui — viena markė, bet gali pasirinkti kelis modelius. Kituose laukuose gali pasirinkti kelias reikšmes.",
+   nameL:"Pavadinimas",namePh2:"Pvz. Pigus dyzelinis universalas",priceFrom:"Kaina nuo",priceTo:"Kaina iki",yearFrom:"Metai nuo",yearTo:"Metai iki",
+   milFrom:"Rida nuo",milTo:"Rida iki",engFrom:"Tūris nuo",engTo:"Tūris iki",notifyL:"Pranešimai",on:"Įjungti",off:"Išjungti",howOften:"Kaip dažnai siųsti",
+   freqDailyOpt:"Kartą per dieną — viena santrauka",freqFewOpt:"Kas kelias valandas",freqInstantOpt:"Iš karto — ne dažniau kaip kartą per valandą",premSuffix:" (Premium)",
+   digestNote:"Viename laiške yra VISI nauji automobiliai — niekada po vieną laišką kiekvienam. Daugiau nei 6 laiškų per dieną nesiunčiama.",digestPrem:" Dažniau nei kartą per dieną — su Premium.",
+   saveFilter:"Išsaugoti filtrą",cancel:"Atšaukti",fltPrem:"Išsaugoti filtrai — Premium funkcija.",needMake:"Pasirink bent vieną markę.",needModel:"Pasirink bent vieną modelį.",
+   searching:"Ieškoma…",matchCars:"tinkami automobiliai",sNew:"Naujausi",sPa:"Pigiausi",sPd:"Brangiausi",sYd:"Metai ↓",sKm:"Mažiausia rida",
+   heartSave:"Išsaugoti",histLockT:"Kainos ir ridos istorija",histLockB:"Matyk, kaip keitėsi šio automobilio kaina ir rida. Prieinama su Premium planu.",milHist:"Ridos istorija",
+   tcBody:'<h4>1. Apie paslaugą</h4>BalticRadar surenka viešai prieinamus skelbimus. Mes nesame pardavėjas ar sandorio šalis.'
+    +'<h4>2. Duomenų tikslumas</h4>Duomenys renkami automatiškai iš trečiųjų šalių šaltinių. Prieš sandorį patikrink duomenis pas pardavėją.'
+    +'<h4>3. Paskyra</h4>Jūs atsakingi už savo paskyros saugumą. Viena paskyra – vienas asmuo.'
+    +'<h4>4. Jūsų duomenys</h4>Saugome jūsų el. paštą, vardą, išsaugotus automobilius ir filtrus. Mes neparduodame jūsų duomenų.'
+    +'<h4>5. Pranešimai</h4>Kainos pranešimai siunčiami tik pagal išsaugotus filtrus (mokama funkcija).'
+    +'<h4>6. Mokamos funkcijos</h4>Išsaugoti filtrai, el. pašto pranešimai ir pilna kainos/ridos istorija yra Premium funkcijos.'
+    +'<h4>7. Atsakomybės ribojimas</h4>Paslauga teikiama „tokia, kokia yra".'
+    +'<h4>8. Pakeitimai</h4>Taisyklės gali būti keičiamos.'},
+ et:{title:"Minu profiil",tAcct:"Konto",tFavs:"Salvestatud",tFilters:"Minu filtrid",tBill:"Tellimus",tTc:"Tingimused",
+   acctH:"Konto andmed",acctS:"E-posti ei saa muuta.",lEmail:"E-post",lName:"Nimi",namePh:"Sinu nimi",save:"Salvesta",
+   pwH:"Muuda parooli",pwS:"Vähemalt 8 tähemärki.",lPw1:"Uus parool",lPw2:"Korda",pwBtn:"Muuda parooli",
+   billTag:"VARSTI",billH:"Tellimus ja arved",billP:'See jaotis on reserveeritud maksetele. Maksete töötlemine (Stripe / PayPal) <b>ei ole veel juurutatud</b>.',
+   tcH:"Kasutustingimused",
+   freePlan:"Tasuta plaan",savedOk:"Salvestatud.",pwShort:"Parool peab olema vähemalt 8 tähemärki.",pwMismatch:"Paroolid ei kattu.",pwChanged:"Parool muudetud.",
+   favEmpty1:"Salvestatud autosid pole.",favEmpty2:"Vajuta kuulutusel südamele.",loading:"Laadin…",err:"Viga",noRes:"Tulemusi pole.",openAd:"Ava kuulutus ↗",
+   lockFltT:"Salvestatud filtrid on Premium-funktsioon",lockFltB:"Loo filtreid ja saa e-posti teavitusi kohe, kui sobiv auto ilmub. Saadaval Premium-plaaniga.",learnMore:"Loe lähemalt",
+   errPfx:"Viga: ",myFilters:"Minu filtrid",createFilter:"+ Loo filter",fltEmpty1:"Salvestatud filtreid pole.",fltEmpty2:'Vajuta „Loo filter".',
+   view:"Vaata",edit:"Muuda",del:"Kustuta",freqInstant:"kohesed teated",freqFew:"teated iga paari tunni tagant",freqDaily:"teated kord päevas",allCars:"Kõik autod",
+   fCountry:"Riik",fMake:"Mark *",fModel:"Mudelid *",fFuel:"Kütus",fGear:"Käigukast",fBody:"Kere",fDrive:"Vedu",
+   picked:"valitud",clear:"Tühjenda",allShort:"Kõik",allModels:"Kõik mudelid",pickMakeFirst:"Vali esmalt vähemalt üks mark.",
+   modelSearchPh:"Otsi mudelit (nt X5)",modelsW:"mudelit",makesW:"mark(i)",noModelsMatch:"Sobivaid mudeleid pole.",searchPh:"Otsi…",allMakeSmall:"kõik",
+   backFilters:"← Tagasi filtrite juurde",editFilterH:"Muuda filtrit",newFilterH:"Uus filter",
+   formHint:"Mark ja mudel on kohustuslikud. Üks mark filtri kohta, kuid võid valida mitu mudelit. Teistes väljades võid valida mitu väärtust.",
+   nameL:"Nimi",namePh2:"Nt Odav diisel-universaal",priceFrom:"Hind alates",priceTo:"Hind kuni",yearFrom:"Aasta alates",yearTo:"Aasta kuni",
+   milFrom:"Läbisõit alates",milTo:"Läbisõit kuni",engFrom:"Maht alates",engTo:"Maht kuni",notifyL:"Teated",on:"Sees",off:"Väljas",howOften:"Kui sageli saata",
+   freqDailyOpt:"Kord päevas — üks kokkuvõte",freqFewOpt:"Iga paari tunni tagant",freqInstantOpt:"Kohe — mitte sagedamini kui kord tunnis",premSuffix:" (Premium)",
+   digestNote:"Üks e-kiri sisaldab KÕIKI uusi autosid — mitte kunagi üks kiri auto kohta. Rohkem kui 6 kirja päevas ei saadeta.",digestPrem:" Sagedamini kui kord päevas — Premiumiga.",
+   saveFilter:"Salvesta filter",cancel:"Tühista",fltPrem:"Salvestatud filtrid on Premium-funktsioon.",needMake:"Vali vähemalt üks mark.",needModel:"Vali vähemalt üks mudel.",
+   searching:"Otsin…",matchCars:"sobivat autot",sNew:"Uusimad",sPa:"Odavaimad",sPd:"Kalleimad",sYd:"Aasta ↓",sKm:"Väikseim läbisõit",
+   heartSave:"Salvesta",histLockT:"Hinna- ja läbisõiduajalugu",histLockB:"Vaata, kuidas selle auto hind ja läbisõit on muutunud. Saadaval Premium-plaaniga.",milHist:"Läbisõiduajalugu",
+   tcBody:'<h4>1. Teenusest</h4>BalticRadar koondab avalikult kättesaadavaid kuulutusi. Me ei ole müüja ega tehingu osapool.'
+    +'<h4>2. Andmete täpsus</h4>Andmed kogutakse automaatselt kolmandate osapoolte allikatest. Enne tehingut kontrolli andmeid müüja käest.'
+    +'<h4>3. Konto</h4>Sina vastutad oma konto turvalisuse eest. Üks konto – üks isik.'
+    +'<h4>4. Sinu andmed</h4>Salvestame sinu e-posti, nime, salvestatud autod ja filtrid. Me ei müü sinu andmeid.'
+    +'<h4>5. Teated</h4>Hinnateated saadetakse ainult salvestatud filtrite kohta (tasuline funktsioon).'
+    +'<h4>6. Tasulised funktsioonid</h4>Salvestatud filtrid, e-posti teated ja täielik hinna/läbisõidu ajalugu on Premium-funktsioonid.'
+    +'<h4>7. Vastutuse piiramine</h4>Teenust pakutakse „nagu on".'
+    +'<h4>8. Muudatused</h4>Tingimusi võidakse muuta.'}
+};
+function PL(){ try{ return localStorage.getItem("br_lang")||"lv"; }catch(e){ return "lv"; } }
+function P(){ return PROFI18N[PL()] || PROFI18N.lv; }
+function _st(id,v){ var e=$(id); if(e) e.textContent=v; }
+function _sh(id,v){ var e=$(id); if(e) e.innerHTML=v; }
+function _sp(id,v){ var e=$(id); if(e) e.placeholder=v; }
+function paintProfile(){
+  var p=P();
+  _st('br2Title',p.title);
+  var tl=function(t,v){ var b=document.querySelector('.br2tab[data-t="'+t+'"] .br2tabL'); if(b) b.textContent=v; };
+  tl('acct',p.tAcct); tl('favs',p.tFavs); tl('filters',p.tFilters); tl('bill',p.tBill); tl('tc',p.tTc);
+  _st('br2AcctH',p.acctH); _st('br2AcctS',p.acctS);
+  _st('br2LEmail',p.lEmail); _st('br2LName',p.lName); _sp('br2Name',p.namePh); _st('br2SaveAcct',p.save);
+  _st('br2PwH',p.pwH); _st('br2PwS',p.pwS); _st('br2LPw1',p.lPw1); _st('br2LPw2',p.lPw2); _st('br2ChPwBtn',p.pwBtn);
+  _st('br2BillTag',p.billTag); _st('br2BillH',p.billH); _sh('br2BillP',p.billP);
+  _st('br2TcH',p.tcH); _sh('br2TcBody',p.tcBody);
+}
+
 BRProfile.open = function(tab){
   if(!BR.user) return BR.openAuth('signin');
   $('br2ov').classList.add('on'); $('br2p').classList.add('on');
   document.body.style.overflow='hidden';
+  paintProfile();
   fillAcct();
   paintSession();
   BRProfile.tab(tab||'acct');
@@ -2945,7 +3252,7 @@ function fillAcct(){
   if(!$('br2Email')) return;
   $('br2Email').value = (BR.user&&BR.user.email)||'';
   $('br2Name').value  = (BR.profile&&BR.profile.full_name)||'';
-  var txt = isPrem() ? '⭐ Premium' : 'Bezmaksas plāns';
+  var txt = isPrem() ? '⭐ Premium' : P().freePlan;
   $('br2Plan').textContent = txt;
   if($('br2Plan2')) $('br2Plan2').textContent = txt;
 }
@@ -2956,17 +3263,17 @@ BRProfile.saveAcct = async function(){
   if(r.error) return m('br2m-acct', r.error.message);
   BR.profile = r.data||BR.profile;
   if(BR.paintHeader) BR.paintHeader();
-  m('br2m-acct','Saglabāts.','ok');
+  m('br2m-acct',P().savedOk,'ok');
 };
 BRProfile.changePw = async function(){
   m('br2m-pw','');
   var a=$('br2Pw1').value, b=$('br2Pw2').value;
-  if(a.length<8) return m('br2m-pw','Parolei jābūt vismaz 8 zīmes garai.');
-  if(a!==b) return m('br2m-pw','Paroles nesakrīt.');
+  if(a.length<8) return m('br2m-pw',P().pwShort);
+  if(a!==b) return m('br2m-pw',P().pwMismatch);
   var r = await supa.auth.updateUser({password:a});
   if(r.error) return m('br2m-pw', r.error.message);
   $('br2Pw1').value=''; $('br2Pw2').value='';
-  m('br2m-pw','Parole nomainīta.','ok');
+  m('br2m-pw',P().pwChanged,'ok');
 };
 
 /* ---- favourites ---- */
@@ -2974,15 +3281,15 @@ async function renderFavs(){
   var box=$('br2FavBox'); if(!box) return;
   await loadFavs();
   if($('br2favN')) $('br2favN').textContent = FAV.size? '('+FAV.size+')':'';
-  if(!FAV.size){ box.innerHTML='<div class="br2empty"><span class="e">♡</span>Nav saglabātu auto.<br>Nospied sirsniņu uz sludinājuma.</div>'; return; }
-  box.innerHTML='<div class="br2empty">Ielādē…</div>';
+  if(!FAV.size){ box.innerHTML='<div class="br2empty"><span class="e">♡</span>'+P().favEmpty1+'<br>'+P().favEmpty2+'</div>'; return; }
+  box.innerHTML='<div class="br2empty">'+P().loading+'</div>';
   var r = await supa.from('v_listings')
     .select('car_id,make,model,year,last_price,last_mileage,fuel,photos,country,source_url').in('car_id',[...FAV]);
-  if(r.error){ box.innerHTML='<div class="br2empty">Kļūda</div>'; return; }
+  if(r.error){ box.innerHTML='<div class="br2empty">'+P().err+'</div>'; return; }
   box.innerHTML = cardsHtml(r.data||[], true);
 }
 function cardsHtml(rows, rm){
-  if(!rows.length) return '<div class="br2empty">Nav rezultātu.</div>';
+  if(!rows.length) return '<div class="br2empty">'+P().noRes+'</div>';
   return '<div class="br2cards">' + rows.map(function(c){
     return '<div class="br2c" onclick="BRProfile.openCar(\''+esc(c.car_id)+'\')">'
       + ((c.photos&&c.photos[0]) ? '<img src="'+esc(c.photos[0])+'" loading="lazy">' : '<img>')
@@ -2993,7 +3300,7 @@ function cardsHtml(rows, rm){
       + '<div class="p">'+eur(c.last_price)+'</div>'
       // direct link to the ORIGINAL ad on ss.lv / autoplius.lt / auto24.ee (same source_url the main cards use)
       + ((c.source_url && c.source_url!=='#')
-          ? '<a class="br2src" href="'+esc(c.source_url)+'" target="_blank" rel="noopener nofollow" onclick="event.stopPropagation()">Atvērt sludinājumu ↗</a>'
+          ? '<a class="br2src" href="'+esc(c.source_url)+'" target="_blank" rel="noopener nofollow" onclick="event.stopPropagation()">'+P().openAd+'</a>'
           : '')
       + '</div></div>';
   }).join('') + '</div>';
@@ -3014,32 +3321,31 @@ function lockHtml(title, body){
    + '<div class="lockrows"><div class="lockrow"></div><div class="lockrow"></div><div class="lockrow"></div>'
    + '<div class="lockrow"></div><div class="lockrow"></div></div>'
    + '<div class="lockcta"><div class="ic">🔒</div><h4>'+title+'</h4><p>'+body+'</p>'
-   + '<button class="btn" onclick="BRProfile.tab(\'bill\')">Uzzināt vairāk</button></div></div>';
+   + '<button class="btn" onclick="BRProfile.tab(\'bill\')">'+P().learnMore+'</button></div></div>';
 }
 
 async function renderFiltersHome(){
   var w = $('br2FltWrap'); if(!w) return;
 
   if(!isPrem()){
-    w.innerHTML = lockHtml('Saglabātie filtri ir Premium funkcija',
-      'Izveido filtrus un saņem e-pasta paziņojumus, tiklīdz parādās atbilstošs auto. Pieejams Premium plānā.');
+    w.innerHTML = lockHtml(P().lockFltT, P().lockFltB);
     if($('br2fltN')) $('br2fltN').textContent='';
     return;
   }
 
   var r = await supa.from('saved_filters').select('*').order('created_at',{ascending:false});
-  if(r.error){ w.innerHTML='<div class="br2empty">Kļūda: '+esc(r.error.message)+'</div>'; return; }
+  if(r.error){ w.innerHTML='<div class="br2empty">'+P().errPfx+esc(r.error.message)+'</div>'; return; }
   var rows = r.data||[];
   if($('br2fltN')) $('br2fltN').textContent = rows.length? '('+rows.length+')':'';
 
   w.innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">'
-    + '<div style="font-weight:800;font-size:15px">Mani filtri</div>'
-    + '<button class="br2btn g" onclick="BRProfile.newFilter()">+ Izveidot filtru</button></div>'
+    + '<div style="font-weight:800;font-size:15px">'+P().myFilters+'</div>'
+    + '<button class="br2btn g" onclick="BRProfile.newFilter()">'+P().createFilter+'</button></div>'
     + '<div id="br2FltForm"></div>'
     + '<div id="br2FltList">' + (rows.length
         ? rows.map(filterRow).join('')
-        : '<div class="br2empty"><span class="e">🔍</span>Nav saglabātu filtru.<br>Nospied “Izveidot filtru”.</div>')
+        : '<div class="br2empty"><span class="e">🔍</span>'+P().fltEmpty1+'<br>'+P().fltEmpty2+'</div>')
       + '</div>';
 }
 function filterRow(f){
@@ -3049,15 +3355,15 @@ function filterRow(f){
     + (f.notify_email?' <span style="color:#16a06a;font-size:11px;font-weight:700">● '+FREQL(f.notify_freq)+'</span>':'')
     + '</div><div class="c">'+esc(describe(c))+'</div></div>'
     + '<div class="acts">'
-    + '<button onclick="event.stopPropagation();BRProfile.runFilter('+f.id+')">Skatīt</button>'
-    + '<button onclick="event.stopPropagation();BRProfile.editFilter('+f.id+')">Labot</button>'
-    + '<button class="del" onclick="event.stopPropagation();BRProfile.delFilter('+f.id+')">Dzēst</button>'
+    + '<button onclick="event.stopPropagation();BRProfile.runFilter('+f.id+')">'+P().view+'</button>'
+    + '<button onclick="event.stopPropagation();BRProfile.editFilter('+f.id+')">'+P().edit+'</button>'
+    + '<button class="del" onclick="event.stopPropagation();BRProfile.delFilter('+f.id+')">'+P().del+'</button>'
     + '</div></div>';
 }
 function FREQL(v){
-  return v==='instant'   ? 'paziņojumi tūlītēji'
-       : v==='few_hours' ? 'paziņojumi ik pēc dažām stundām'
-       :                   'paziņojumi reizi dienā';
+  return v==='instant'   ? P().freqInstant
+       : v==='few_hours' ? P().freqFew
+       :                   P().freqDaily;
 }
 function describe(c){
   var p=[];
@@ -3073,19 +3379,19 @@ function describe(c){
   if(c.price_min!=null||c.price_max!=null) p.push((c.price_min!=null?nf(c.price_min):'0')+'–'+(c.price_max!=null?nf(c.price_max):'∞')+' €');
   if(c.year_min!=null||c.year_max!=null) p.push((c.year_min||'')+'–'+(c.year_max||''));
   if(c.km_min!=null||c.km_max!=null) p.push((c.km_min!=null?nf(c.km_min):0)+'–'+(c.km_max!=null?nf(c.km_max):'∞')+' km');
-  return p.length? p.join(' · ') : 'Visi auto';
+  return p.length? p.join(' · ') : P().allCars;
 }
 
 /* ================= MULTI-SELECT CHIPS: every option filter ================= */
 var MS = { country:[], make:[], model:[], fuel:[], gearbox:[], body:[], drivetrain:[] };
 var MS_FIELDS = [
-  { key:'country',    label:'Valsts',     opts:['LV','LT','EE'] },
-  { key:'make',       label:'Marka *',    src:'make'  },
-  { key:'model',      label:'Modeļi *'                },
-  { key:'fuel',       label:'Degviela',   src:'fuel'  },
-  { key:'gearbox',    label:'Ātrumkārba', src:'gear'  },
-  { key:'body',       label:'Virsbūve',   src:'bodyf' },
-  { key:'drivetrain', label:'Piedziņa',   src:'drive' }
+  { key:'country',    lkey:'fCountry', opts:['LV','LT','EE'] },
+  { key:'make',       lkey:'fMake',    src:'make'  },
+  { key:'model',      lkey:'fModel'                },
+  { key:'fuel',       lkey:'fFuel',    src:'fuel'  },
+  { key:'gearbox',    lkey:'fGear',    src:'gear'  },
+  { key:'body',       lkey:'fBody',    src:'bodyf' },
+  { key:'drivetrain', lkey:'fDrive',   src:'drive' }
 ];
 function msOptions(f){
   if(f.opts) return f.opts.slice();
@@ -3110,7 +3416,7 @@ function msPickedHtml(key){
   var n = MS[key].length;
   if(!n) return '';
   if(n > 12){   // "Visi modeļi" can select hundreds - don't render hundreds of pills
-    return '<span class="br2pick">'+n+' izvēlēti<b onclick="BRProfile.msNone(\''+key+'\')">✕</b></span>';
+    return '<span class="br2pick">'+n+' '+P().picked+'<b onclick="BRProfile.msNone(\''+key+'\')">✕</b></span>';
   }
   return MS[key].map(function(v){
     var lbl = (key==='model') ? v.replace('|',' ') : v;
@@ -3122,7 +3428,7 @@ function msAllRow(key, label){
   var allBtn = (key==='make') ? '' : '<button type="button" class="br2btn o" onclick="BRProfile.msAll(\''+key+'\')">'+label+'</button>';
   return '<div style="display:flex;gap:8px;margin:2px 0 10px">'
        + allBtn
-       + '<button type="button" class="br2btn o" style="color:#d2492f;border-color:rgba(210,73,47,.55)" onclick="BRProfile.msNone(\''+key+'\')">Notīrīt</button></div>';
+       + '<button type="button" class="br2btn o" style="color:#d2492f;border-color:rgba(210,73,47,.55)" onclick="BRProfile.msNone(\''+key+'\')">'+P().clear+'</button></div>';
 }
 BRProfile.msAll = async function(key){
   if(key==='model'){
@@ -3170,7 +3476,7 @@ async function msRender(key){
 
   if(key==='model'){
     if(!MS.make.length){
-      box.innerHTML = pick + '<div class="br2hint">Vispirms izvēlies vismaz vienu marku.</div>';
+      box.innerHTML = pick + '<div class="br2hint">'+P().pickMakeFirst+'</div>';
       return;
     }
     var q = (($('ms_q_model')||{}).value||'').trim().toLowerCase();
@@ -3182,7 +3488,7 @@ async function msRender(key){
       if(!list.length) return;
       html += '<div class="msgrp">'+esc(g.make)+' <i>'+list.length+'</i>'
             + ' <button type="button" class="br2chip" style="padding:3px 10px;font-size:11.5px"'
-            + ' onclick="BRProfile.msAllMake(\''+esc(g.make).replace(/'/g,"&#39;")+'\')">visi</button>'
+            + ' onclick="BRProfile.msAllMake(\''+esc(g.make).replace(/'/g,"&#39;")+'\')">'+P().allMakeSmall+'</button>'
             + '</div><div class="br2chips" style="max-height:none">'
             + list.map(function(m){
                 var v=g.make+'|'+m;
@@ -3190,10 +3496,10 @@ async function msRender(key){
               }).join('') + '</div>';
     });
     box.innerHTML = pick
-      + '<input class="br2i" id="ms_q_model" placeholder="Meklēt modeli (piem. X5)" autocomplete="off" value="'+esc(q)+'">'
-      + msAllRow('model','Visi modeļi')
-      + '<div class="br2hint">'+shown+' no '+total+' modeļiem · '+MS.make.length+' marka(s)</div>'
-      + (html||'<div class="br2hint">Nav atbilstošu modeļu.</div>');
+      + '<input class="br2i" id="ms_q_model" placeholder="'+P().modelSearchPh+'" autocomplete="off" value="'+esc(q)+'">'
+      + msAllRow('model',P().allModels)
+      + '<div class="br2hint">'+shown+' / '+total+' '+P().modelsW+' · '+MS.make.length+' '+P().makesW+'</div>'
+      + (html||'<div class="br2hint">'+P().noModelsMatch+'</div>');
     var qi=$('ms_q_model');
     if(qi){ qi.oninput=function(){ msRender('model'); }; if(q){ qi.focus(); qi.setSelectionRange(q.length,q.length);} }
     msWire(box); return;
@@ -3204,8 +3510,8 @@ async function msRender(key){
   var qv = (($('ms_q_'+key)||{}).value||'').trim().toLowerCase();
   var list = qv ? opts.filter(function(o){return o.toLowerCase().indexOf(qv)!==-1;}) : opts;
   box.innerHTML = pick
-    + (long ? '<input class="br2i" id="ms_q_'+key+'" placeholder="Meklēt…" autocomplete="off" value="'+esc(qv)+'"><div class="br2hint">'+list.length+' no '+opts.length+'</div>' : '')
-    + msAllRow(key, 'Visi')
+    + (long ? '<input class="br2i" id="ms_q_'+key+'" placeholder="'+P().searchPh+'" autocomplete="off" value="'+esc(qv)+'"><div class="br2hint">'+list.length+' / '+opts.length+'</div>' : '')
+    + msAllRow(key, P().allShort)
     + '<div class="br2chips">'
     + list.map(function(o){
         return '<button type="button" class="br2chip'+(MS[key].indexOf(o)!==-1?' on':'')+'" data-k="'+key+'" data-v="'+esc(o)+'">'+esc(o)+'</button>';
@@ -3250,38 +3556,39 @@ async function showForm(name, c, notify, freq){
   ensureDatalists();
   c = c||{};
   var box = $('br2FltForm'); if(!box) return;
+  var p = P();
   var fields = MS_FIELDS.map(function(f){
-    return '<label class="br2l">'+f.label+'</label><div class="br2chipbox" id="ms_'+f.key+'"></div>';
+    return '<label class="br2l">'+(p[f.lkey]||f.lkey)+'</label><div class="br2chipbox" id="ms_'+f.key+'"></div>';
   }).join('');
   box.innerHTML =
     '<div class="br2sec">'
-    + '<button class="br2back" onclick="BRProfile.cancelForm()">← Atpakaļ uz filtriem</button>'
-    + '<h3>'+(EDIT_ID?'Labot filtru':'Jauns filtrs')+'</h3>'
-    + '<div class="s">Marka un modelis ir obligāti. Vienam filtram — viena marka, bet vari izvēlēties vairākus modeļus. Pārējos laukos vari izvēlēties vairākas vērtības.</div>'
+    + '<button class="br2back" onclick="BRProfile.cancelForm()">'+p.backFilters+'</button>'
+    + '<h3>'+(EDIT_ID?p.editFilterH:p.newFilterH)+'</h3>'
+    + '<div class="s">'+p.formHint+'</div>'
     + '<div class="br2msg" id="br2m-flt"></div>'
-    + '<label class="br2l">Nosaukums</label><input class="br2i" id="f_name" placeholder="Piem. Lēts dīzeļa universālis">'
+    + '<label class="br2l">'+p.nameL+'</label><input class="br2i" id="f_name" placeholder="'+p.namePh2+'">'
     + fields
-    + '<div class="br2row"><div><label class="br2l">Cena no</label>'+combo('f_pmin','price','0')+'</div>'
-    +  '<div><label class="br2l">Cena līdz</label>'+combo('f_pmax','price','—')+'</div></div>'
-    + '<div class="br2row"><div><label class="br2l">Gads no</label>'+combo('f_ymin','year','—')+'</div>'
-    +  '<div><label class="br2l">Gads līdz</label>'+combo('f_ymax','year','—')+'</div></div>'
-    + '<div class="br2row"><div><label class="br2l">Nobraukums no</label>'+combo('f_mmin','km','0')+'</div>'
-    +  '<div><label class="br2l">Nobraukums līdz</label>'+combo('f_mmax','km','—')+'</div></div>'
-    + '<div class="br2row"><div><label class="br2l">Tilpums no</label>'+combo('f_emin','engine','—')+'</div>'
-    +  '<div><label class="br2l">Tilpums līdz</label>'+combo('f_emax','engine','—')+'</div></div>'
-    + '<label class="br2l">Paziņojumi</label><select class="br2s" id="f_notify"><option value="1">Ieslēgti</option><option value="0">Izslēgti</option></select>'
-    + '<label class="br2l" style="margin-top:12px">Cik bieži sūtīt</label>'
+    + '<div class="br2row"><div><label class="br2l">'+p.priceFrom+'</label>'+combo('f_pmin','price','0')+'</div>'
+    +  '<div><label class="br2l">'+p.priceTo+'</label>'+combo('f_pmax','price','—')+'</div></div>'
+    + '<div class="br2row"><div><label class="br2l">'+p.yearFrom+'</label>'+combo('f_ymin','year','—')+'</div>'
+    +  '<div><label class="br2l">'+p.yearTo+'</label>'+combo('f_ymax','year','—')+'</div></div>'
+    + '<div class="br2row"><div><label class="br2l">'+p.milFrom+'</label>'+combo('f_mmin','km','0')+'</div>'
+    +  '<div><label class="br2l">'+p.milTo+'</label>'+combo('f_mmax','km','—')+'</div></div>'
+    + '<div class="br2row"><div><label class="br2l">'+p.engFrom+'</label>'+combo('f_emin','engine','—')+'</div>'
+    +  '<div><label class="br2l">'+p.engTo+'</label>'+combo('f_emax','engine','—')+'</div></div>'
+    + '<label class="br2l">'+p.notifyL+'</label><select class="br2s" id="f_notify"><option value="1">'+p.on+'</option><option value="0">'+p.off+'</option></select>'
+    + '<label class="br2l" style="margin-top:12px">'+p.howOften+'</label>'
     + '<select class="br2s" id="f_freq">'
-    +   '<option value="daily">Reizi dienā — viens kopsavilkums</option>'
-    +   '<option value="few_hours"'+(PREM()?'':' disabled')+'>Ik pēc dažām stundām'+(PREM()?'':' (Premium)')+'</option>'
-    +   '<option value="instant"'+(PREM()?'':' disabled')+'>Tūlītēji — ne biežāk kā reizi stundā'+(PREM()?'':' (Premium)')+'</option>'
+    +   '<option value="daily">'+p.freqDailyOpt+'</option>'
+    +   '<option value="few_hours"'+(PREM()?'':' disabled')+'>'+p.freqFewOpt+(PREM()?'':p.premSuffix)+'</option>'
+    +   '<option value="instant"'+(PREM()?'':' disabled')+'>'+p.freqInstantOpt+(PREM()?'':p.premSuffix)+'</option>'
     + '</select>'
-    + '<div class="s" style="margin:6px 0 0">Vienā e-pastā ir VISI jaunie auto — nekad viens e-pasts par katru auto. Vairāk par 6 e-pastiem dienā netiek sūtīti.'
-    +   (PREM()?'':' Biežāk nekā reizi dienā — ar Premium.')
+    + '<div class="s" style="margin:6px 0 0">'+p.digestNote
+    +   (PREM()?'':p.digestPrem)
     + '</div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">'
-    +  '<button class="br2btn g" onclick="BRProfile.saveFilter()">Saglabāt filtru</button>'
-    +  '<button class="br2btn o" onclick="BRProfile.cancelForm()">Atcelt</button>'
+    +  '<button class="br2btn g" onclick="BRProfile.saveFilter()">'+p.saveFilter+'</button>'
+    +  '<button class="br2btn o" onclick="BRProfile.cancelForm()">'+p.cancel+'</button>'
     + '</div></div>';
 
   var list=$('br2FltList'); if(list) list.style.display='none';
@@ -3309,9 +3616,9 @@ BRProfile.saveFilter = async function(){
   // PREMIUM GATE (defense-in-depth): saved filters + alerts are a paid feature. The UI already
   // hides the builder behind renderFiltersHome()'s lock-box for non-premium, but block the write
   // here too so it can't be reached by calling saveFilter() directly.
-  if(!(window.BR && BR.profile && BR.profile.is_premium)) return m('br2m-flt','Saglabātie filtri ir Premium funkcija.');
-  if(!MS.make.length)  return m('br2m-flt','Jāizvēlas vismaz viena marka.');
-  if(!MS.model.length) return m('br2m-flt','Jāizvēlas vismaz viens modelis.');
+  if(!(window.BR && BR.profile && BR.profile.is_premium)) return m('br2m-flt',P().fltPrem);
+  if(!MS.make.length)  return m('br2m-flt',P().needMake);
+  if(!MS.model.length) return m('br2m-flt',P().needModel);
   var crit = {
     countries: MS.country.slice(), makes: MS.make.slice(),
     models_q:  MS.model.slice(),                                  // "Make|Model"
@@ -3352,11 +3659,11 @@ BRProfile.delFilter = async function(id){
 
 /* Sort options inside "Mani filtri" - same set as the main listings page (Henrijs' request). */
 var FSORTS = [
-  ['new', 'Jaunākie'],
-  ['pa',  'Lētākie'],
-  ['pd',  'Dārgākie'],
-  ['yd',  'Gads ↓'],
-  ['km',  'Mazākais nobraukums']
+  ['new', 'sNew'],
+  ['pa',  'sPa'],
+  ['pd',  'sPd'],
+  ['yd',  'sYd'],
+  ['km',  'sKm']
 ];
 function fsortApply(q, sort){
   if(sort==='pa') return q.order('last_price',   {ascending:true,  nullsFirst:false});
@@ -3369,7 +3676,7 @@ function fsortSelect(id, sort){
   return '<select class="br2s" id="br2Sort" style="width:auto;min-width:170px"'
        + ' onchange="BRProfile.runFilter('+id+', this.value)">'
        + FSORTS.map(function(o){
-           return '<option value="'+o[0]+'"'+(o[0]===sort?' selected':'')+'>'+o[1]+'</option>';
+           return '<option value="'+o[0]+'"'+(o[0]===sort?' selected':'')+'>'+(P()[o[1]]||o[1])+'</option>';
          }).join('')
        + '</select>';
 }
@@ -3379,10 +3686,10 @@ BRProfile.runFilter = async function(id, sort){
   var r = await supa.from('saved_filters').select('*').eq('id',id).maybeSingle();
   if(r.error||!r.data) return;
   var f=r.data, c=f.criteria||{};
-  w.innerHTML = '<button class="br2back" onclick="BRProfile.tab(\'filters\')">← Atpakaļ uz filtriem</button>'
+  w.innerHTML = '<button class="br2back" onclick="BRProfile.tab(\'filters\')">'+P().backFilters+'</button>'
     + '<div style="font-weight:800;font-size:17px;margin-bottom:3px">'+esc(f.name)+'</div>'
     + '<div style="font-size:12px;color:#86868b;font-weight:500;margin-bottom:16px">'+esc(describe(c))+'</div>'
-    + '<div id="br2Res"><div class="br2empty">Meklē…</div></div>';
+    + '<div id="br2Res"><div class="br2empty">'+P().searching+'</div></div>';
 
   var q = supa.from('v_listings').select('car_id,make,model,year,last_price,last_mileage,fuel,photos,first_seen,country,source_url');
   var arr = function(a, one){ return (a && a.length) ? a : (one ? [one] : []); };
@@ -3406,7 +3713,7 @@ BRProfile.runFilter = async function(id, sort){
   var res = await fsortApply(q, sort).limit(61);   // 61 -> we can tell "exactly 60" from "60 and more"
 
   var box=$('br2Res'); if(!box) return;
-  if(res.error){ box.innerHTML='<div class="br2empty">Kļūda: '+esc(res.error.message)+'</div>'; return; }
+  if(res.error){ box.innerHTML='<div class="br2empty">'+P().errPfx+esc(res.error.message)+'</div>'; return; }
   var rows = res.data||[];
   // "Make|Model" pairs -> only keep rows whose make+model combo was actually picked
   if(c.models_q && c.models_q.length){
@@ -3417,13 +3724,31 @@ BRProfile.runFilter = async function(id, sort){
   if(capped) rows = rows.slice(0,60);
   box.innerHTML =
       '<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px">'
-    +   '<div style="font-size:12.5px;font-weight:700;color:#86868b">' + rows.length + (capped?'+':'') + ' atbilstoši auto</div>'
+    +   '<div style="font-size:12.5px;font-weight:700;color:#86868b">' + rows.length + (capped?'+':'') + ' ' + P().matchCars + '</div>'
     +   fsortSelect(id, sort)
     + '</div>'
     + cardsHtml(rows,false);
 };
 
 /* ---- boot ---- */
+// Repaint the whole profile modal if the language is switched WHILE it is open
+// (the header language selector fires applyI18n). Reopening after a switch is covered
+// by BRProfile.open(); this covers the live-switch case too.
+if(typeof window.applyI18n === 'function'){
+  var _pai = window.applyI18n;
+  window.applyI18n = function(){
+    var r = _pai.apply(this, arguments);
+    try{
+      var pp = $('br2p');
+      if(pp && pp.classList.contains('on')){
+        paintProfile(); paintSession(); fillAcct();
+        var cur = document.querySelector('.br2tab.on');
+        if(cur && cur.dataset && cur.dataset.t) BRProfile.tab(cur.dataset.t);
+      }
+    }catch(e){}
+    return r;
+  };
+}
 window.addEventListener('br:auth', function(){
   loadFavs().then(decorate);
   fillAcct();
