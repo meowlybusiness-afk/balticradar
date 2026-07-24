@@ -353,7 +353,7 @@
 
 <header>
   <div class="bar">
-    <div class="logo" onclick="goHome()" title="BalticRadar"><span class="ic">◎</span>Baltic<b>Radar</b></div>
+    <div class="logo" onclick="goHome()" title="BalticRadar"><span class="ic">◎</span><span class="wm">Baltic<b>Radar</b></span></div>
     <nav class="nav">
       <a onclick="scrollToEl('grid')" id="navList">Sludinājumi</a>
       <a onclick="scrollToEl('s-how')" id="navHow">Kā tas strādā</a>
@@ -3797,8 +3797,9 @@ h1,h2,h3,h4,.secttl,.mtitle,.bigprice,.name{letter-spacing:-.025em}
 .bigprice,.mprice .v,.pager button{font-variant-numeric:tabular-nums}
 header{background:var(--surf);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:.5px solid var(--line)}
 .bar{max-width:1240px;padding:14px 24px}
-.logo{color:var(--ink);font-size:18px;font-weight:700;letter-spacing:-.02em;gap:9px}
-.logo b{color:var(--ink);font-weight:700}
+.logo{color:var(--ink);font-size:18px;font-weight:800;letter-spacing:-.03em;gap:8px}
+.logo .wm{display:inline-flex;align-items:center;font-weight:800;letter-spacing:-.03em}
+.logo b{color:var(--ink);font-weight:800}
 .logo .ic{width:28px;height:28px;border-radius:8px;background:var(--ink);color:var(--bg);display:grid;place-items:center;font-size:15px;line-height:1;flex:none}
 .nav a{color:var(--mut);font-size:13px;font-weight:600}
 .nav a:hover{color:var(--ink)}
