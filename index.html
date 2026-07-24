@@ -2666,6 +2666,8 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 .br2msg{font-size:12.5px;font-weight:600;border-radius:10px;padding:10px 12px;margin-bottom:12px;display:none}
 .br2msg.ok{display:block;background:rgba(22,160,106,.1);color:var(--a)}
 .br2msg.err{display:block;background:rgba(210,73,47,.09);color:var(--up)}
+.br2need{outline:2px solid #d2492f;outline-offset:3px;border-radius:12px;animation:br2needPulse 1.3s ease}
+@keyframes br2needPulse{0%{outline-color:rgba(210,73,47,1)}100%{outline-color:rgba(210,73,47,.35)}}
 .br2empty{text-align:center;padding:44px 20px;color:var(--mut);font-size:13.5px;font-weight:500;line-height:1.6}
 .br2empty .e{font-size:40px;display:block;margin-bottom:12px}
 .br2cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
@@ -3071,7 +3073,7 @@ var PROFI18N = {
    milFrom:"Nobraukums no",milTo:"Nobraukums līdz",engFrom:"Tilpums no",engTo:"Tilpums līdz",notifyL:"Paziņojumi",on:"Ieslēgti",off:"Izslēgti",howOften:"Cik bieži sūtīt",
    freqDailyOpt:"Reizi dienā — viens kopsavilkums",freqFewOpt:"Ik pēc dažām stundām",freqInstantOpt:"Tūlītēji — ne biežāk kā reizi stundā",premSuffix:" (Premium)",
    digestNote:"Vienā e-pastā ir VISI jaunie auto — nekad viens e-pasts par katru auto. Vairāk par 6 e-pastiem dienā netiek sūtīti.",digestPrem:" Biežāk nekā reizi dienā — ar Premium.",
-   saveFilter:"Saglabāt filtru",cancel:"Atcelt",fltPrem:"Saglabātie filtri ir Premium funkcija.",needMake:"Jāizvēlas vismaz viena marka.",needModel:"Jāizvēlas vismaz viens modelis.",
+   saveFilter:"Saglabāt filtru",cancel:"Atcelt",fltPrem:"Saglabātie filtri ir Premium funkcija.",needMake:"Jāizvēlas vismaz viena marka.",needModel:"Jāizvēlas vismaz viens modelis.",needBoth:"Lūdzu izvēlies marku un modeli.",
    searching:"Meklē…",matchCars:"atbilstoši auto",sNew:"Jaunākie",sPa:"Lētākie",sPd:"Dārgākie",sYd:"Gads ↓",sKm:"Mazākais nobraukums",
    heartSave:"Saglabāt",histLockT:"Cenu un nobraukuma vēsture",histLockB:"Redzi, kā mainījusies šī auto cena un nobraukums. Pieejams Premium plānā.",milHist:"Nobraukuma vēsture",
    tcBody:'<h4>1. Par pakalpojumu</h4>BalticRadar apkopo publiski pieejamus sludinājumus. Mēs neesam pārdevējs vai darījuma puse.'
@@ -3101,7 +3103,7 @@ var PROFI18N = {
    milFrom:"Mileage from",milTo:"Mileage to",engFrom:"Engine from",engTo:"Engine to",notifyL:"Alerts",on:"On",off:"Off",howOften:"How often to send",
    freqDailyOpt:"Once a day — one summary",freqFewOpt:"Every few hours",freqInstantOpt:"Instantly — no more than once an hour",premSuffix:" (Premium)",
    digestNote:"One email contains ALL new cars — never one email per car. No more than 6 emails a day are sent.",digestPrem:" More often than once a day — with Premium.",
-   saveFilter:"Save filter",cancel:"Cancel",fltPrem:"Saved filters are a Premium feature.",needMake:"Choose at least one make.",needModel:"Choose at least one model.",
+   saveFilter:"Save filter",cancel:"Cancel",fltPrem:"Saved filters are a Premium feature.",needMake:"Choose at least one make.",needModel:"Choose at least one model.",needBoth:"Please select a brand and model.",
    searching:"Searching…",matchCars:"matching cars",sNew:"Newest",sPa:"Cheapest",sPd:"Most expensive",sYd:"Year ↓",sKm:"Lowest mileage",
    heartSave:"Save",histLockT:"Price & mileage history",histLockB:"See how this car's price and mileage have changed. Available on the Premium plan.",milHist:"Mileage history",
    tcBody:'<h4>1. About the service</h4>BalticRadar aggregates publicly available listings. We are not a seller or party to any transaction.'
@@ -3131,7 +3133,7 @@ var PROFI18N = {
    milFrom:"Пробег от",milTo:"Пробег до",engFrom:"Объём от",engTo:"Объём до",notifyL:"Уведомления",on:"Вкл.",off:"Выкл.",howOften:"Как часто отправлять",
    freqDailyOpt:"Раз в день — одна сводка",freqFewOpt:"Каждые несколько часов",freqInstantOpt:"Мгновенно — не чаще раза в час",premSuffix:" (Premium)",
    digestNote:"В одном письме ВСЕ новые авто — никогда по одному письму на авто. Не более 6 писем в день.",digestPrem:" Чаще раза в день — с Premium.",
-   saveFilter:"Сохранить фильтр",cancel:"Отмена",fltPrem:"Сохранённые фильтры — функция Premium.",needMake:"Выберите хотя бы одну марку.",needModel:"Выберите хотя бы одну модель.",
+   saveFilter:"Сохранить фильтр",cancel:"Отмена",fltPrem:"Сохранённые фильтры — функция Premium.",needMake:"Выберите хотя бы одну марку.",needModel:"Выберите хотя бы одну модель.",needBoth:"Пожалуйста, выберите марку и модель.",
    searching:"Поиск…",matchCars:"подходящих авто",sNew:"Новые",sPa:"Дешевле",sPd:"Дороже",sYd:"Год ↓",sKm:"Меньший пробег",
    heartSave:"Сохранить",histLockT:"История цены и пробега",histLockB:"Смотрите, как менялись цена и пробег этого авто. Доступно в плане Premium.",milHist:"История пробега",
    tcBody:'<h4>1. О сервисе</h4>BalticRadar собирает публично доступные объявления. Мы не являемся продавцом или стороной сделки.'
@@ -3161,7 +3163,7 @@ var PROFI18N = {
    milFrom:"Rida nuo",milTo:"Rida iki",engFrom:"Tūris nuo",engTo:"Tūris iki",notifyL:"Pranešimai",on:"Įjungti",off:"Išjungti",howOften:"Kaip dažnai siųsti",
    freqDailyOpt:"Kartą per dieną — viena santrauka",freqFewOpt:"Kas kelias valandas",freqInstantOpt:"Iš karto — ne dažniau kaip kartą per valandą",premSuffix:" (Premium)",
    digestNote:"Viename laiške yra VISI nauji automobiliai — niekada po vieną laišką kiekvienam. Daugiau nei 6 laiškų per dieną nesiunčiama.",digestPrem:" Dažniau nei kartą per dieną — su Premium.",
-   saveFilter:"Išsaugoti filtrą",cancel:"Atšaukti",fltPrem:"Išsaugoti filtrai — Premium funkcija.",needMake:"Pasirink bent vieną markę.",needModel:"Pasirink bent vieną modelį.",
+   saveFilter:"Išsaugoti filtrą",cancel:"Atšaukti",fltPrem:"Išsaugoti filtrai — Premium funkcija.",needMake:"Pasirink bent vieną markę.",needModel:"Pasirink bent vieną modelį.",needBoth:"Pasirink markę ir modelį.",
    searching:"Ieškoma…",matchCars:"tinkami automobiliai",sNew:"Naujausi",sPa:"Pigiausi",sPd:"Brangiausi",sYd:"Metai ↓",sKm:"Mažiausia rida",
    heartSave:"Išsaugoti",histLockT:"Kainos ir ridos istorija",histLockB:"Matyk, kaip keitėsi šio automobilio kaina ir rida. Prieinama su Premium planu.",milHist:"Ridos istorija",
    tcBody:'<h4>1. Apie paslaugą</h4>BalticRadar surenka viešai prieinamus skelbimus. Mes nesame pardavėjas ar sandorio šalis.'
@@ -3191,7 +3193,7 @@ var PROFI18N = {
    milFrom:"Läbisõit alates",milTo:"Läbisõit kuni",engFrom:"Maht alates",engTo:"Maht kuni",notifyL:"Teated",on:"Sees",off:"Väljas",howOften:"Kui sageli saata",
    freqDailyOpt:"Kord päevas — üks kokkuvõte",freqFewOpt:"Iga paari tunni tagant",freqInstantOpt:"Kohe — mitte sagedamini kui kord tunnis",premSuffix:" (Premium)",
    digestNote:"Üks e-kiri sisaldab KÕIKI uusi autosid — mitte kunagi üks kiri auto kohta. Rohkem kui 6 kirja päevas ei saadeta.",digestPrem:" Sagedamini kui kord päevas — Premiumiga.",
-   saveFilter:"Salvesta filter",cancel:"Tühista",fltPrem:"Salvestatud filtrid on Premium-funktsioon.",needMake:"Vali vähemalt üks mark.",needModel:"Vali vähemalt üks mudel.",
+   saveFilter:"Salvesta filter",cancel:"Tühista",fltPrem:"Salvestatud filtrid on Premium-funktsioon.",needMake:"Vali vähemalt üks mark.",needModel:"Vali vähemalt üks mudel.",needBoth:"Palun vali mark ja mudel.",
    searching:"Otsin…",matchCars:"sobivat autot",sNew:"Uusimad",sPa:"Odavaimad",sPd:"Kalleimad",sYd:"Aasta ↓",sKm:"Väikseim läbisõit",
    heartSave:"Salvesta",histLockT:"Hinna- ja läbisõiduajalugu",histLockB:"Vaata, kuidas selle auto hind ja läbisõit on muutunud. Saadaval Premium-plaaniga.",milHist:"Läbisõiduajalugu",
    tcBody:'<h4>1. Teenusest</h4>BalticRadar koondab avalikult kättesaadavaid kuulutusi. Me ei ole müüja ega tehingu osapool.'
@@ -3585,6 +3587,7 @@ async function showForm(name, c, notify, freq){
     + '<div class="s" style="margin:6px 0 0">'+p.digestNote
     +   (PREM()?'':p.digestPrem)
     + '</div>'
+    + '<div class="br2msg" id="br2m-fltB"></div>'
     + '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">'
     +  '<button class="br2btn g" onclick="BRProfile.saveFilter()">'+p.saveFilter+'</button>'
     +  '<button class="br2btn o" onclick="BRProfile.cancelForm()">'+p.cancel+'</button>'
@@ -3610,14 +3613,33 @@ BRProfile.cancelForm = function(){
 };
 function num(id){ var e=$(id); if(!e) return null; var v=(e.value||'').replace(/\s/g,'').replace(',','.'); return v===''?null:(isNaN(Number(v))?null:Number(v)); }
 
+// Required-field feedback for the saved-filter builder. The message must be visible from where the
+// Save button lives (bottom of a long form), so we render it BOTH at the top (br2m-flt, legacy) and
+// right beside the Save button (br2m-fltB), then smooth-scroll to + red-outline the first missing
+// required control (make, else model) so the user sees exactly what to fill. Only brand + >=1 model
+// are required; every other criterion is optional and never blocks saving.
+BRProfile._fltNeed = function(fieldKey, msgKey){
+  var msg = P()[msgKey] || P().needBoth || '';
+  m('br2m-flt', msg);           // top-of-form message (kept for users already scrolled up)
+  m('br2m-fltB', msg);          // message right at the Save button
+  ['make','model'].forEach(function(k){ var el=$('ms_'+k); if(el) el.classList.remove('br2need'); });
+  var box = $('ms_'+fieldKey);
+  if(box){
+    box.classList.add('br2need');
+    try{ box.scrollIntoView({behavior:'smooth', block:'center'}); }catch(e){ try{ box.scrollIntoView(); }catch(_){} }
+    setTimeout(function(){ box.classList.remove('br2need'); }, 2600);
+  }
+};
 BRProfile.saveFilter = async function(){
-  m('br2m-flt','');
+  m('br2m-flt','');  m('br2m-fltB','');
   // PREMIUM GATE (defense-in-depth): saved filters + alerts are a paid feature. The UI already
   // hides the builder behind renderFiltersHome()'s lock-box for non-premium, but block the write
   // here too so it can't be reached by calling saveFilter() directly.
-  if(!(window.BR && BR.profile && BR.profile.is_premium)) return m('br2m-flt',P().fltPrem);
-  if(!MS.make.length)  return m('br2m-flt',P().needMake);
-  if(!MS.model.length) return m('br2m-flt',P().needModel);
+  if(!(window.BR && BR.profile && BR.profile.is_premium)){ m('br2m-flt',P().fltPrem); return m('br2m-fltB',P().fltPrem); }
+  // ONLY brand + at least one model are mandatory. Everything else (year, gearbox, body, fuel,
+  // drive, price, mileage, engine, ...) is optional and must NOT block saving.
+  if(!MS.make.length)  return BRProfile._fltNeed('make','needBoth');
+  if(!MS.model.length) return BRProfile._fltNeed('model','needBoth');
   var crit = {
     countries: MS.country.slice(), makes: MS.make.slice(),
     models_q:  MS.model.slice(),                                  // "Make|Model"
