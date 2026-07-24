@@ -521,7 +521,7 @@ def build_html(name, filter_name, cars, drops, extra, freq="daily"):
     n = len(cars)
     hello = f", {name}" if name else ""
     more = (f'<tr><td style="padding:2px 0 14px;text-align:center;font:600 13px/1.5 {FONT};color:{INK2}">'
-            f'&hellip;un vēl <b style="color:{INK}">{extra}</b> jauni sludinājumi pēc šī filtra &mdash; '
+            f'&hellip;un vēl <b style="color:{INK}">{extra}</b> jauni sludinājumi pēc šī filtra: '
             f'<a href="{SITE}" target="_blank" style="color:{ACC};text-decoration:none;font-weight:800">'
             f'skatīt visus</a></td></tr>') if extra > 0 else ""
     host = SITE.replace("https://", "").replace("http://", "")
@@ -536,7 +536,7 @@ def build_html(name, filter_name, cars, drops, extra, freq="daily"):
         f'<style>{MQ}</style>'
         '</head>'
         '<body style="margin:0;padding:0;background:#f4f5f7;-webkit-font-smoothing:antialiased">'
-        f'<div style="display:none;max-height:0;overflow:hidden;opacity:0">{n} jauns(-i) auto pēc filtra &bdquo;{filter_name}&ldquo; &mdash; tikko parādījās.</div>'
+        f'<div style="display:none;max-height:0;overflow:hidden;opacity:0">{n} jauns(-i) auto pēc filtra &bdquo;{filter_name}&ldquo;, tikko parādījās.</div>'
         '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f4f5f7">'
         '<tr><td align="center" style="padding:26px 12px">'
         '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="wrap" style="width:600px;max-width:600px">'
@@ -548,7 +548,7 @@ def build_html(name, filter_name, cars, drops, extra, freq="daily"):
         '<tr><td style="padding:0 0 16px">'
         f'<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#ffffff;border:1px solid {LINE};border-radius:16px">'
         '<tr><td style="padding:20px 18px">'
-        f'<div style="font:800 19px/1.3 {FONT};color:{INK};letter-spacing:-.02em">Sveiki{hello} &mdash; {n} jauns(-i) auto tavam filtram</div>'
+        f'<div style="font:800 19px/1.3 {FONT};color:{INK};letter-spacing:-.02em">Sveiki{hello}: {n} jauns(-i) auto tavam filtram</div>'
         f'<div style="margin-top:9px;font:600 13px/1.5 {FONT};color:{INK2}">Filtrs: '
         f'<span style="display:inline-block;background:#e8f7f0;color:{ACC};padding:3px 11px;border-radius:999px;font-weight:800">{filter_name}</span></div>'
         f'<div style="margin-top:11px;font:500 13px/1.6 {FONT};color:{MUT}">Šie sludinājumi tikko parādījās ss.lv / autoplius.lt / auto24.ee.</div>'
@@ -565,9 +565,7 @@ def build_html(name, filter_name, cars, drops, extra, freq="daily"):
         f'Šo e-pastu saņem, jo tev ir saglabāts filtrs ar ieslēgtiem paziņojumiem. '
         f'Biežums: <b style="color:{INK}">{FREQ_LABEL.get(freq, FREQ_LABEL["daily"])}</b>. '
         f'To vari mainīt vai izslēgt jebkurā brīdī.<br>'
-        f'<a href="{SITE}/?p=filters" target="_blank" style="color:{ACC};text-decoration:none;font-weight:800">Mainīt biežumu / atteikties no paziņojumiem</a>'
-        ' &nbsp;&middot;&nbsp; '
-        f'<a href="mailto:meowlybusiness@gmail.com" style="color:{MUT};text-decoration:none">meowlybusiness@gmail.com</a></div>'
+        f'<a href="{SITE}/?p=filters" target="_blank" style="color:{ACC};text-decoration:none;font-weight:800">Mainīt biežumu / atteikties no paziņojumiem</a></div>'
         f'<div style="margin-top:10px;font:500 11px/1.6 {FONT};color:#a8aeb7">'
         f'BalticRadar &middot; lietotu auto meklētājs Latvijā, Lietuvā un Igaunijā &middot; {host}</div>'
         '</td></tr>'
