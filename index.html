@@ -22,11 +22,11 @@
   /* First-paint palette = the current (Henry) theme, so the very first frame is already the
      new green-radar design — no orange/black flash before the henry-skin block parses. */
   :root{--bg:#0f0f11;--card:#161618;--card2:#1c1c20;--ink:#f5f5f7;--ink2:#c7c7cc;--mut:#8e8e93;--line:#26262a;--line2:#33333a;
-    --accent:#1eb47a;--accent2:#1eb47a;--gold:#1eb47a;--orange:#1eb47a;--up:#e0674c;--down:#1eb47a;
+    --accent:#ff3da0;--accent2:#ff3da0;--gold:#ff3da0;--orange:#ff3da0;--up:#e0674c;--down:#ff3da0;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#ff3da0;--prate-good-bg:rgba(255,61,160,.16);
     --dark:#141416;--dark2:#0f0f11;
     --lv:#c0314f;--lt:#f5b301;--ee:#2b9fe6;--shadow:0 18px 40px -22px rgba(0,0,0,.8);--surf:rgba(20,20,22,.80);}
-  html[data-theme="light"]{--bg:#ffffff;--card:#ffffff;--card2:#fbfbfd;--ink:#1d1d1f;--ink2:#424245;--mut:#86868b;--line:#ededf0;--line2:#dfdfe4;--accent:#16a06a;--accent2:#16a06a;--gold:#16a06a;--orange:#16a06a;--down:#16a06a;--up:#d2492f;--dark:#ffffff;--dark2:#fbfbfd;--shadow:0 14px 34px -20px rgba(0,0,0,.30);--surf:rgba(255,255,255,.82);}
-  html[data-theme="dark"]{--bg:#0f0f11;--card:#161618;--card2:#1c1c20;--ink:#f5f5f7;--ink2:#c7c7cc;--mut:#8e8e93;--line:#26262a;--line2:#33333a;--accent:#1eb47a;--accent2:#1eb47a;--gold:#1eb47a;--orange:#1eb47a;--down:#1eb47a;--up:#e0674c;--dark:#141416;--dark2:#0f0f11;--shadow:0 18px 40px -22px rgba(0,0,0,.8);--surf:rgba(20,20,22,.80);}
+  html[data-theme="light"]{--bg:#ffffff;--card:#ffffff;--card2:#fbfbfd;--ink:#1d1d1f;--ink2:#424245;--mut:#86868b;--line:#ededf0;--line2:#dfdfe4;--accent:#d6006e;--accent2:#d6006e;--gold:#d6006e;--orange:#d6006e;--down:#d6006e;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#d6006e;--prate-good-bg:rgba(214,0,110,.10);--up:#d2492f;--dark:#ffffff;--dark2:#fbfbfd;--shadow:0 14px 34px -20px rgba(0,0,0,.30);--surf:rgba(255,255,255,.82);}
+  html[data-theme="dark"]{--bg:#0f0f11;--card:#161618;--card2:#1c1c20;--ink:#f5f5f7;--ink2:#c7c7cc;--mut:#8e8e93;--line:#26262a;--line2:#33333a;--accent:#ff3da0;--accent2:#ff3da0;--gold:#ff3da0;--orange:#ff3da0;--down:#ff3da0;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#ff3da0;--prate-good-bg:rgba(255,61,160,.16);--up:#e0674c;--dark:#141416;--dark2:#0f0f11;--shadow:0 18px 40px -22px rgba(0,0,0,.8);--surf:rgba(20,20,22,.80);}
   html{transition:background .2s,color .2s}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
@@ -50,8 +50,8 @@
   .nav a:hover{color:#fff}
   @media(max-width:860px){.nav{display:none}}
   .status{font-size:13px;color:var(--mut);display:flex;align-items:center;gap:7px}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--down);box-shadow:0 0 0 0 rgba(26,157,84,.6);animation:pulse 2s infinite}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(26,157,84,.5)}70%{box-shadow:0 0 0 8px rgba(26,157,84,0)}100%{box-shadow:0 0 0 0 rgba(26,157,84,0)}}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--down);box-shadow:0 0 0 0 rgba(214,0,110,.6);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(214,0,110,.5)}70%{box-shadow:0 0 0 8px rgba(214,0,110,0)}100%{box-shadow:0 0 0 0 rgba(214,0,110,0)}}
   .pills{display:flex;flex-wrap:wrap;gap:6px}
   .pills button{background:var(--card);border:1px solid var(--line);color:var(--ink);padding:7px 12px;
     border-radius:22px;cursor:pointer;font-size:13px;font-weight:500;transition:.15s;display:flex;align-items:center;gap:6px}
@@ -94,8 +94,8 @@
   .prate .pbar{display:flex;gap:2px}
   .prate .pbar i{width:7px;height:8px;border-radius:1px;background:currentColor;opacity:.28}
   .prate .pbar i.on{opacity:1}
-  .prate.vg{background:#e3f6ec;color:#0f8c44}
-  .prate.g{background:#eaf6e8;color:#3a9d2f}
+  .prate.vg{background:var(--prate-good-bg);color:var(--prate-good)}
+  .prate.g{background:var(--prate-good-bg);color:var(--prate-good)}
   .prate.f{background:#eef1f6;color:#6c7a90}
   .prate.h{background:#fdeee4;color:#d2701a}
   .prate.op{background:#fdeaea;color:#d83a3f}
@@ -123,7 +123,7 @@
     font-family:Manrope,inherit;font-weight:700;font-size:13px;letter-spacing:-.01em;
     padding:9px 30px 9px 14px;cursor:pointer;outline:none;min-width:150px}
   .sortpill select:hover{border-color:var(--accent)}
-  .sortpill select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(22,160,106,.14)}
+  .sortpill select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(214,0,110,.14)}
   .sortpill .sortcv{position:absolute;right:12px;font-size:11px;opacity:.65;pointer-events:none}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:16px}
   @media(max-width:860px){
@@ -375,26 +375,26 @@
   <svg class="rings radar" viewBox="0 0 720 720" fill="none" aria-hidden="true" focusable="false">
     <defs>
       <linearGradient id="brSweep" gradientUnits="userSpaceOnUse" x1="360" y1="360" x2="607" y2="218">
-        <stop offset="0" stop-color="#16a06a" stop-opacity="0"/>
-        <stop offset="1" stop-color="#16a06a" stop-opacity=".30"/>
+        <stop offset="0" stop-color="#d6006e" stop-opacity="0"/>
+        <stop offset="1" stop-color="#d6006e" stop-opacity=".30"/>
       </linearGradient>
     </defs>
     <g class="rdr-grid">
-      <circle cx="360" cy="360" r="120" stroke="#16a06a" stroke-opacity=".13"/>
-      <circle cx="360" cy="360" r="200" stroke="#16a06a" stroke-opacity=".09"/>
-      <circle cx="360" cy="360" r="285" stroke="#16a06a" stroke-opacity=".06"/>
-      <line x1="75" y1="360" x2="645" y2="360" stroke="#16a06a" stroke-opacity=".05"/>
-      <line x1="360" y1="75" x2="360" y2="645" stroke="#16a06a" stroke-opacity=".05"/>
+      <circle cx="360" cy="360" r="120" stroke="#d6006e" stroke-opacity=".13"/>
+      <circle cx="360" cy="360" r="200" stroke="#d6006e" stroke-opacity=".09"/>
+      <circle cx="360" cy="360" r="285" stroke="#d6006e" stroke-opacity=".06"/>
+      <line x1="75" y1="360" x2="645" y2="360" stroke="#d6006e" stroke-opacity=".05"/>
+      <line x1="360" y1="75" x2="360" y2="645" stroke="#d6006e" stroke-opacity=".05"/>
     </g>
     <g class="rdr-pulse">
-      <circle class="p1" cx="360" cy="360" r="285" stroke="#16a06a" stroke-width="1.2"/>
-      <circle class="p2" cx="360" cy="360" r="285" stroke="#16a06a" stroke-width="1.2"/>
+      <circle class="p1" cx="360" cy="360" r="285" stroke="#d6006e" stroke-width="1.2"/>
+      <circle class="p2" cx="360" cy="360" r="285" stroke="#d6006e" stroke-width="1.2"/>
     </g>
     <g class="rdr-sweep">
       <path d="M360 360 L360 75 A285 285 0 0 1 606.9 217.5 Z" fill="url(#brSweep)"/>
-      <line x1="360" y1="360" x2="360" y2="75" stroke="#16a06a" stroke-opacity=".38" stroke-width="1.5"/>
+      <line x1="360" y1="360" x2="360" y2="75" stroke="#d6006e" stroke-opacity=".38" stroke-width="1.5"/>
     </g>
-    <circle cx="360" cy="360" r="5" fill="#16a06a" fill-opacity=".4"/>
+    <circle cx="360" cy="360" r="5" fill="#d6006e" fill-opacity=".4"/>
   </svg>
   <div class="heroInner">
     <div class="flags"><span class="fdot LV"></span><span class="fdot EE"></span><span class="fdot LT"></span></div>
@@ -1989,7 +1989,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 <style>
 /* Design tokens borrowed from the reference prototype, namespaced to avoid
    clashing with the existing --accent / --dark theme variables. */
-.br-scope,.br-modal,.br-hdr{--bracc:#16a06a;--brink:#1d1d1f;--brink2:#424245;--brmut:#86868b;--brline:#ededf0;--brline2:#dfdfe4;--brbg:#fff;--brbg2:#fbfbfd;--brup:#d2492f}
+.br-scope,.br-modal,.br-hdr{--bracc:#d6006e;--brink:#1d1d1f;--brink2:#424245;--brmut:#86868b;--brline:#ededf0;--brline2:#dfdfe4;--brbg:#fff;--brbg2:#fbfbfd;--brup:#d2492f}
 
 /* ---- header controls ---- */
 .br-hdr{display:inline-flex;align-items:center;gap:8px;font-family:Manrope,system-ui,sans-serif;vertical-align:middle}
@@ -2027,7 +2027,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 .br-chk a{color:var(--bracc);font-weight:700;cursor:pointer}
 .br-msg{font-size:12.5px;font-weight:600;border-radius:10px;padding:10px 12px;margin-bottom:12px;line-height:1.45;display:none}
 .br-msg.err{display:block;background:rgba(210,73,47,.09);color:var(--brup)}
-.br-msg.ok{display:block;background:rgba(22,160,106,.1);color:var(--bracc)}
+.br-msg.ok{display:block;background:rgba(214,0,110,.1);color:var(--bracc)}
 .br-note{font-size:11px;color:var(--brmut);font-weight:500;text-align:center;margin-top:14px;line-height:1.45}
 .br-big{font-size:44px;text-align:center;margin-bottom:12px}
 .br-h{font-size:21px;font-weight:800;text-align:center;letter-spacing:-.02em;margin-bottom:8px}
@@ -2464,7 +2464,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
       var t = document.createElement('div');
       t.textContent = text;
       t.style.cssText = 'position:fixed;left:50%;top:20px;transform:translateX(-50%);z-index:100000;'
-        + 'background:#16a06a;color:#fff;font-family:Manrope,system-ui,sans-serif;font-weight:600;'
+        + 'background:#d6006e;color:#fff;font-family:Manrope,system-ui,sans-serif;font-weight:600;'
         + 'font-size:14px;padding:12px 20px;border-radius:12px;box-shadow:0 10px 30px -8px rgba(0,0,0,.4)';
       document.body.appendChild(t);
       setTimeout(function(){ t.style.transition='opacity .4s'; t.style.opacity='0'; }, 3200);
@@ -2620,19 +2620,19 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 
 <!-- ============ BALTICRADAR STAGE 3-5 : filters, chips, profile, premium gate ============ -->
 <style>
-.br2{--a:#16a06a;--ink:#1d1d1f;--i2:#424245;--mut:#86868b;--ln:#ededf0;--ln2:#dfdfe4;--bg2:#fbfbfd;--up:#d2492f}
+.br2{--a:#d6006e;--ink:#1d1d1f;--i2:#424245;--mut:#86868b;--ln:#ededf0;--ln2:#dfdfe4;--bg2:#fbfbfd;--up:#d2492f}
 /* ---- heart ---- */
 #grid .card{position:relative}
 .br-heart{position:absolute;top:10px;left:10px;z-index:5;width:34px;height:34px;border-radius:50%;border:none;
   background:rgba(255,255,255,.92);cursor:pointer;display:grid;place-items:center;font-size:16px;line-height:1;
   box-shadow:0 2px 10px -2px rgba(0,0,0,.35);transition:.15s;padding:0}
 .br-heart:hover{transform:scale(1.12)}
-.br-heart.on{background:#16a06a}
+.br-heart.on{background:#d6006e}
 .br-heart .o{display:block}.br-heart .f{display:none}
 .br-heart.on .o{display:none}.br-heart.on .f{display:block}
 .br-mheart{display:inline-flex;align-items:center;gap:7px;border:1px solid #dfdfe4;background:#fff;color:#1d1d1f;
   border-radius:999px;padding:10px 18px;font-weight:600;font-size:13px;cursor:pointer;font-family:Manrope,sans-serif;margin:10px 0}
-.br-mheart.on{background:#16a06a;color:#fff;border-color:#16a06a}
+.br-mheart.on{background:#d6006e;color:#fff;border-color:#d6006e}
 /* ---- profile panel ---- */
 .br2ov{position:fixed;inset:0;background:rgba(20,20,22,.5);backdrop-filter:blur(6px);z-index:99996;display:none}
 .br2ov.on{display:block}
@@ -2667,7 +2667,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 .br2row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 @media(max-width:640px){.br2row,.br2row3{grid-template-columns:1fr}}
 .br2msg{font-size:12.5px;font-weight:600;border-radius:10px;padding:10px 12px;margin-bottom:12px;display:none}
-.br2msg.ok{display:block;background:rgba(22,160,106,.1);color:var(--a)}
+.br2msg.ok{display:block;background:rgba(214,0,110,.1);color:var(--a)}
 .br2msg.err{display:block;background:rgba(210,73,47,.09);color:var(--up)}
 .br2need{outline:2px solid #d2492f;outline-offset:3px;border-radius:12px;animation:br2needPulse 1.3s ease}
 @keyframes br2needPulse{0%{outline-color:rgba(210,73,47,1)}100%{outline-color:rgba(210,73,47,.35)}}
@@ -3356,7 +3356,7 @@ function filterRow(f){
   var c = f.criteria||{};
   return '<div class="br2f" onclick="BRProfile.runFilter('+f.id+')">'
     + '<div><div class="n">'+esc(f.name)
-    + (f.notify_email?' <span style="color:#16a06a;font-size:11px;font-weight:700">● '+FREQL(f.notify_freq)+'</span>':'')
+    + (f.notify_email?' <span style="color:#d6006e;font-size:11px;font-weight:700">● '+FREQL(f.notify_freq)+'</span>':'')
     + '</div><div class="c">'+esc(describe(c))+'</div></div>'
     + '<div class="acts">'
     + '<button onclick="event.stopPropagation();BRProfile.runFilter('+f.id+')">'+P().view+'</button>'
@@ -3790,8 +3790,8 @@ setTimeout(wireMainPanel, 4000);
 
 
 <style id="henry-skin">
-html[data-theme="light"]{--bg:#ffffff;--card:#ffffff;--card2:#fbfbfd;--ink:#1d1d1f;--ink2:#424245;--mut:#86868b;--line:#ededf0;--line2:#dfdfe4;--accent:#16a06a;--accent2:#16a06a;--gold:#16a06a;--orange:#16a06a;--down:#16a06a;--up:#d2492f;--dark:#ffffff;--dark2:#fbfbfd;--shadow:0 14px 34px -20px rgba(0,0,0,.30);--surf:rgba(255,255,255,.82)}
-html[data-theme="dark"]{--bg:#0f0f11;--card:#161618;--card2:#1c1c20;--ink:#f5f5f7;--ink2:#c7c7cc;--mut:#8e8e93;--line:#26262a;--line2:#33333a;--accent:#1eb47a;--accent2:#1eb47a;--gold:#1eb47a;--orange:#1eb47a;--down:#1eb47a;--up:#e0674c;--dark:#141416;--dark2:#0f0f11;--shadow:0 18px 40px -22px rgba(0,0,0,.8);--surf:rgba(20,20,22,.80)}
+html[data-theme="light"]{--bg:#ffffff;--card:#ffffff;--card2:#fbfbfd;--ink:#1d1d1f;--ink2:#424245;--mut:#86868b;--line:#ededf0;--line2:#dfdfe4;--accent:#d6006e;--accent2:#d6006e;--gold:#d6006e;--orange:#d6006e;--down:#d6006e;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#d6006e;--prate-good-bg:rgba(214,0,110,.10);--up:#d2492f;--dark:#ffffff;--dark2:#fbfbfd;--shadow:0 14px 34px -20px rgba(0,0,0,.30);--surf:rgba(255,255,255,.82)}
+html[data-theme="dark"]{--bg:#0f0f11;--card:#161618;--card2:#1c1c20;--ink:#f5f5f7;--ink2:#c7c7cc;--mut:#8e8e93;--line:#26262a;--line2:#33333a;--accent:#ff3da0;--accent2:#ff3da0;--gold:#ff3da0;--orange:#ff3da0;--down:#ff3da0;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#ff3da0;--prate-good-bg:rgba(255,61,160,.16);--up:#e0674c;--dark:#141416;--dark2:#0f0f11;--shadow:0 18px 40px -22px rgba(0,0,0,.8);--surf:rgba(20,20,22,.80)}
 body{font-family:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.6;letter-spacing:-.01em;background:var(--bg);color:var(--ink)}
 h1,h2,h3,h4,.secttl,.mtitle,.bigprice,.name{letter-spacing:-.025em}
 .bigprice,.mprice .v,.pager button{font-variant-numeric:tabular-nums}
@@ -3864,13 +3864,13 @@ html[data-theme="dark"] .card:hover{box-shadow:0 16px 38px -22px rgba(0,0,0,.75)
 .bigprice{font-weight:700;font-size:16.5px}
 .loc{font-size:11px;color:var(--mut);font-weight:500}
 .prate{border-radius:999px;font-size:10.5px;font-weight:700;padding:4px 9px;margin-top:6px}
-html[data-theme="light"] .prate.vg{background:rgba(22,160,106,.10);color:#16a06a}
-html[data-theme="light"] .prate.g{background:rgba(22,160,106,.08);color:#1c8a5f}
+html[data-theme="light"] .prate.vg{background:var(--prate-good-bg);color:var(--prate-good)}
+html[data-theme="light"] .prate.g{background:var(--prate-good-bg);color:var(--prate-good)}
 html[data-theme="light"] .prate.f{background:var(--card2);color:#86868b}
 html[data-theme="light"] .prate.h{background:rgba(210,73,47,.08);color:#c05c33}
 html[data-theme="light"] .prate.op{background:rgba(210,73,47,.11);color:#d2492f}
-html[data-theme="dark"] .prate.vg{background:rgba(30,180,122,.16);color:#3ecb96}
-html[data-theme="dark"] .prate.g{background:rgba(30,180,122,.12);color:#37bd8b}
+html[data-theme="dark"] .prate.vg{background:var(--prate-good-bg);color:var(--prate-good)}
+html[data-theme="dark"] .prate.g{background:var(--prate-good-bg);color:var(--prate-good)}
 html[data-theme="dark"] .prate.f{background:var(--card2);color:var(--mut)}
 html[data-theme="dark"] .prate.h{background:rgba(224,103,76,.12);color:#e07f5e}
 html[data-theme="dark"] .prate.op{background:rgba(224,103,76,.18);color:#e0674c}
@@ -3953,7 +3953,7 @@ footer{background:var(--card2);color:var(--mut);border-top:.5px solid var(--line
    Re-point the scoped variables at the dark palette and repair the rules that hard-code #fff. */
 html[data-theme="dark"] .br2,
 html[data-theme="dark"] .br2ov,
-html[data-theme="dark"] .br2p{--a:#1eb47a;--ink:#f5f5f7;--i2:#c7c7cc;--mut:#8e8e93;--ln:#26262a;--ln2:#33333a;--bg2:#1c1c20;--up:#e0674c}
+html[data-theme="dark"] .br2p{--a:#ff3da0;--ink:#f5f5f7;--i2:#c7c7cc;--mut:#8e8e93;--ln:#26262a;--ln2:#33333a;--bg2:#1c1c20;--up:#e0674c}
 html[data-theme="dark"] .br2p{background:var(--bg);color:var(--ink)}
 html[data-theme="dark"] .br2h{background:rgba(15,15,17,.92)}
 html[data-theme="dark"] .br2tab{background:var(--card);color:var(--ink);border-color:var(--ln2)}
