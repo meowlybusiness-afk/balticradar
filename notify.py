@@ -346,14 +346,18 @@ def crit(c, *keys):
 
 
 # ---------------------------------------------------------------- matching
+_MAKE_CANON = {"mercedes": "mercedes-benz", "land": "land rover", "seat": "seat", "mini": "mini", "alfa": "alfa romeo", "ssangyong": "ssangyong", "ram": "ram", "ds": "ds automobiles", "man": "man", "aston": "aston martin", "gwm": "gwm", "lynk": "lynk & co", "uaz": "uaz", "mclaren": "mclaren", "zaz": "zaz", "dfsk": "dfsk", "kgm": "kgm", "xev": "xev"}
+def normalize_make(v): s = (v or "").lower().strip(); return _MAKE_CANON.get(s, s)
+
+
 def matches(car, c):
     """c = criteria dict. EMPTY LIST = no constraint (match all). Never invert that."""
     countries = crit(c, "countries", "country")
     if countries and car.get("country") not in countries:
         return False
 
-    makes = [m.lower() for m in crit(c, "makes", "make")]
-    if makes and (car.get("make") or "").lower() not in makes:
+    makes = [normalize_make(m) for m in crit(c, "makes", "make")]
+    if makes and normalize_make(car.get("make")) not in makes:
         return False
 
     # models_q holds "Make|Model" pairs -> match the PAIR, so picking Audi A4 + BMW 320 can never
