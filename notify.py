@@ -790,8 +790,8 @@ def main():
             break
 
         # 4) ONE e-mail containing every new match, never one per car
-        subject = f"{len(hits)} jauns auto: {name} | BalticRadar" if len(hits) == 1 \
-            else f"{len(hits)} jauni auto: {name} | BalticRadar"
+        subject = f"{len(hits)} jauna mašīna" if len(hits) == 1 \
+            else f"{len(hits)} jaunas mašīnas"
         html = build_html(prof.get("full_name"), name, shown, drops, extra, freq)
         text = build_text(name, shown, extra)
 
@@ -851,7 +851,7 @@ def main():
         shown = hits[:MAX_PER_EMAIL]
         html = build_html(sub.get("name"), "Tavi kritēriji", shown, drops, len(hits) - len(shown), "daily")
         text = build_text("Tavi kritēriji", shown, len(hits) - len(shown))
-        if send(sub["email"], f"{len(hits)} jauni auto | BalticRadar", html, text):
+        if send(sub["email"], f"{len(hits)} jaunas mašīnas", html, text):
             sent_emails += 1
             if IGNORE_SENT or DRY_RUN:
                 continue
