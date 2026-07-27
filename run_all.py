@@ -54,8 +54,16 @@ def strong_signal_match(inc, car):
 def specs_match(inc, car):
     keys = ["make","model","year","engine_cc","fuel","gearbox","body","drivetrain"]
     return all((inc.get(k) or None) == (car.get(k) or None) for k in keys)
-def price_sane(inc_price, car_price):
+def price_sane(inc_price, car_price, trusted=False):
+    # `trusted` = the incoming price came from an ANCHORED parse we fully believe
+    # (autoplius _ap_price: class="price" inside announcement-price). Such a price is
+    # allowed to correct the stored value even on a big jump, so a car once poisoned
+    # low (e.g. 7900 mis-parse) can self-heal to its true price (17999) on re-scrape
+    # instead of the ±35% guard permanently FREEZING the wrong low value.
+    # For non-anchored / ambiguous parses (ss.lv, auto24) the ±35% guard still applies,
+    # protecting against a stray number merging two different cars.
     if not inc_price or not car_price: return True
+    if trusted: return True
     return car_price*(1-PRICE_TOLERANCE) <= inc_price <= car_price*(1+PRICE_TOLERANCE)
 def fingerprint(f):
     parts=[(f.get("make") or "").lower().strip(),(f.get("model") or "").lower().strip(),
@@ -456,7 +464,7 @@ def decide(inc, db):
     if not cands: return ("NEW_CAR",None,"no spec match")
     for cid,car in cands:
         sig=strong_signal_match(inc,car)
-        if sig and price_sane(inc.get("price_eur"),car.get("last_price")):
+        if sig and price_sane(inc.get("price_eur"),car.get("last_price"),trusted=(inc.get("source")=="autoplius")):
             return ("REPOST",cid,f"signal:{sig}")
     return ("NEEDS_REVIEW",None,"specs match, no strong signal")
 
@@ -495,7 +503,7 @@ if USE_SB:
         if has_ad(f["ad_id"]): return "SAME_AD"
         cands=[c for c in _cands(f) if specs_match(f,c)]
         for car in cands:
-            if strong_signal_match(f,car) and price_sane(f.get("price_eur"),car.get("last_price")):
+            if strong_signal_match(f,car) and price_sane(f.get("price_eur"),car.get("last_price"),trusted=(f.get("source")=="autoplius")):
                 cid=car["car_id"]
                 _post("ads",[{"ad_id":f["ad_id"],"car_id":cid,"source":f.get("source"),"source_url":f.get("source_url"),"active":True,"first_seen":now_iso(),"last_seen":now_iso()}],upsert=True)
                 # A FAILED price parse must never wipe a good price or fake a "price change".
