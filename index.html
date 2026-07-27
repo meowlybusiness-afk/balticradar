@@ -22,11 +22,11 @@
   /* First-paint palette = the current (Henry) theme, so the very first frame is already the
      new green-radar design — no orange/black flash before the henry-skin block parses. */
   :root{--bg:#0f0f11;--card:#161618;--card2:#1c1c20;--ink:#f5f5f7;--ink2:#c7c7cc;--mut:#8e8e93;--line:#26262a;--line2:#33333a;
-    --accent:#ff3da0;--accent2:#ff3da0;--gold:#ff3da0;--orange:#ff3da0;--up:#e0674c;--down:#ff3da0;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#ff3da0;--prate-good-bg:rgba(255,61,160,.16);
+    --accent:#FFC107;--accent2:#FFC107;--gold:#FFC107;--orange:#FFC107;--up:#e0674c;--down:#FFC107;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#FFC107;--prate-good-bg:rgba(255,193,7,.16);
     --dark:#141416;--dark2:#0f0f11;
     --lv:#c0314f;--lt:#f5b301;--ee:#2b9fe6;--shadow:0 18px 40px -22px rgba(0,0,0,.8);--surf:rgba(20,20,22,.80);}
-  html[data-theme="light"]{--bg:#ffffff;--card:#ffffff;--card2:#fbfbfd;--ink:#1d1d1f;--ink2:#424245;--mut:#86868b;--line:#ededf0;--line2:#dfdfe4;--accent:#d6006e;--accent2:#d6006e;--gold:#d6006e;--orange:#d6006e;--down:#d6006e;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#d6006e;--prate-good-bg:rgba(214,0,110,.10);--up:#d2492f;--dark:#ffffff;--dark2:#fbfbfd;--shadow:0 14px 34px -20px rgba(0,0,0,.30);--surf:rgba(255,255,255,.82);}
-  html[data-theme="dark"]{--bg:#0f0f11;--card:#161618;--card2:#1c1c20;--ink:#f5f5f7;--ink2:#c7c7cc;--mut:#8e8e93;--line:#26262a;--line2:#33333a;--accent:#ff3da0;--accent2:#ff3da0;--gold:#ff3da0;--orange:#ff3da0;--down:#ff3da0;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#ff3da0;--prate-good-bg:rgba(255,61,160,.16);--up:#e0674c;--dark:#141416;--dark2:#0f0f11;--shadow:0 18px 40px -22px rgba(0,0,0,.8);--surf:rgba(20,20,22,.80);}
+  html[data-theme="light"]{--bg:#ffffff;--card:#ffffff;--card2:#fbfbfd;--ink:#1d1d1f;--ink2:#424245;--mut:#86868b;--line:#ededf0;--line2:#dfdfe4;--accent:#E6A800;--accent2:#E6A800;--gold:#E6A800;--orange:#E6A800;--down:#E6A800;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#E6A800;--prate-good-bg:rgba(230,168,0,.10);--up:#d2492f;--dark:#ffffff;--dark2:#fbfbfd;--shadow:0 14px 34px -20px rgba(0,0,0,.30);--surf:rgba(255,255,255,.82);}
+  html[data-theme="dark"]{--bg:#0f0f11;--card:#161618;--card2:#1c1c20;--ink:#f5f5f7;--ink2:#c7c7cc;--mut:#8e8e93;--line:#26262a;--line2:#33333a;--accent:#FFC107;--accent2:#FFC107;--gold:#FFC107;--orange:#FFC107;--down:#FFC107;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#FFC107;--prate-good-bg:rgba(255,193,7,.16);--up:#e0674c;--dark:#141416;--dark2:#0f0f11;--shadow:0 18px 40px -22px rgba(0,0,0,.8);--surf:rgba(20,20,22,.80);}
   html{transition:background .2s,color .2s}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);
@@ -50,16 +50,16 @@
   .nav a:hover{color:#fff}
   @media(max-width:860px){.nav{display:none}}
   .status{font-size:13px;color:var(--mut);display:flex;align-items:center;gap:7px}
-  .dot{width:8px;height:8px;border-radius:50%;background:var(--down);box-shadow:0 0 0 0 rgba(214,0,110,.6);animation:pulse 2s infinite}
-  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(214,0,110,.5)}70%{box-shadow:0 0 0 8px rgba(214,0,110,0)}100%{box-shadow:0 0 0 0 rgba(214,0,110,0)}}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--down);box-shadow:0 0 0 0 rgba(230,168,0,.6);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(230,168,0,.5)}70%{box-shadow:0 0 0 8px rgba(230,168,0,0)}100%{box-shadow:0 0 0 0 rgba(230,168,0,0)}}
   .pills{display:flex;flex-wrap:wrap;gap:6px}
   .pills button{background:var(--card);border:1px solid var(--line);color:var(--ink);padding:7px 12px;
     border-radius:22px;cursor:pointer;font-size:13px;font-weight:500;transition:.15s;display:flex;align-items:center;gap:6px}
   .pills button:hover{border-color:#c5d0de}
-  .pills button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pills button.on{background:var(--accent);border-color:var(--accent);color:#0f0f11}
   .langsel{background:var(--card);border:1px solid var(--line);color:var(--ink);padding:7px 10px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;outline:none}
   .count{font-size:13px;color:var(--mut);font-weight:500}
-  .notify{background:var(--orange);color:#fff;border:none;padding:8px 14px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer}
+  .notify{background:var(--orange);color:#0f0f11;border:none;padding:8px 14px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer}
   .notify:hover{filter:brightness(.95)}
   #subform input,#subform select{background:var(--card);border:1px solid var(--line);color:var(--ink);padding:10px 12px;border-radius:9px;font-size:14px;outline:none;width:100%}
   #subform input:focus,#subform select:focus{border-color:var(--accent)}
@@ -79,13 +79,13 @@
   .hero p{margin:0 auto;font-size:18px;color:#e9eff7;max-width:700px;text-shadow:0 1px 12px rgba(0,0,0,.35)}
   .herocta{display:flex;gap:11px;justify-content:center;margin-top:22px;flex-wrap:wrap}
   .herocta button{border:none;cursor:pointer;font-size:15px;font-weight:700;padding:14px 26px;border-radius:12px;transition:.15s}
-  .herocta .primary{background:var(--accent);color:#fff;box-shadow:0 10px 26px rgba(255,70,5,.36)}
+  .herocta .primary{background:var(--accent);color:#0f0f11;box-shadow:0 10px 26px rgba(255,70,5,.36)}
   .herocta .primary:hover{filter:brightness(1.07);transform:translateY(-2px)}
   .herocta .ghost{background:rgba(255,255,255,.12);color:#fff;border:1px solid rgba(255,255,255,.4)}
   .herocta .ghost:hover{background:rgba(255,255,255,.2)}
   .herosearch{display:flex;gap:9px;max-width:580px;margin:24px auto 0}
   .herosearch input{flex:1;padding:15px 17px;border-radius:13px;border:none;font-size:15.5px;outline:none;box-shadow:0 8px 26px rgba(0,0,0,.28)}
-  .herosearch button{background:var(--orange);color:#fff;border:none;width:56px;border-radius:13px;font-size:21px;cursor:pointer;box-shadow:0 8px 26px rgba(0,0,0,.28)}
+  .herosearch button{background:var(--orange);color:#0f0f11;border:none;width:56px;border-radius:13px;font-size:21px;cursor:pointer;box-shadow:0 8px 26px rgba(0,0,0,.28)}
   .herosearch button:hover{filter:brightness(.96)}
   .herofeat{margin-top:15px;font-size:13px;color:#e4edfb;opacity:.95}
   .herofeat a{cursor:pointer;border-bottom:1px dotted rgba(255,255,255,.6);text-decoration:none}
@@ -104,7 +104,7 @@
   .pager button{min-width:38px;height:38px;padding:0 11px;border:1px solid var(--line);background:var(--card);color:var(--ink);
     border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
   .pager button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
-  .pager button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .pager button.on{background:var(--accent);border-color:var(--accent);color:#0f0f11}
   .pager button:disabled{opacity:.4;cursor:default}
   .pager .pgdot{color:var(--mut);padding:0 2px}
   .pager .pginfo{margin-left:8px;font-size:13px;color:var(--mut);font-weight:600}
@@ -123,7 +123,7 @@
     font-family:Manrope,inherit;font-weight:700;font-size:13px;letter-spacing:-.01em;
     padding:9px 30px 9px 14px;cursor:pointer;outline:none;min-width:150px}
   .sortpill select:hover{border-color:var(--accent)}
-  .sortpill select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(214,0,110,.14)}
+  .sortpill select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(230,168,0,.14)}
   .sortpill .sortcv{position:absolute;right:12px;font-size:11px;opacity:.65;pointer-events:none}
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:16px}
   @media(max-width:860px){
@@ -202,7 +202,7 @@
   .htable td{padding:9px 6px;border-bottom:1px solid var(--line)}
   .htable td:last-child{text-align:right;color:var(--mut)}
   .htable .chg.dn{color:var(--down);font-weight:700}.htable .chg.up{color:var(--up);font-weight:700}
-  .mlink{display:inline-block;margin-top:18px;color:#fff;background:var(--accent);font-size:13.5px;font-weight:600;text-decoration:none;padding:11px 18px;border-radius:10px}
+  .mlink{display:inline-block;margin-top:18px;color:#0f0f11;background:var(--accent);font-size:13.5px;font-weight:600;text-decoration:none;padding:11px 18px;border-radius:10px}
   .mdesc{color:var(--ink);font-size:14px;line-height:1.65;white-space:pre-wrap;margin-top:14px;background:var(--card2);padding:14px 16px;border-radius:12px}
   .muted{color:var(--mut);font-size:13px}
   /* content sections */
@@ -256,7 +256,7 @@
   .cookie.show{display:flex}
   .cookie span{font-size:13.5px;max-width:660px}
   .cookie button{border:none;cursor:pointer;font-weight:700;padding:9px 18px;border-radius:9px;font-size:13.5px}
-  .cookie .acc{background:var(--accent);color:#fff}
+  .cookie .acc{background:var(--accent);color:#0f0f11}
   .cookie .dec{background:rgba(255,255,255,.14);color:#fff}
 </style>
 <style id="ms-style">
@@ -271,7 +271,7 @@
   .msf-lab{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .msf-btn .msf-cv{flex:0 0 auto;font-size:11px;opacity:.65;transition:transform .15s}
   .msf-btn.open .msf-cv{transform:rotate(180deg)}
-  .msf-n{flex:0 0 auto;background:var(--accent);color:#fff;border-radius:999px;font-size:11px;
+  .msf-n{flex:0 0 auto;background:var(--accent);color:#0f0f11;border-radius:999px;font-size:11px;
     font-weight:800;padding:1px 7px;line-height:16px}
   #msdd{position:fixed;z-index:10000;display:none;background:var(--card);border:1px solid var(--line);
     border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.38);padding:10px;
@@ -292,7 +292,7 @@
     padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;line-height:1.25;
     font-family:inherit;user-select:none;transition:background .12s,color .12s}
   .mschip:hover{background:#e6e6ec}
-  .mschip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+  .mschip.on{background:var(--accent);border-color:var(--accent);color:#0f0f11}
   /* model picker: vertical multi-select list (one model per row) with a checkbox */
   #msdd.msdd-list .msdd-chips{display:flex;flex-direction:column;flex-wrap:nowrap;gap:4px}
   #msdd.msdd-list .mschip{width:100%;justify-content:flex-start;text-align:left;border-radius:9px;padding:10px 12px 10px 38px;position:relative;font-size:14px;white-space:normal}
@@ -301,9 +301,9 @@
   #msdd.msdd-list .mschip.on::after{content:"✓";position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--accent);font-size:12px;font-weight:900;line-height:1}
   #msdd.msdd-list .msdd-g{margin-top:8px}
   #msdd .msdd-foot{display:flex;gap:8px;margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
-  #msdd .msdd-done{flex:1;background:var(--accent);color:#fff;border:none;border-radius:10px;
+  #msdd .msdd-done{flex:1;background:var(--accent);color:#0f0f11;border:none;border-radius:10px;
     padding:9px 0;font-weight:800;font-size:13px;cursor:pointer;font-family:inherit}
-  #msdd .msdd-ok{flex:2;background:var(--accent);color:#fff;border:none;border-radius:10px;
+  #msdd .msdd-ok{flex:2;background:var(--accent);color:#0f0f11;border:none;border-radius:10px;
     padding:10px 8px;font-weight:800;font-size:13.5px;cursor:pointer;font-family:inherit}
   /* RED exit/cancel action so it clearly reads as the close/clear control next to "Gatavs" */
   #msdd .msdd-clr{flex:1;background:rgba(210,73,47,.07);color:#d2492f;border:1px solid rgba(210,73,47,.55);
@@ -375,26 +375,26 @@
   <svg class="rings radar" viewBox="0 0 720 720" fill="none" aria-hidden="true" focusable="false">
     <defs>
       <linearGradient id="brSweep" gradientUnits="userSpaceOnUse" x1="360" y1="360" x2="607" y2="218">
-        <stop offset="0" stop-color="#d6006e" stop-opacity="0"/>
-        <stop offset="1" stop-color="#d6006e" stop-opacity=".30"/>
+        <stop offset="0" stop-color="#E6A800" stop-opacity="0"/>
+        <stop offset="1" stop-color="#E6A800" stop-opacity=".30"/>
       </linearGradient>
     </defs>
     <g class="rdr-grid">
-      <circle cx="360" cy="360" r="120" stroke="#d6006e" stroke-opacity=".13"/>
-      <circle cx="360" cy="360" r="200" stroke="#d6006e" stroke-opacity=".09"/>
-      <circle cx="360" cy="360" r="285" stroke="#d6006e" stroke-opacity=".06"/>
-      <line x1="75" y1="360" x2="645" y2="360" stroke="#d6006e" stroke-opacity=".05"/>
-      <line x1="360" y1="75" x2="360" y2="645" stroke="#d6006e" stroke-opacity=".05"/>
+      <circle cx="360" cy="360" r="120" stroke="#E6A800" stroke-opacity=".13"/>
+      <circle cx="360" cy="360" r="200" stroke="#E6A800" stroke-opacity=".09"/>
+      <circle cx="360" cy="360" r="285" stroke="#E6A800" stroke-opacity=".06"/>
+      <line x1="75" y1="360" x2="645" y2="360" stroke="#E6A800" stroke-opacity=".05"/>
+      <line x1="360" y1="75" x2="360" y2="645" stroke="#E6A800" stroke-opacity=".05"/>
     </g>
     <g class="rdr-pulse">
-      <circle class="p1" cx="360" cy="360" r="285" stroke="#d6006e" stroke-width="1.2"/>
-      <circle class="p2" cx="360" cy="360" r="285" stroke="#d6006e" stroke-width="1.2"/>
+      <circle class="p1" cx="360" cy="360" r="285" stroke="#E6A800" stroke-width="1.2"/>
+      <circle class="p2" cx="360" cy="360" r="285" stroke="#E6A800" stroke-width="1.2"/>
     </g>
     <g class="rdr-sweep">
       <path d="M360 360 L360 75 A285 285 0 0 1 606.9 217.5 Z" fill="url(#brSweep)"/>
-      <line x1="360" y1="360" x2="360" y2="75" stroke="#d6006e" stroke-opacity=".38" stroke-width="1.5"/>
+      <line x1="360" y1="360" x2="360" y2="75" stroke="#E6A800" stroke-opacity=".38" stroke-width="1.5"/>
     </g>
-    <circle cx="360" cy="360" r="5" fill="#d6006e" fill-opacity=".4"/>
+    <circle cx="360" cy="360" r="5" fill="#E6A800" fill-opacity=".4"/>
   </svg>
   <div class="heroInner">
     <div class="flags"><span class="fdot LV"></span><span class="fdot EE"></span><span class="fdot LT"></span></div>
@@ -446,7 +446,7 @@
     <div class="row2"><input id="mmin" type="number" placeholder="Nobrauk. no"><input id="mmax" type="number" placeholder="Nobrauk. līdz"></div>
     <div class="row2"><input id="emin" type="number" step="0.1" placeholder="Tilpums no (L)"><input id="emax" type="number" step="0.1" placeholder="Tilpums līdz (L)"></div>
     <div style="display:flex;gap:8px;margin-top:2px">
-      <button id="doSearchBtn" onclick="doSearch()" style="flex:2;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:11px 8px;font-weight:800;font-size:14.5px;cursor:pointer">Meklēt</button>
+      <button id="doSearchBtn" onclick="doSearch()" style="flex:2;background:var(--accent);color:#0f0f11;border:none;border-radius:10px;padding:11px 8px;font-weight:800;font-size:14.5px;cursor:pointer">Meklēt</button>
       <button id="doResetBtn" onclick="doReset()" style="flex:1;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:11px 8px;font-weight:700;font-size:13.5px;cursor:pointer">Atiestatīt</button>
     </div>
   </aside>
@@ -1633,7 +1633,7 @@ function openModal(c){
           <div style="font-weight:800;font-size:15px;color:var(--mut)">${ML().nochg}</div></div>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0 4px">
-        <button id="mAlerts" onclick="openSub()" style="flex:1;min-width:150px;background:var(--accent);color:#fff;border:none;border-radius:11px;padding:12px;font-weight:800;cursor:pointer;font-family:inherit;font-size:14px">${(window.BRAlertLabel?BRAlertLabel():ML().alerts)}</button>
+        <button id="mAlerts" onclick="openSub()" style="flex:1;min-width:150px;background:var(--accent);color:#0f0f11;border:none;border-radius:11px;padding:12px;font-weight:800;cursor:pointer;font-family:inherit;font-size:14px">${(window.BRAlertLabel?BRAlertLabel():ML().alerts)}</button>
         <button onclick="shareCar('${c.car_id}')" style="flex:1;min-width:120px;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:11px;padding:12px;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px">${ML().share}</button>
         ${c.source_url&&c.source_url!=="#"?`<a href="${c.source_url}" target="_blank" rel="noopener" style="flex:1;min-width:120px;text-align:center;background:var(--card2);color:var(--ink);border:1px solid var(--line);border-radius:11px;padding:12px;font-weight:700;text-decoration:none;font-size:14px">${ML().openad}</a>`:""}
       </div>
@@ -1646,7 +1646,7 @@ function openModal(c){
       <div class="hist" id="hist"><h3>${t.priceHist}</h3><div class="muted">${t.loading}</div></div>
       <a class="cvbanner" href="${CARV}" target="_blank" rel="noopener nofollow sponsored" style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:13px 18px;text-decoration:none;color:var(--ink)">
         <div><div style="font-weight:800">${ML().cv}</div><div style="font-size:12.5px;color:var(--mut)">${ML().cvsub}</div></div>
-        <span style="background:var(--accent);color:#fff;font-weight:800;padding:8px 15px;border-radius:10px;white-space:nowrap">carVertical →</span>
+        <span style="background:var(--accent);color:#0f0f11;font-weight:800;padding:8px 15px;border-radius:10px;white-space:nowrap">carVertical →</span>
       </a>
       <div class="mdesc" id="mdesc" style="display:none"></div><div id="txnote" style="margin-top:6px"></div>
       ${simHtml}
@@ -1989,7 +1989,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 <style>
 /* Design tokens borrowed from the reference prototype, namespaced to avoid
    clashing with the existing --accent / --dark theme variables. */
-.br-scope,.br-modal,.br-hdr{--bracc:#d6006e;--brink:#1d1d1f;--brink2:#424245;--brmut:#86868b;--brline:#ededf0;--brline2:#dfdfe4;--brbg:#fff;--brbg2:#fbfbfd;--brup:#d2492f}
+.br-scope,.br-modal,.br-hdr{--bracc:#E6A800;--brink:#1d1d1f;--brink2:#424245;--brmut:#86868b;--brline:#ededf0;--brline2:#dfdfe4;--brbg:#fff;--brbg2:#fbfbfd;--brup:#d2492f}
 
 /* ---- header controls ---- */
 .br-hdr{display:inline-flex;align-items:center;gap:8px;font-family:Manrope,system-ui,sans-serif;vertical-align:middle}
@@ -2027,7 +2027,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 .br-chk a{color:var(--bracc);font-weight:700;cursor:pointer}
 .br-msg{font-size:12.5px;font-weight:600;border-radius:10px;padding:10px 12px;margin-bottom:12px;line-height:1.45;display:none}
 .br-msg.err{display:block;background:rgba(210,73,47,.09);color:var(--brup)}
-.br-msg.ok{display:block;background:rgba(214,0,110,.1);color:var(--bracc)}
+.br-msg.ok{display:block;background:rgba(230,168,0,.1);color:var(--bracc)}
 .br-note{font-size:11px;color:var(--brmut);font-weight:500;text-align:center;margin-top:14px;line-height:1.45}
 .br-big{font-size:44px;text-align:center;margin-bottom:12px}
 .br-h{font-size:21px;font-weight:800;text-align:center;letter-spacing:-.02em;margin-bottom:8px}
@@ -2464,7 +2464,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
       var t = document.createElement('div');
       t.textContent = text;
       t.style.cssText = 'position:fixed;left:50%;top:20px;transform:translateX(-50%);z-index:100000;'
-        + 'background:#d6006e;color:#fff;font-family:Manrope,system-ui,sans-serif;font-weight:600;'
+        + 'background:#E6A800;color:#0f0f11;font-family:Manrope,system-ui,sans-serif;font-weight:600;'
         + 'font-size:14px;padding:12px 20px;border-radius:12px;box-shadow:0 10px 30px -8px rgba(0,0,0,.4)';
       document.body.appendChild(t);
       setTimeout(function(){ t.style.transition='opacity .4s'; t.style.opacity='0'; }, 3200);
@@ -2620,19 +2620,19 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 
 <!-- ============ BALTICRADAR STAGE 3-5 : filters, chips, profile, premium gate ============ -->
 <style>
-.br2{--a:#d6006e;--ink:#1d1d1f;--i2:#424245;--mut:#86868b;--ln:#ededf0;--ln2:#dfdfe4;--bg2:#fbfbfd;--up:#d2492f}
+.br2{--a:#E6A800;--ink:#1d1d1f;--i2:#424245;--mut:#86868b;--ln:#ededf0;--ln2:#dfdfe4;--bg2:#fbfbfd;--up:#d2492f}
 /* ---- heart ---- */
 #grid .card{position:relative}
 .br-heart{position:absolute;top:10px;left:10px;z-index:5;width:34px;height:34px;border-radius:50%;border:none;
   background:rgba(255,255,255,.92);cursor:pointer;display:grid;place-items:center;font-size:16px;line-height:1;
   box-shadow:0 2px 10px -2px rgba(0,0,0,.35);transition:.15s;padding:0}
 .br-heart:hover{transform:scale(1.12)}
-.br-heart.on{background:#d6006e}
+.br-heart.on{background:#E6A800}
 .br-heart .o{display:block}.br-heart .f{display:none}
 .br-heart.on .o{display:none}.br-heart.on .f{display:block}
 .br-mheart{display:inline-flex;align-items:center;gap:7px;border:1px solid #dfdfe4;background:#fff;color:#1d1d1f;
   border-radius:999px;padding:10px 18px;font-weight:600;font-size:13px;cursor:pointer;font-family:Manrope,sans-serif;margin:10px 0}
-.br-mheart.on{background:#d6006e;color:#fff;border-color:#d6006e}
+.br-mheart.on{background:#E6A800;color:#0f0f11;border-color:#E6A800}
 /* ---- profile panel ---- */
 .br2ov{position:fixed;inset:0;background:rgba(20,20,22,.5);backdrop-filter:blur(6px);z-index:99996;display:none}
 .br2ov.on{display:block}
@@ -2667,7 +2667,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 .br2row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
 @media(max-width:640px){.br2row,.br2row3{grid-template-columns:1fr}}
 .br2msg{font-size:12.5px;font-weight:600;border-radius:10px;padding:10px 12px;margin-bottom:12px;display:none}
-.br2msg.ok{display:block;background:rgba(214,0,110,.1);color:var(--a)}
+.br2msg.ok{display:block;background:rgba(230,168,0,.1);color:var(--a)}
 .br2msg.err{display:block;background:rgba(210,73,47,.09);color:var(--up)}
 .br2need{outline:2px solid #d2492f;outline-offset:3px;border-radius:12px;animation:br2needPulse 1.3s ease}
 @keyframes br2needPulse{0%{outline-color:rgba(210,73,47,1)}100%{outline-color:rgba(210,73,47,.35)}}
@@ -2681,7 +2681,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 .br2c .t{font-weight:700;font-size:13.5px}
 .br2c .m{font-size:11.5px;color:var(--mut);font-weight:500;margin-top:3px}
 .br2c .p{font-weight:800;font-size:14.5px;margin-top:7px}
-.br2c .br2src{display:block;margin-top:9px;text-align:center;background:var(--accent);color:#fff;border-radius:9px;padding:8px 10px;font-size:12.5px;font-weight:700;text-decoration:none}
+.br2c .br2src{display:block;margin-top:9px;text-align:center;background:var(--accent);color:#0f0f11;border-radius:9px;padding:8px 10px;font-size:12.5px;font-weight:700;text-decoration:none}
 .br2c .br2src:hover{opacity:.88}
 .br2c .br2flag{position:absolute;top:8px;left:8px;z-index:2;display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.92);color:#1d1d1f;border-radius:999px;padding:3px 8px;font-size:10.5px;font-weight:700;box-shadow:0 1px 4px rgba(0,0,0,.15)}
 .br2c .rm{position:absolute;top:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;
@@ -3356,7 +3356,7 @@ function filterRow(f){
   var c = f.criteria||{};
   return '<div class="br2f" onclick="BRProfile.runFilter('+f.id+')">'
     + '<div><div class="n">'+esc(f.name)
-    + (f.notify_email?' <span style="color:#d6006e;font-size:11px;font-weight:700">● '+FREQL(f.notify_freq)+'</span>':'')
+    + (f.notify_email?' <span style="color:#E6A800;font-size:11px;font-weight:700">● '+FREQL(f.notify_freq)+'</span>':'')
     + '</div><div class="c">'+esc(describe(c))+'</div></div>'
     + '<div class="acts">'
     + '<button onclick="event.stopPropagation();BRProfile.runFilter('+f.id+')">'+P().view+'</button>'
@@ -3790,8 +3790,8 @@ setTimeout(wireMainPanel, 4000);
 
 
 <style id="henry-skin">
-html[data-theme="light"]{--bg:#ffffff;--card:#ffffff;--card2:#fbfbfd;--ink:#1d1d1f;--ink2:#424245;--mut:#86868b;--line:#ededf0;--line2:#dfdfe4;--accent:#d6006e;--accent2:#d6006e;--gold:#d6006e;--orange:#d6006e;--down:#d6006e;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#d6006e;--prate-good-bg:rgba(214,0,110,.10);--up:#d2492f;--dark:#ffffff;--dark2:#fbfbfd;--shadow:0 14px 34px -20px rgba(0,0,0,.30);--surf:rgba(255,255,255,.82)}
-html[data-theme="dark"]{--bg:#0f0f11;--card:#161618;--card2:#1c1c20;--ink:#f5f5f7;--ink2:#c7c7cc;--mut:#8e8e93;--line:#26262a;--line2:#33333a;--accent:#ff3da0;--accent2:#ff3da0;--gold:#ff3da0;--orange:#ff3da0;--down:#ff3da0;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#ff3da0;--prate-good-bg:rgba(255,61,160,.16);--up:#e0674c;--dark:#141416;--dark2:#0f0f11;--shadow:0 18px 40px -22px rgba(0,0,0,.8);--surf:rgba(20,20,22,.80)}
+html[data-theme="light"]{--bg:#ffffff;--card:#ffffff;--card2:#fbfbfd;--ink:#1d1d1f;--ink2:#424245;--mut:#86868b;--line:#ededf0;--line2:#dfdfe4;--accent:#E6A800;--accent2:#E6A800;--gold:#E6A800;--orange:#E6A800;--down:#E6A800;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#E6A800;--prate-good-bg:rgba(230,168,0,.10);--up:#d2492f;--dark:#ffffff;--dark2:#fbfbfd;--shadow:0 14px 34px -20px rgba(0,0,0,.30);--surf:rgba(255,255,255,.82)}
+html[data-theme="dark"]{--bg:#0f0f11;--card:#161618;--card2:#1c1c20;--ink:#f5f5f7;--ink2:#c7c7cc;--mut:#8e8e93;--line:#26262a;--line2:#33333a;--accent:#FFC107;--accent2:#FFC107;--gold:#FFC107;--orange:#FFC107;--down:#FFC107;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#FFC107;--prate-good-bg:rgba(255,193,7,.16);--up:#e0674c;--dark:#141416;--dark2:#0f0f11;--shadow:0 18px 40px -22px rgba(0,0,0,.8);--surf:rgba(20,20,22,.80)}
 body{font-family:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.6;letter-spacing:-.01em;background:var(--bg);color:var(--ink)}
 h1,h2,h3,h4,.secttl,.mtitle,.bigprice,.name{letter-spacing:-.025em}
 .bigprice,.mprice .v,.pager button{font-variant-numeric:tabular-nums}
@@ -3817,7 +3817,7 @@ header{background:var(--surf);backdrop-filter:blur(16px);-webkit-backdrop-filter
 .hero p{font-size:19px;line-height:1.45;font-weight:500;color:var(--ink2);text-shadow:none;max-width:520px;margin:0 auto}
 .herocta{margin-top:26px;gap:8px}
 .herocta button{border-radius:999px;font-size:14px;font-weight:600;padding:13px 24px;font-family:inherit}
-.herocta .primary{background:var(--accent);color:#fff;box-shadow:none}   /* primary CTA uses the radar-green accent so the main action is unmistakable */
+.herocta .primary{background:var(--accent);color:#0f0f11;box-shadow:none}   /* primary CTA uses the radar-green accent so the main action is unmistakable */
 .herocta .primary:hover{filter:none;opacity:.88;transform:none}
 .herocta .ghost{background:none;border:none;color:var(--ink);padding:13px 10px}
 .herocta .ghost:hover{background:none;opacity:.65}
@@ -3845,7 +3845,7 @@ header{background:var(--surf);backdrop-filter:blur(16px);-webkit-backdrop-filter
 .pills button{background:var(--bg);border:.5px solid var(--line2);color:var(--ink2);border-radius:999px;padding:8px 14px;font-size:12.5px;font-weight:600;font-family:inherit}
 .pills button:hover{border-color:var(--line2);background:var(--card2)}
 .pills button.on{background:var(--ink);border-color:var(--ink);color:var(--bg)}
-#doSearchBtn{background:var(--accent)!important;color:#fff!important;border:none!important;border-radius:999px!important;padding:13px 8px!important;font-weight:700!important;font-size:14px!important;font-family:inherit!important}
+#doSearchBtn{background:var(--accent)!important;color:#0f0f11!important;border:none!important;border-radius:999px!important;padding:13px 8px!important;font-weight:700!important;font-size:14px!important;font-family:inherit!important}
 #doSearchBtn:hover{opacity:.88}
 #doResetBtn{background:var(--bg)!important;color:var(--ink)!important;border:.5px solid var(--line2)!important;border-radius:999px!important;padding:13px 8px!important;font-weight:600!important;font-size:13.5px!important;font-family:inherit!important}
 #doResetBtn:hover{background:var(--card2)}
@@ -3898,7 +3898,7 @@ html[data-theme="dark"] .prate.op{background:rgba(224,103,76,.18);color:#e0674c}
 .htable td{padding:11px 4px;border-bottom:.5px solid var(--line);font-size:13px}
 .htable .chg.dn{color:var(--accent)}
 .htable .chg.up{color:var(--up)}
-.mlink{background:var(--accent);color:#fff;border-radius:999px;padding:13px 22px;font-size:14px;font-weight:600}
+.mlink{background:var(--accent);color:#0f0f11;border-radius:999px;padding:13px 22px;font-size:14px;font-weight:600}
 .mlink:hover{opacity:.88}
 .mdesc{background:var(--card2);border:.5px solid var(--line);border-radius:14px;color:var(--ink2)}
 .muted{color:var(--mut)}
@@ -3941,7 +3941,7 @@ footer{background:var(--card2);color:var(--mut);border-top:.5px solid var(--line
 .br2btn,.br-btn,.br-gbtn,.br-pill{border-radius:999px;font-family:Manrope,sans-serif}
 .br2chip{border-radius:999px;border:.5px solid var(--line2);background:var(--bg);color:var(--ink);font-weight:600;font-family:Manrope,sans-serif}
 .br2chip:hover{background:var(--card2)}
-.br2chip.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.br2chip.on{background:var(--accent);border-color:var(--accent);color:#0f0f11}
 .br2c,.br2sec,.br2plan,.br2bill{border-radius:18px;border:.5px solid var(--line)}
 .br2i,.br2s{border-radius:11px;border:.5px solid var(--line2);font-family:Manrope,sans-serif}
 .br2i:focus,.br2s:focus{border-color:var(--ink);box-shadow:none}
@@ -3954,7 +3954,7 @@ footer{background:var(--card2);color:var(--mut);border-top:.5px solid var(--line
    Re-point the scoped variables at the dark palette and repair the rules that hard-code #fff. */
 html[data-theme="dark"] .br2,
 html[data-theme="dark"] .br2ov,
-html[data-theme="dark"] .br2p{--a:#ff3da0;--ink:#f5f5f7;--i2:#c7c7cc;--mut:#8e8e93;--ln:#26262a;--ln2:#33333a;--bg2:#1c1c20;--up:#e0674c}
+html[data-theme="dark"] .br2p{--a:#FFC107;--ink:#f5f5f7;--i2:#c7c7cc;--mut:#8e8e93;--ln:#26262a;--ln2:#33333a;--bg2:#1c1c20;--up:#e0674c}
 html[data-theme="dark"] .br2p{background:var(--bg);color:var(--ink)}
 html[data-theme="dark"] .br2h{background:rgba(15,15,17,.92)}
 html[data-theme="dark"] .br2tab{background:var(--card);color:var(--ink);border-color:var(--ln2)}
