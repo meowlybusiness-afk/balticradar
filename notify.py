@@ -26,6 +26,7 @@ TEST_TO         if set, EVERY email is redirected to this address (end-to-end te
 DRY_RUN         "1" -> match + render but send nothing
 """
 import os, sys, json, datetime, requests
+from urllib.parse import quote
 
 URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 KEY = os.environ.get("SUPABASE_KEY", "")
@@ -137,6 +138,67 @@ def patch(path, body):
     except Exception as e:
         print("PATCH error", path, e)
         return None
+
+
+def delete(path):
+    try:
+        return requests.delete(f"{URL}/rest/v1/{path}", headers=H, timeout=30)
+    except Exception as e:
+        print("DELETE error", path, e)
+        return None
+
+
+# ---------------------------------------------------------------- CLAIM-THEN-SEND
+# Insert (filter_id, car_id) rows with ON CONFLICT DO NOTHING and read back the rows that were
+# ACTUALLY inserted (PostgREST resolution=ignore-duplicates + return=representation). Only those
+# rows are "won" by THIS process, so we e-mail only them and a parallel notifier (the Cloudflare
+# Worker or an overlapping run) can never also send them. Requires UNIQUE(filter_id, car_id) -
+# see db_dedupe_unique.sql. Returns a set of won car_ids, or None on transport error (in which
+# case the caller must NOT send: dedupe cannot be guaranteed and the cars roll into the next run).
+def claim_filter(filter_id, car_ids):
+    if not car_ids:
+        return set()
+    r = post("filter_notifications",
+             [{"filter_id": filter_id, "car_id": cid} for cid in car_ids],
+             prefer="return=representation,resolution=ignore-duplicates")
+    if r is None or not r.ok:
+        print("  !! CLAIM failed", filter_id, getattr(r, "status_code", None))
+        return None
+    try:
+        rows = r.json()
+    except Exception:
+        rows = []
+    return {x.get("car_id") for x in rows} if isinstance(rows, list) else set()
+
+
+def unclaim_filter(filter_id, car_ids):
+    if not car_ids:
+        return
+    ids = ",".join(f'"{c}"' for c in car_ids)
+    delete(f"filter_notifications?filter_id=eq.{filter_id}&car_id=in.({ids})")
+
+
+def claim_sub(sub_id, car_ids):
+    if not car_ids:
+        return set()
+    r = post("notifications",
+             [{"subscription_id": sub_id, "car_id": cid} for cid in car_ids],
+             prefer="return=representation,resolution=ignore-duplicates")
+    if r is None or not r.ok:
+        print("  !! CLAIM(sub) failed", sub_id, getattr(r, "status_code", None))
+        return None
+    try:
+        rows = r.json()
+    except Exception:
+        rows = []
+    return {x.get("car_id") for x in rows} if isinstance(rows, list) else set()
+
+
+def unclaim_sub(sub_id, car_ids):
+    if not car_ids:
+        return
+    ids = ",".join(f'"{c}"' for c in car_ids)
+    delete(f"notifications?subscription_id=eq.{sub_id}&car_id=in.({ids})")
 
 
 # ---------------------------------------------------------------- cadence helpers
@@ -345,11 +407,44 @@ def crit(c, *keys):
     return []
 
 
+# ---------------------------------------------------------------- make normalisation (mirror of the scraper's _MAKE_CANON in balticradar.py)
+# The scraper canonicalises brand names before writing them (e.g. "Mercedes" -> "Mercedes-Benz"),
+# so a car row's make is the CANONICAL spelling. A saved filter, however, may store a legacy/display
+# label ("Mercedes") captured before that normalisation existed. Exact make-equality then rejected
+# every canonical car ("mercedes" != "mercedes-benz") and the filter silently sent nothing. Fix:
+# normalise BOTH sides through the SAME canonical mapping the scraper uses, keyed on the lowercased
+# legacy variant and mapping to the lowercased canonical value, so "Mercedes" and "Mercedes-Benz"
+# both collapse to "mercedes-benz" and match. Whole-value, case-insensitive; any make that is not a
+# known variant is returned lowercased unchanged, so distinct brands never collide (this is NOT a
+# loose substring match — it is the exact 18-pair canonical set only).
+_MAKE_CANON = {
+    "mercedes":  "mercedes-benz",
+    "land":      "land rover",
+    "seat":      "seat",
+    "mini":      "mini",
+    "alfa":      "alfa romeo",
+    "ssangyong": "ssangyong",
+    "ram":       "ram",
+    "ds":        "ds automobiles",
+    "man":       "man",
+    "aston":     "aston martin",
+    "gwm":       "gwm",
+    "lynk":      "lynk & co",
+    "uaz":       "uaz",
+    "mclaren":   "mclaren",
+    "zaz":       "zaz",
+    "dfsk":      "dfsk",
+    "kgm":       "kgm",
+    "xev":       "xev",
+}
+
+
+def normalize_make(v):
+    s = (v or "").lower().strip()
+    return _MAKE_CANON.get(s, s)
+
+
 # ---------------------------------------------------------------- matching
-_MAKE_CANON = {"mercedes": "mercedes-benz", "land": "land rover", "seat": "seat", "mini": "mini", "alfa": "alfa romeo", "ssangyong": "ssangyong", "ram": "ram", "ds": "ds automobiles", "man": "man", "aston": "aston martin", "gwm": "gwm", "lynk": "lynk & co", "uaz": "uaz", "mclaren": "mclaren", "zaz": "zaz", "dfsk": "dfsk", "kgm": "kgm", "xev": "xev"}
-def normalize_make(v): s = (v or "").lower().strip(); return _MAKE_CANON.get(s, s)
-
-
 def matches(car, c):
     """c = criteria dict. EMPTY LIST = no constraint (match all). Never invert that."""
     countries = crit(c, "countries", "country")
@@ -436,10 +531,47 @@ MUT = "#8a929c"
 LINE = "#e7e9ee"
 
 
-def car_url(c):
+def car_url(c, magic=None):
     """The CTA opens the listing ON BALTICRADAR (/?car=<id>), not on ss.lv.
-    The source-portal link still lives inside our own detail view."""
-    return f"{SITE}/?car={c.get('car_id')}"
+    The source-portal link still lives inside our own detail view.
+
+    When `magic` (a per-recipient single-use token_hash from magic_token()) is supplied the link
+    ALSO auto-logs the recipient into THEIR OWN account: the site callback runs
+    verifyOtp({token_hash, type:'magiclink'}) then opens ?car=<id>. `car` is a plain pass-through
+    param independent of the token, so ONE token can carry any car id. Without a token (share
+    button, or generate_link failed) the link stays universal/public: a plain ?car=<id>."""
+    cid = quote(str(c.get("car_id")), safe="")
+    if magic:
+        return f"{SITE}/?token_hash={quote(magic, safe='')}&type=magiclink&car={cid}"
+    return f"{SITE}/?car={cid}"
+
+
+def magic_token(email):
+    """Mint ONE magic-link token for a recipient via the GoTrue admin API (service_role = KEY).
+    Sends NO e-mail, so it costs nothing against the Resend daily quota. Returns the hashed_token
+    string, or None on any failure (caller falls back to plain public ?car links; the alert still
+    goes out, just without auto-login). One call per e-mail, reused for every car in it."""
+    if not (URL and KEY and email):
+        return None
+    try:
+        r = requests.post(
+            f"{URL}/auth/v1/admin/generate_link",
+            headers=H,
+            json={"type": "magiclink", "email": email, "options": {"redirect_to": f"{SITE}/"}},
+            timeout=30,
+        )
+        if not r.ok:
+            print(f"  magiclink: generate_link {r.status_code} for {email} -> plain ?car fallback")
+            return None
+        j = r.json()
+        # GoTrue returns hashed_token at the top level; supabase-js nests it under properties.
+        h = j.get("hashed_token") or (j.get("properties") or {}).get("hashed_token")
+        if not h:
+            print(f"  magiclink: no hashed_token for {email} -> plain ?car fallback")
+        return h
+    except Exception as e:
+        print(f"  magiclink: generate_link error for {email}: {e} -> plain ?car fallback")
+        return None
 
 
 def specs_of(c):
@@ -457,7 +589,7 @@ def specs_of(c):
     return " &middot; ".join(b for b in bits if b)
 
 
-def car_row(c, drop=None):
+def car_row(c, drop=None, magic=None):
     """One white card: table-based, fully inline, stacks on narrow screens."""
     img = (c.get("photos") or [None])[0]
     alt = f"{c.get('make') or ''} {c.get('model') or ''}".strip() or "Auto"
@@ -470,7 +602,7 @@ def car_row(c, drop=None):
     year = c.get("year") or ""
     flag = FLAG.get(c.get("country") or "", "")
     src = c.get("source") or ""
-    url = car_url(c)
+    url = car_url(c, magic)
 
     drop_badge = (
         f'<div style="margin:0 0 7px">'
@@ -520,8 +652,8 @@ FREQ_LABEL = {
 }
 
 
-def build_html(name, filter_name, cars, drops, extra, freq="daily"):
-    rows = "".join(car_row(c, drops.get(c["car_id"])) for c in cars)
+def build_html(name, filter_name, cars, drops, extra, freq="daily", magic=None):
+    rows = "".join(car_row(c, drops.get(c["car_id"]), magic) for c in cars)
     n = len(cars)
     hello = f", {name}" if name else ""
     more = (f'<tr><td style="padding:2px 0 14px;text-align:center;font:600 13px/1.5 {FONT};color:{INK2}">'
@@ -578,12 +710,12 @@ def build_html(name, filter_name, cars, drops, extra, freq="daily"):
     )
 
 
-def build_text(filter_name, cars, extra):
+def build_text(filter_name, cars, extra, magic=None):
     L = [f'Jauni auto pēc filtra "{filter_name}" - BalticRadar', ""]
     for c in cars:
         price = f"{c.get('last_price')} EUR" if c.get("last_price") else "cena nav noradita"
         L.append(f"- {c.get('make') or ''} {c.get('model') or ''} {c.get('year') or ''} · {price}")
-        L.append(f"  {car_url(c)}")
+        L.append(f"  {car_url(c, magic)}")
     if extra > 0:
         L.append(f"...un vēl {extra} sludinājumi.")
     L += ["", f"Skatīt visus: {SITE}",
@@ -778,8 +910,6 @@ def main():
             continue
 
         hits.sort(key=lambda c: (c.get("first_seen") or c.get("posted") or ""), reverse=True)
-        shown = hits[:MAX_PER_EMAIL]
-        extra = len(hits) - len(shown)
 
         if sent_emails >= MAX_EMAILS:
             print(f"MAX_EMAILS ({MAX_EMAILS}) reached -> stopping (per-run cap)")
@@ -789,28 +919,52 @@ def main():
                   f"stopping. The remaining filters roll into the next run.")
             break
 
-        # 4) ONE e-mail containing every new match, never one per car
-        subject = f"{len(hits)} jauna mašīna" if len(hits) == 1 \
-            else f"{len(hits)} jaunas mašīnas"
-        html = build_html(prof.get("full_name"), name, shown, drops, extra, freq)
-        text = build_text(name, shown, extra)
+        # 4) CLAIM-THEN-SEND. Insert the dedupe rows for ALL hits FIRST (so the backlog is never
+        #    re-sent later AND a parallel notifier cannot also grab them), then e-mail only the rows
+        #    THIS process actually won. On a real run a DRY_RUN/IGNORE_SENT pass must not touch the
+        #    dedupe tables, so it skips the claim and sends the full hit list unrecorded.
+        if IGNORE_SENT or DRY_RUN:
+            claimed = hits
+        else:
+            won = claim_filter(f["id"], [c["car_id"] for c in hits])
+            if won is None:
+                print("  !! claim error -> NOT sending (dedupe unguaranteed); rolls into next run")
+                continue
+            claimed = [c for c in hits if c["car_id"] in won]
+            if not claimed:
+                print("  all matches already claimed by a parallel run -> nothing to send")
+                continue
+
+        shown = claimed[:MAX_PER_EMAIL]
+        extra = len(claimed) - len(shown)
+
+        # ONE e-mail containing every new match, never one per car
+        subject = f"{len(claimed)} jauna mašīna" if len(claimed) == 1 \
+            else f"{len(claimed)} jaunas mašīnas"
+        # ONE magic-link token per recipient e-mail, reused for every car button (the token logs the
+        # recipient into THEIR account; the differing ?car=<id> is just the redirect target). None on
+        # failure -> car_url() emits plain public ?car links and the alert still goes out.
+        magic = magic_token(email)
+        if DRY_RUN and shown:
+            print(f"  magiclink DRY: link[0] = {car_url(shown[0], magic)}"
+                  f"{'' if magic else '  (no token -> plain public ?car fallback)'}")
+        html = build_html(prof.get("full_name"), name, shown, drops, extra, freq, magic)
+        text = build_text(name, shown, extra, magic)
 
         if send(email, subject, html, text):
             sent_emails += 1
             today[uid] = today.get(uid, 0) + 1
-            # A DRY_RUN must not consume the backlog: send() returns True without sending anything,
-            # so recording here would mark cars as "already alerted" and the user would NEVER get
-            # them. Same for IGNORE_SENT. Neither may touch the dedupe tables.
             if IGNORE_SENT or DRY_RUN:
                 print("  -> TEST send (DRY_RUN/IGNORE_SENT: nothing sent, nothing recorded)")
                 continue
-            # mark ALL hits (not just the shown ones) so the backlog is never re-sent later
-            post("filter_notifications",
-                 [{"filter_id": f["id"], "car_id": c["car_id"]} for c in hits],
-                 prefer="resolution=ignore-duplicates")
+            # claim already recorded filter_notifications; just stamp cadence + provider ledger
             patch(f"saved_filters?id=eq.{f['id']}", {"last_notified_at": _now().isoformat()})
             record_send(uid, f["id"])
-            print(f"  -> {email}: {len(hits)} new car(s) in ONE e-mail")
+            print(f"  -> {email}: {len(claimed)} new car(s) in ONE e-mail")
+        elif not (IGNORE_SENT or DRY_RUN):
+            # send failed AFTER claiming -> roll the claim back so the cars retry next run
+            unclaim_filter(f["id"], [c["car_id"] for c in claimed])
+            print(f"  !! send failed -> claim rolled back for {len(claimed)} car(s)")
 
     # ---- legacy: the old "alerts profile" (subscriptions table)
     if not LEGACY_SUBS:
@@ -848,17 +1002,31 @@ def main():
         if not hits:
             continue
         hits.sort(key=lambda c: (c.get("first_seen") or ""), reverse=True)
-        shown = hits[:MAX_PER_EMAIL]
-        html = build_html(sub.get("name"), "Tavi kritēriji", shown, drops, len(hits) - len(shown), "daily")
-        text = build_text("Tavi kritēriji", shown, len(hits) - len(shown))
-        if send(sub["email"], f"{len(hits)} jaunas mašīnas", html, text):
+        # CLAIM-THEN-SEND for legacy subs too: claim notifications(subscription_id, car_id) first,
+        # e-mail only the rows we won, roll the claim back if the send fails.
+        if IGNORE_SENT or DRY_RUN:
+            claimed = hits
+        else:
+            won = claim_sub(sub["id"], [c["car_id"] for c in hits])
+            if won is None:
+                print("  !! claim(sub) error -> NOT sending")
+                continue
+            claimed = [c for c in hits if c["car_id"] in won]
+            if not claimed:
+                continue
+        shown = claimed[:MAX_PER_EMAIL]
+        magic = magic_token(sub["email"])
+        html = build_html(sub.get("name"), "Tavi kritēriji", shown, drops, len(claimed) - len(shown), "daily", magic)
+        text = build_text("Tavi kritēriji", shown, len(claimed) - len(shown), magic)
+        if send(sub["email"], f"{len(claimed)} jauna mašīna" if len(claimed) == 1 else f"{len(claimed)} jaunas mašīnas", html, text):
             sent_emails += 1
             if IGNORE_SENT or DRY_RUN:
                 continue
-            post("notifications", [{"subscription_id": sub["id"], "car_id": c["car_id"]} for c in hits],
-                 prefer="resolution=ignore-duplicates")
+            # claim already recorded notifications; just stamp cadence + provider ledger
             patch(f"subscriptions?id=eq.{sub['id']}", {"last_notified_at": _now().isoformat()})
             record_send(None, None)      # still spends one message from the provider budget
+        elif not (IGNORE_SENT or DRY_RUN):
+            unclaim_sub(sub["id"], [c["car_id"] for c in claimed])
 
     print(done_line(sent_emails, spent))
 

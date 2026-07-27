@@ -1445,6 +1445,7 @@ function gal(d){const im=document.querySelectorAll("#modal .mgal img");if(im.len
   const c=document.getElementById("gcnt");if(c)c.textContent=(galIdx+1)+" / "+im.length;}
 function closeModal(){
   document.getElementById("ov").classList.remove("show");
+  window._brOpenCarId = null; // no car on screen -> a later auth event must not re-gate a closed modal
   brStripCarParam();          // arrived from an alert e-mail? closing leaves them browsing BalticRadar
 }
 /* ---------- DEEP LINKS: /?car=<id>  (also #car=<id>) ----------
@@ -2490,6 +2491,10 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 
     if(errDesc || errCode){ // expired / already-used link, etc.
       cleanAuthUrl();
+      // A magic-link (auto-login from an alert e-mail) must NEVER hard-fail: the recipient still
+      // wants to see the car. Fall through silently -> the ?car deep-link opens logged-out and the
+      // premium history prompts sign-in. Only confirm / recovery / Google surface the error modal.
+      if(type === 'magiclink') return false;
       BR.openAuth('signin');
       msg('signin', errDesc ? decodeURIComponent(errDesc).replace(/\+/g,' ')
                             : AT().linkExpired, 'err');
@@ -2519,6 +2524,12 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
       }
     }catch(e){
       cleanAuthUrl();
+      // A magic token is SINGLE-USE. A second click, an e-mail link-scanner that already spent it,
+      // or a click on a different device will land here. Don't block the car: fall through so the
+      // ?car deep-link opens (logged-out if no prior session on this device; the premium history
+      // then prompts sign-in). In the same browser a prior click already persisted the session, so
+      // the car still shows premium via that session.
+      if(type === 'magiclink') return false;
       BR.openAuth('signin');
       msg('signin', (e && e.message) || AT().confirmFail, 'err');
       return true;
@@ -2533,6 +2544,10 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
     }
     await refresh(sess);
     if(isRecovery){ BR.view('reset'); } // reset link -> let them set a new password
+    // Auto-login from an alert e-mail: sign in SILENTLY (no "e-mail confirmed" toast, which is the
+    // wrong message here). The ?car deep-link opens the car, and the br:auth listener re-runs the
+    // history gate so the premium price/mileage history appears the moment this session lands.
+    else if(type === 'magiclink'){ BR.close(); }
     else { BR.close(); brToast(AT().emailConfirmed); }
     return true;
   }
@@ -2928,11 +2943,25 @@ new MutationObserver(function(){ decorate(); wireMainPanel(); })
 var _open = window.openCarById;
 if(typeof _open === 'function'){
   window.openCarById = function(id){
+    window._brOpenCarId = id;   // remember which car's modal is on screen so a LATE auth resolution
+                                // (the magic-link verifyOtp round-trip) can re-render its premium
+                                // history without forcing the recipient to reload.
     var r = _open.apply(this, arguments);
     setTimeout(function(){ gateHistory(id); }, 800);
     return r;
   };
 }
+/* Magic-link auto-login opens the car BEFORE verifyOtp finishes, so the 800 ms gate above can fire
+   while BR.profile is still null and lock a PREMIUM recipient out of the very history the e-mail
+   promised. When auth finally resolves (br:auth), re-open the history for the car still on screen:
+   loadHistory() paints the premium chart (no-op when not premium) and gateHistory() reveals it and
+   drops the lock-box. Idempotent, so it is safe to fire on every auth event. */
+window.addEventListener('br:auth', function(){
+  try{
+    var id = window._brOpenCarId, ov = document.getElementById('ov');
+    if(id && ov && ov.classList.contains('show')){ loadHistory(id); gateHistory(id); }
+  }catch(e){}
+});
 async function gateHistory(id){
   // Lock BOTH premium history surfaces for non-premium: the price-change stat card (#pchgcard)
   // AND the full history section (#hist). loadHistory() already fetches/renders nothing for them,
