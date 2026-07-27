@@ -1556,7 +1556,11 @@ async function loadHistory(carId){
       const mtxt=p.mileage!=null?km(p.mileage)+(mp?` (${mp>0?'+':''}${km(mp)})`:""):"";
       return `<tr><td>${dt(p.ts)}</td><td><b>${eur(p.price)}</b></td><td class="chg ${cl}">${ch!=null?sign+eur(ch):""}</td><td>${mtxt}</td></tr>`;}).join("");
     box.innerHTML=`<h3>Cenu un nobraukuma vēsture</h3>${_discHtml}${summary}${sparkline(gpts)}<table class="htable">${rows}</table>`;
-  }catch(e){box.innerHTML="";}
+  }catch(e){
+    // Never leave a blank box or (worse) the spinner if the fetch/render throws: keep the heading and
+    // show a graceful message instead of an empty section.
+    box.innerHTML=`<h3>${T().priceHist}</h3><div class="muted">${T().histOne||''}</div>`;
+  }
 }
 const TXC=JSON.parse(localStorage.getItem("br_tx")||"{}");
 const TXLABEL={lv:{auto:"Tulkots automātiski",orig:"Rādīt oriģinālu",wait:"Tulkoju…"},
@@ -2959,7 +2963,9 @@ if(typeof _open === 'function'){
 window.addEventListener('br:auth', function(){
   try{
     var id = window._brOpenCarId, ov = document.getElementById('ov');
-    if(id && ov && ov.classList.contains('show')){ loadHistory(id); gateHistory(id); }
+    // gateHistory() now (re)loads the history itself on the premium branch, so one call covers both
+    // revealing and populating the panel (and locking it for non-premium).
+    if(id && ov && ov.classList.contains('show')){ gateHistory(id); }
   }catch(e){}
 });
 async function gateHistory(id){
@@ -2990,6 +2996,13 @@ async function gateHistory(id){
     if(pch) pch.style.display = '';
     if(hist) hist.style.display = '';
     if(existingLock) existingLock.remove();
+    // BULLETPROOF: whenever we REVEAL #hist for a premium user, (re)populate it here. openModal()
+    // calls loadHistory() once at open time, but if the user became premium AFTER the modal opened
+    // (magic-link login: verifyOtp resolves late) that first call bailed at the premium gate and left
+    // the "Ielādē…" spinner. Revealing the panel without loading it is what left the price history
+    // stuck forever. Calling loadHistory() on every premium reveal guarantees it always resolves to
+    // the chart, a "no changes yet" state, or an error message - never the spinner. Idempotent.
+    loadHistory(id);
     addMileageHistory(id, hist || pch);
   }
 }
