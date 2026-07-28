@@ -63,7 +63,14 @@ def price_sane(inc_price, car_price, trusted=False):
     # For non-anchored / ambiguous parses (ss.lv, auto24) the ±35% guard still applies,
     # protecting against a stray number merging two different cars.
     if not inc_price or not car_price: return True
-    if trusted: return True
+    if trusted:
+        # Even an anchored/trusted parse OCCASIONALLY grabs a financing/monthly figure instead of the
+        # sale price (e.g. 2299 on a 16 499 car). No real listing re-prices below a fifth of its own
+        # value, so reject such an implausible severe drop - it would poison price_history with a fake
+        # ~-80% delta (the mis-parses cleaned up 2026-07-28). Legitimate corrections, including big
+        # self-heal jumps UP and normal drops down to 20% of the stored price, still pass.
+        if inc_price < 0.20 * car_price: return False
+        return True
     return car_price*(1-PRICE_TOLERANCE) <= inc_price <= car_price*(1+PRICE_TOLERANCE)
 def fingerprint(f):
     parts=[(f.get("make") or "").lower().strip(),(f.get("model") or "").lower().strip(),
@@ -651,7 +658,10 @@ else:
 SS_PAGES=int(os.environ.get("SS_PAGES",5)); AP_PAGES=int(os.environ.get("AP_PAGES",3))
 A24_PAGES=int(os.environ.get("A24_PAGES",1)); DETAIL_CAP=int(os.environ.get("DETAIL_CAP",200))
 SS_DETAIL=int(os.environ.get("SS_DETAIL",1)); PAUSE=0.5
-AP_BASE="https://lv.autoplius.lt/sludinajumi/lietotas-automasinas?order_by=1&order_direction=DESC"
+# order_by=3&order_direction=DESC = newest-by-LISTING-DATE first (verified live 2026-07-27).
+# The OLD order_by=1 was autoplius' FEATURED/relevance order, so pages 1-2 never held today's
+# newest listings -> new LT cars were missed while the cursor walked the back-catalogue.
+AP_BASE="https://lv.autoplius.lt/sludinajumi/lietotas-automasinas?order_by=3&order_direction=DESC"
 A24_BASE="https://eng.auto24.ee/kasutatud/nimekiri.php?a=101102"   # cars+SUV ONLY (~14.7k); a=100 is ALL types incl. motos/trailers/trucks/machinery
 SS_BASE="https://www.ss.lv/lv/transport/cars/today/"
 SS_H={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36","Accept-Language":"lv,en;q=0.9"}
