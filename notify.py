@@ -697,12 +697,7 @@ def build_html(name, filter_name, cars, drops, extra, freq="daily", magic=None):
         f'font:800 14px/1 {FONT};padding:15px 30px;border-radius:12px">Skatīt visu katalogu &rarr;</a></td></tr>'
 
         f'<tr><td style="padding:18px 6px 6px;border-top:1px solid {LINE}">'
-        f'<div style="font:600 12px/1.7 {FONT};color:{MUT}">'
-        f'Šo e-pastu saņem, jo tev ir saglabāts filtrs ar ieslēgtiem paziņojumiem. '
-        f'Biežums: <b style="color:{INK}">{FREQ_LABEL.get(freq, FREQ_LABEL["daily"])}</b>. '
-        f'To vari mainīt vai izslēgt jebkurā brīdī.<br>'
-        f'<a href="{SITE}/?p=filters" target="_blank" style="color:{ACC};text-decoration:none;font-weight:800">Mainīt biežumu / atteikties no paziņojumiem</a></div>'
-        f'<div style="margin-top:10px;font:500 11px/1.6 {FONT};color:#a8aeb7">'
+        f'<div style="font:500 11px/1.6 {FONT};color:#a8aeb7">'
         f'BalticRadar &middot; lietotu auto meklētājs Latvijā, Lietuvā un Igaunijā &middot; {host}</div>'
         '</td></tr>'
 
