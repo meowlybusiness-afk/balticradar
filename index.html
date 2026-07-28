@@ -3766,7 +3766,18 @@ BRProfile.runFilter = async function(id, sort){
   // label straight against the column silently dropped every Estonian car from the user's own filter.
   var RAW = function(kind, vals){ return (typeof vocabRaws === 'function') ? vocabRaws(kind, vals) : vals; };
   IN('make',       arr(c.makes, c.make));
-  IN('model',      arr(c.models, null));
+  // Model matching must be CASE-INSENSITIVE. auto24 stores "ProAce" while ss.lv/autoplius store
+  // "Proace"; a case-sensitive `.in('model', [...])` silently hid every lowercase-source car from
+  // the filter view (ss.lv Proace showed 0 of 15 real matches). The e-mail notifier already matches
+  // case-insensitively (lowercases both sides), so mirror that here: ilike with NO % wildcards is a
+  // case-insensitive exact match. Values are double-quoted so spaces ("Proace City Verso") are safe;
+  // the models_q post-filter below still narrows make|model pairs exactly (also lowercased). Applies
+  // to ALL model matching, so every filter benefits and none regress (identical-cased models like
+  // "Kodiaq" match exactly as before).
+  var _models = arr(c.models, null);
+  if(_models.length){
+    q = q.or(_models.map(function(m){ return 'model.ilike."' + String(m).replace(/["\\]/g,'') + '"'; }).join(','));
+  }
   IN('country',    arr(c.countries, c.country));
   IN('fuel',       RAW('fuel',  arr(c.fuels, c.fuel)));
   IN('gearbox',    RAW('gear',  arr(c.gearboxes, c.gearbox)));
