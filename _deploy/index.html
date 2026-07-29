@@ -1448,6 +1448,15 @@ function closeModal(){
   document.getElementById("ov").classList.remove("show");
   window._brOpenCarId = null; // no car on screen -> a later auth event must not re-gate a closed modal
   brStripCarParam();          // arrived from an alert e-mail? closing leaves them browsing BalticRadar
+  // If this car was opened from a profile view (Mani filtri / Saglabātās), return there instead of the
+  // main catalogue. Opened from the catalogue or a ?car= deep link -> _brReturn is null, so we stay on
+  // the catalogue (its scroll is already preserved: the catalogue was never re-rendered).
+  var _r = window._brReturn; window._brReturn = null;
+  if(_r && window.BRProfile && typeof BRProfile.open === 'function' && window.BR && BR.user){
+    BRProfile.open(_r.tab);
+    var _el = document.getElementById('br2p');
+    if(_el && _r.scroll){ setTimeout(function(){ try{ _el.scrollTop = _r.scroll; }catch(e){} }, 60); }
+  }
 }
 /* ---------- DEEP LINKS: /?car=<id>  (also #car=<id>) ----------
    An alert e-mail links to OUR page, not to ss.lv. The modal must open on a cold, logged-out
@@ -3284,6 +3293,7 @@ BRProfile.close = function(){
   document.body.style.overflow='';
 };
 BRProfile.tab = function(t){
+  BRProfile._tab = t;   // remember current profile tab so a car opened from here can return to it
   ['acct','favs','filters','bill','tc'].forEach(function(k){
     var v=$('br2v-'+k); if(v) v.classList.toggle('on', k===t);
   });
@@ -3360,6 +3370,9 @@ BRProfile.unfav = async function(id){
   renderFavs(); decorate();
 };
 BRProfile.openCar = function(id){
+  // Remember which profile view (Mani filtri / Saglabātās) the car was opened from, plus scroll,
+  // so closing the car modal returns here instead of dropping onto the main catalogue.
+  window._brReturn = { tab: BRProfile._tab || 'filters', scroll: (document.getElementById('br2p')||{}).scrollTop || 0 };
   BRProfile.close();
   if(typeof window.openCarById==='function') window.openCarById(id);
 };
