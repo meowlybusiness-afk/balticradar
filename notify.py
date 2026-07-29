@@ -524,7 +524,7 @@ def eur(n):
 
 
 FONT = "'Manrope','Helvetica Neue',Helvetica,Arial,sans-serif"
-ACC = "#d6006e"
+ACC = "#728C00"
 INK = "#1d1d1f"
 INK2 = "#5b6470"
 MUT = "#8a929c"
@@ -606,7 +606,7 @@ def car_row(c, drop=None, magic=None):
 
     drop_badge = (
         f'<div style="margin:0 0 7px">'
-        f'<span style="display:inline-block;background:#f7e8f0;color:{ACC};'
+        f'<span style="display:inline-block;background:#eef3df;color:{ACC};'
         f'font:700 11px/1.6 {FONT};padding:2px 9px;border-radius:999px;white-space:nowrap">'
         f'&darr; Cena kritusi &nbsp;<span style="text-decoration:line-through;color:{MUT};font-weight:600">'
         f'{eur(drop)}</span></span></div>') if drop else ""
@@ -686,7 +686,7 @@ def build_html(name, filter_name, cars, drops, extra, freq="daily", magic=None):
         '<tr><td style="padding:20px 18px">'
         f'<div style="font:800 19px/1.3 {FONT};color:{INK};letter-spacing:-.02em">Sveiki{hello}: {n} jauns(-i) auto tavam filtram</div>'
         f'<div style="margin-top:9px;font:600 13px/1.5 {FONT};color:{INK2}">Filtrs: '
-        f'<span style="display:inline-block;background:#f7e8f0;color:{ACC};padding:3px 11px;border-radius:999px;font-weight:800">{filter_name}</span></div>'
+        f'<span style="display:inline-block;background:#eef3df;color:{ACC};padding:3px 11px;border-radius:999px;font-weight:800">{filter_name}</span></div>'
         f'<div style="margin-top:11px;font:500 13px/1.6 {FONT};color:{MUT}">Šie sludinājumi tikko parādījās ss.lv / autoplius.lt / auto24.ee.</div>'
         '</td></tr></table></td></tr>'
 
@@ -698,7 +698,7 @@ def build_html(name, filter_name, cars, drops, extra, freq="daily", magic=None):
 
         f'<tr><td style="padding:18px 6px 6px;border-top:1px solid {LINE}">'
         f'<div style="font:500 11px/1.6 {FONT};color:#a8aeb7">'
-        f'BalticRadar &middot; lietotu auto meklētājs Latvijā, Lietuvā un Igaunijā &middot; {host}</div>'
+        f'BalticRadar &middot; auto meklētājs Latvijā, Lietuvā un Igaunijā &middot; {host}</div>'
         '</td></tr>'
 
         '</table></td></tr></table></body></html>'
