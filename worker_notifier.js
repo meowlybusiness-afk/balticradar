@@ -63,7 +63,7 @@ function cfg(env) {
     PROVIDER_RESERVE: n(env.PROVIDER_RESERVE, 10),
 
     // Links point at balticradar.com, never the source portal. (Override via SITE_URL var.)
-    SITE: s(env.SITE_URL, "https://balticradar.com"),
+    SITE: "https://balticradar.com",   // ALWAYS the public domain (magic-link redirect + all e-mail links must be balticradar.com, never workers.dev)
     FROM: (env.ALERT_FROM || "").trim() || "BalticRadar <alerts@balticradar.com>",
 
     TEST_TO: (env.TEST_TO || "").trim(),
