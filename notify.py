@@ -85,7 +85,7 @@ DAILY_CAP = int(os.environ.get("DAILY_CAP", 6))
 PROVIDER_DAILY_LIMIT = int(os.environ.get("PROVIDER_DAILY_LIMIT", 100))
 PROVIDER_RESERVE = int(os.environ.get("PROVIDER_RESERVE", 10))     # never spend the last 10
 GLOBAL_BUDGET = max(0, PROVIDER_DAILY_LIMIT - PROVIDER_RESERVE)    # -> 90/day
-SITE = os.environ.get("SITE_URL", "https://balticradar.com")
+SITE = "https://balticradar.com"   # ALWAYS the public domain; ignore any SITE_URL env (the Actions workflow historically forced workers.dev, which broke email links + magic-link redirect)
 RESEND_KEY = os.environ.get("RESEND_API_KEY")
 # NOTE: an UNSET GitHub secret is passed through as an EMPTY STRING, not as "missing" - so
 # os.environ.get(..., default) would return "" and Resend answers 422 "domain is invalid".
