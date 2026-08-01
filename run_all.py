@@ -68,8 +68,11 @@ def price_sane(inc_price, car_price, trusted=False):
         # sale price (e.g. 2299 on a 16 499 car). No real listing re-prices below a fifth of its own
         # value, so reject such an implausible severe drop - it would poison price_history with a fake
         # ~-80% delta (the mis-parses cleaned up 2026-07-28). Legitimate corrections, including big
-        # self-heal jumps UP and normal drops down to 20% of the stored price, still pass.
-        if inc_price < 0.20 * car_price: return False
+        # self-heal jumps UP still pass. A big single-step DROP, however, is almost always a
+        # mis-parse (struck / ex-VAT / monthly / partner figure), NOT a real price move - the
+        # 99 450 -> 54 450 Porsche Cayenne class - so reject any drop below 60% of the stored
+        # price (matches the revalidator guard). Up-corrections and moderate (<40%) drops pass.
+        if inc_price < 0.60 * car_price: return False
         return True
     return car_price*(1-PRICE_TOLERANCE) <= inc_price <= car_price*(1+PRICE_TOLERANCE)
 def fingerprint(f):

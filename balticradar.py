@@ -78,6 +78,50 @@ if not os.environ.get("SUPABASE_KEY"):
 import re, time, json, hashlib, datetime, requests
 from bs4 import BeautifulSoup
 
+# ============================================================ make normalization
+# ONE canonical brand mapping so every source (ss.lv, autoplius, auto24) writes the
+# SAME brand spelling and never reintroduces the duplicates cleaned up in the DB.
+# Match is on the WHOLE trimmed make value, case-insensitive on the variant key, so
+# "Mansory" is NOT folded to "MAN" and "Landini" is NOT folded to "Land Rover".
+# Deliberately NOT normalized (left exactly as scraped): Cupra, VAZ, Lada, Rover,
+# Mercedes-AMG. KGM and SsangYong are kept distinct (not folded into each other).
+# To extend: add a  "variant"(lowercase) : "Canonical"  line below.
+_MAKE_CANON = {
+    "mercedes":  "Mercedes-Benz",
+    "land":      "Land Rover",
+    "seat":      "SEAT",
+    "mini":      "MINI",
+    "alfa":      "Alfa Romeo",
+    "ssangyong": "SsangYong",
+    "ram":       "RAM",
+    "ds":        "DS Automobiles",
+    "man":       "MAN",
+    "aston":     "Aston Martin",
+    "gwm":       "GWM",
+    "lynk":      "Lynk & Co",
+    "uaz":       "UAZ",
+    "mclaren":   "McLaren",
+    "zaz":       "ZAZ",
+    "dfsk":      "DFSK",
+    "kgm":       "KGM",
+    "xev":       "XEV",
+}
+def normalize_make(make):
+    """Canonicalize a brand name to the DB's canonical spelling.
+    Whole-value, case-insensitive match against _MAKE_CANON; any value that is not
+    an exact variant is returned unchanged (preserving None/empty)."""
+    if not make: return make
+    return _MAKE_CANON.get(str(make).strip().lower(), make)
+
+def _selftest_make():
+    """Tiny self-test for normalize_make (run: python -c 'import balticradar as b; b._selftest_make()')."""
+    assert normalize_make("Mercedes")=="Mercedes-Benz"
+    assert normalize_make("seat")=="SEAT"
+    assert normalize_make("Mansory")=="Mansory"   # not folded to MAN
+    assert normalize_make("Cupra")=="Cupra"       # excluded, unchanged
+    assert normalize_make("Uaz")=="UAZ"
+    print("normalize_make self-test OK")
+
 # ============================================================ identity
 PRICE_TOLERANCE = 0.35
 def strong_signal_match(inc, car):
@@ -88,8 +132,26 @@ def strong_signal_match(inc, car):
 def specs_match(inc, car):
     keys = ["make","model","year","engine_cc","fuel","gearbox","body","drivetrain"]
     return all((inc.get(k) or None) == (car.get(k) or None) for k in keys)
-def price_sane(inc_price, car_price):
+def price_sane(inc_price, car_price, trusted=False):
+    # `trusted` = the incoming price came from an ANCHORED parse we fully believe
+    # (autoplius _ap_price: class="price" inside announcement-price). Such a price is
+    # allowed to correct the stored value even on a big jump, so a car once poisoned
+    # low (e.g. 7900 mis-parse) can self-heal to its true price (17999) on re-scrape
+    # instead of the ±35% guard permanently FREEZING the wrong low value.
+    # For non-anchored / ambiguous parses (ss.lv, auto24) the ±35% guard still applies,
+    # protecting against a stray number merging two different cars.
     if not inc_price or not car_price: return True
+    if trusted:
+        # Even an anchored/trusted parse OCCASIONALLY grabs a financing/monthly figure instead of the
+        # sale price (e.g. 2299 on a 16 499 car). No real listing re-prices below a fifth of its own
+        # value, so reject such an implausible severe drop - it would poison price_history with a fake
+        # ~-80% delta (the mis-parses cleaned up 2026-07-28). Legitimate corrections, including big
+        # self-heal jumps UP still pass. A big single-step DROP, however, is almost always a
+        # mis-parse (struck / ex-VAT / monthly / partner figure), NOT a real price move - the
+        # 99 450 -> 54 450 Porsche Cayenne class - so reject any drop below 60% of the stored
+        # price (matches the revalidator guard). Up-corrections and moderate (<40%) drops pass.
+        if inc_price < 0.60 * car_price: return False
+        return True
     return car_price*(1-PRICE_TOLERANCE) <= inc_price <= car_price*(1+PRICE_TOLERANCE)
 def fingerprint(f):
     parts=[(f.get("make") or "").lower().strip(),(f.get("model") or "").lower().strip(),
@@ -170,6 +232,79 @@ def split_mm(title):
     if make and (re.fullmatch(r"\d+(\.\d+)?",make) or re.fullmatch(r"\d+\s*kW",make,re.I)): make=None
     if model and (re.fullmatch(r"\d+\.\d+",model) or re.fullmatch(r"\d+\s*kW",model,re.I)): model=None
     return make,model
+def uniq(seq):
+    """De-duplicate but KEEP the page's own order. The old sorted(set(...)) sorted photo
+    URLs ALPHABETICALLY, destroying gallery order - so a card's lead image was whichever
+    URL sorted first (an interior, a boot, a wheel) instead of the car itself."""
+    seen=set(); out=[]
+    for x in seq:
+        if x not in seen:
+            seen.add(x); out.append(x)
+    return out
+
+def lead_with(main, photos):
+    """Put the listing's own main image (og:image) first. The old code only inserted it when
+    ABSENT, so when it was already in the gallery (the normal case) it never got promoted."""
+    if not main: return photos
+    return [main]+[p for p in photos if p!=main]
+
+def sane_price(v):
+    """Reject parse artefacts. A real car ad is never 1 EUR. None => 'unknown', so a bad
+    parse can NEVER overwrite a good price or invent a price-history entry."""
+    try:
+        v = int(v)
+    except (TypeError, ValueError):
+        return None
+    return v if 250 <= v <= 2000000 else None   # floor 250: a real car ad is never < ~250 EUR; kills 13/21 EUR monthly-payment artefacts
+
+_AP_PRICE_RE = re.compile(r'class="price"[^>]*>\s*([\d][\d\s ]*)', re.I)
+def _ap_price(html):
+    """Current asking price from the main <div class="announcement-price"> block.
+
+    The old regex took the FIRST "number €" anywhere in the page. On a PROMOTION listing
+    that is the struck-through OLD price (<div class="price-previous"><span class="strike">
+    41 990 €</span>), so we stored the pre-discount price and invented fake price changes.
+    It could also hit the ex-VAT "bez PVN" figure, the leasing monthly payment, or a
+    partner ad's price.
+
+    The true price is  <div class="price"> 35 990 <span class="default-currency">€</span>
+    -- the € sits in a SEPARATE tag, which is exactly why the old "digits €" regex could
+    never match it and always fell through to the wrong number.
+    """
+    i = html.find('announcement-price')
+    seg = html[i:i + 1500] if i >= 0 else html
+    m = _AP_PRICE_RE.search(seg)
+    if m:
+        p = sane_price(_digits(m.group(1)))
+        if p:
+            return p
+    return None
+
+def _ap_main_gallery(photos, gap=50000):
+    # Keep only the largest tight cluster of autoplius image IDs. Partner-ad / related-listing
+    # thumbnails are OTHER cars with far-off image IDs, so they fall outside the main cluster and
+    # get dropped. Robust to page-layout changes (works on the data, not on HTML markers).
+    def _idof(u):
+        m = re.search(r"ann_\d+_(\d+)", u or "")
+        return int(m.group(1)) if m else None
+    ided = [(u, _idof(u)) for u in photos]
+    ided = [x for x in ided if x[1] is not None]
+    if len(ided) < 2:
+        return photos
+    ids = sorted({x[1] for x in ided})
+    clusters = [[ids[0]]]
+    for i in range(1, len(ids)):
+        if ids[i] - ids[i - 1] <= gap:
+            clusters[-1].append(ids[i])
+        else:
+            clusters.append([ids[i]])
+    clusters.sort(key=len, reverse=True)
+    main = set(clusters[0])
+    dropped = len(ids) - len(main)
+    if dropped >= len(main):          # safety: never drop a majority of distinct images
+        return photos
+    return [u for u in photos if (_idof(u) is None or _idof(u) in main)]
+
 def ap_detail(html, source_url=None):
     kw=meta(html,"keywords"); title=meta(html,"og:title","property") or meta(html,"title")
     m=re.search(r"\bA(\d{6,})\b", title or kw or "")
@@ -179,8 +314,10 @@ def ap_detail(html, source_url=None):
     reg=_kw(kw,AP_LABELS["reg_date"]); year=int(reg[:4]) if reg and reg[:4].isdigit() else None
     er=_kw(kw,AP_LABELS["engine"]); em=re.search(r"(\d{3,5})",er) if er else None
     engine_cc=int(em.group(1)) if em else None
-    price=None; pm=re.search(r"([\d][\d\s ]{2,})\s*€", html)
-    if pm: price=_digits(pm.group(1))
+    # Read the price ONLY from the main announcement-price block. Scanning the whole page for
+    # "N €" also matched the struck-through OLD price on promotion listings (fake price drops),
+    # the ex-VAT figure, the loan installment and partner ads.
+    price=_ap_price(html)
     vin=None
     for cand in re.findall(r"\bVIN\b[^<]{0,40}", html, re.IGNORECASE):
         t=re.search(r"\b([A-HJ-NPR-Z0-9]{6,17})\b", cand)
@@ -194,9 +331,10 @@ def ap_detail(html, source_url=None):
     for _m in ('related-announcements','js-other-partner-anns','other-announcements','block-related','js-similar','similar-announcements'):
         _i=html.find(_m)
         if _i>2000: _cut=min(_cut,_i)
-    photos=sorted(set(re.findall(r"https://autoplius-img\.dgn\.lt/[^\s\"')]+\.jpg", html[:_cut])))
+    photos=uniq(re.findall(r"https://autoplius-img\.dgn\.lt/[^\s\"')]+\.jpg", html[:_cut]))
+    photos=_ap_main_gallery(photos)   # drop any partner-ad / related-listing photos that still leaked in
     og=meta(html,"og:image","property")
-    if og and og not in photos: photos.insert(0,og)
+    photos=lead_with(og, photos)      # the car's main photo leads the card, not a random interior shot
     seg=html.split("Tapatība apstiprināta",1); src=seg[1][:300] if len(seg)>1 else html
     CW={"Latvija":"LV","Latvia":"LV","Igaunija":"EE","Estija":"EE","Estonia":"EE","Lietuva":"LT","Lithuania":"LT"}
     lm=re.search(r"([A-ZĀ-Ž][^\n,<>]{1,28}),\s*(Lietuva|Latvija|Igaunija|Estija|Estonia|Latvia|Lithuania)", src)
@@ -303,9 +441,14 @@ def ap_list_rich(html, lang="lv"):
         end=items[i+1][1] if i+1<len(items) else pos+2200
         seg=html[pos:end]
         pm=re.search(r'>\s*([\d   ]{2,})\s*(?:&euro;|€)',seg)
-        if pm:
+        for pm in re.finditer(r'([\d][\d\s   ]{1,})(?:&euro;|€)',seg):   # real price, skip loan "€/mėn"
+            tail=seg[pm.end():pm.end()+16].lower()
+            # site is Latvian (lv.autoplius.lt) -> monthly label is "€/mēn." (macron e). The old
+            # guard only checked Lithuanian "mėn" (dotted e) so it NEVER fired and stored the loan
+            # payment as the car price. Cover LV + LT + PL + the slash forms.
+            if any(t in tail for t in ("mēn","mėn","/mēn","/mėn","€/","mies")): continue
             d=re.sub(r'\D','',pm.group(1))
-            if d: f["price_eur"]=int(d)
+            if d and int(d)>=100: f["price_eur"]=int(d); break
         im=re.search(r'https://autoplius-img\.dgn\.lt/[^\s"\'<>]+?\.jpg',seg)
         if im: f["photos"]=[im.group(0)]
         po=rel_posted(seg)          # "Pirms X ..." badge -> posting date (only on freshly-bumped ads)
@@ -342,23 +485,35 @@ def a24_detail(html, source_url=None):
     fm=re.search(r"\b(petrol|diesel|electric|hybrid|gas)\b",ogd,re.I); fuel=fm.group(1).lower() if fm else None
     mil=re.search(r"([\d ]{3,})\s*km",ogd) or re.search(r"([\d ]{3,})\s*km",desc)
     mileage=_digits(mil.group(1)) if mil else None
-    pm=re.search(r"EUR\D*?([\d,]+)",ogd); price=int(pm.group(1).replace(",","")) if pm else None
+    pm=re.search(r"EUR\D*?([\d,]+)",ogd)
+    price=sane_price(pm.group(1).replace(",","")) if pm else None   # guard: "EUR 1" artefacts -> None
     el=re.search(r"(\d\.\d)\b",ogt); engine_l=el.group(1) if el else None
     kwm=re.search(r"(\d+)\s*kW",ogt); power=int(kwm.group(1)) if kwm else None
     ccm=re.search(r"(\d{3,5})\s*cm³",html); engine_cc=int(ccm.group(1)) if ccm else None
-    body=None; bm=re.search(r"\dkW\s+([A-Za-z/ -]+?)(?:\s*\(|\s+\d)",desc)
-    if bm: body=bm.group(1).strip()
-    if not body:
-        for w in A24_BODY:
-            if re.search(rf"\b{w}\b",desc,re.I): body=w; break
+    # auto24's meta "Description" leads with the vehicle's TRUE category (its "Type" field):
+    #   "SUV BMW X5 3.0 190kW touring (5-doors) ..."      -> Type=SUV,  Bodytype=touring
+    #   "Passenger car VW Passat 1.6 77kW touring ..."    -> Type=passenger car
+    # The kW-adjacent word is auto24's SECONDARY "Bodytype", which tags SUVs as "touring"
+    # (estate/wagon). That mislabelled ~7.5k SUVs and corrupted the price valuation
+    # (SUVs compared against wagons). Prefer the leading Type when it is SUV; otherwise
+    # keep the Bodytype word (sedan/touring/hatchback/...).
+    body=None
+    if re.match(r"\s*SUV\b",desc,re.I):
+        body="suv"
+    else:
+        bm=re.search(r"\dkW\s+([A-Za-z/ -]+?)(?:\s*\(|\s+\d)",desc)
+        if bm: body=bm.group(1).strip()
+        if not body:
+            for w in A24_BODY:
+                if re.search(rf"\b{w}\b",desc,re.I): body=w; break
     gm=re.search(r"\b(automatic|manual)\b",html,re.I); gear=gm.group(1).lower() if gm else None
     vin=None
     for mm in re.finditer(r"VIN",html):
         t=re.search(r"\b([A-HJ-NPR-Z0-9]{5,17})\b", html[mm.end():mm.end()+60])
         if t and re.search(r"[A-Z]",t.group(1)) and re.search(r"\d",t.group(1)): vin=t.group(1); break
-    photos=sorted(set(re.findall(r"https://img\d*\.img-bcg\.eu/[^\s\"')]+\.jpg",html)))
+    photos=uniq(re.findall(r"https://img\d*\.img-bcg\.eu/[^\s\"')]+\.jpg",html))
     photos=[p for p in photos if "/h30/" in p]
-    if img and img not in photos: photos.insert(0,img)
+    photos=lead_with(img, photos)     # main photo first (page order preserved, not alphabetical)
     return {"ad_id":ad_id,"source_url":ogurl or source_url,"make":make,"model":model,"year":year,
         "engine_cc":engine_cc,"fuel":fuel,"gearbox":gear,"body":body,"drivetrain":None,
         "owner_code":None,"vin_prefix":vin,"price_eur":price,"mileage_km":mileage,
@@ -380,7 +535,7 @@ def ss_row(ad_id,url,title,cells,photo=None):
         c=c.strip()
         if not year and re.fullmatch(r"(19|20)\d{2}",c): year=int(c)
         elif not engine and (re.fullmatch(r"\d\.\d[A-Za-z]?",c) or c.upper()=="E"): engine=c
-        elif "€" in c: price=int(re.sub(r"[^\d]","",c) or 0) or None
+        elif "€" in c: price=sane_price(re.sub(r"[^\d]","",c))
         elif mileage is None and "tūkst" in c.lower():
             m=re.search(r"([\d ]+)",c); mileage=(int(re.sub(r"\D","",m.group(1)) or 0)*1000) or None
     el=re.match(r"(\d\.\d)",engine or ""); engine_l=el.group(1) if el else None
@@ -448,6 +603,17 @@ def ss_detail_posted(html):
     m=re.search(r"Datums:\s*(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})",html)
     if not m: return None
     d,mo,y,H,Mi=m.groups(); return baltic_to_utc_iso(y,mo,d,H,Mi)   # ss.lv prints LOCAL time
+_SS_BODY={"sedans":"Sedans","kupeja":"Kupeja","universālis":"Universālis","universals":"Universālis",
+  "universāls":"Universālis","hečbeks":"Hečbeks","hecbeks":"Hečbeks","kabriolets":"Kabriolets",
+  "apvidus":"Apvidus","minivens":"Minivens","pikaps":"Pikaps","kravas":"Kravas","limuzīns":"Limuzīns",
+  "kabriolets/rodsters":"Kabriolets"}
+def ss_detail_body(html):
+    # ss.lv shows body only on the detail page: "Virsbūves tips: Sedans/Kupeja/Universālis/..."
+    m=re.search(r"Virsb[ūu]ves\s*tips\s*:?\s*(?:<[^>]*>\s*)*([A-Za-zĀČĒĢĪĶĻŅŠŪŽāčēģīķļņšūž][^<\n]{1,24})",html)
+    if not m: return None
+    v=re.sub(r"\s+"," ",m.group(1)).strip().strip("/").strip()
+    if not v or len(v)<3: return None
+    return _SS_BODY.get(v.lower(), v[:24])
 def rel_posted(html):
     # Latvian (autoplius LV): "Pirms N min/stundām/dienām"
     m=re.search(r"[Pp]irms\s+(\d+)\s+(min\w*|stund\w*|dien\w*)",html) or re.search(r"[Pp]irms\s+(\d+)\s*([dh])\b",html)
@@ -498,11 +664,30 @@ def browser_session(headless=True):
         ctx=b.new_context(locale="lv-LV",
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
             viewport={"width":1366,"height":900})
-        if os.environ.get("BLOCK_IMAGES","1")!="0":
-            # MINIMIZE PROXY BANDWIDTH (DataImpulse bills by GB): only the HTML document + the scripts/XHR
-            # needed to render listings load through the proxy. Image/media/font/stylesheet bytes and
-            # tracker/ad/analytics sub-requests are aborted. Photo URLs stay in the HTML (we store the URL
-            # string; we just never download the image bytes). This cuts residential bandwidth ~80-95%.
+        # ---- DOC_ONLY: the only setting that actually saves proxy money -------------------
+        # MEASURED 2026-07-14 on 10 autoplius listing pages (CDP encodedDataLength = real wire bytes):
+        #     no blocking at all .................. 1424 KB / page
+        #     image/media/font/css blocked (old) .. 1343 KB / page   <-- saved only 6 %!
+        #     EVERYTHING except the document ......   47 KB / page   <-- 28x cheaper
+        # Why the old blocking did nothing: SCRIPT was never blocked, and ctx.route() DISABLES
+        # Chromium's HTTP cache, so autoplius' ~1.3 MB JS bundle was re-downloaded on EVERY page.
+        # The listing HTML alone contains price, spec table, photo URLs and the dead/alive markers
+        # (verified: spec=True, up to 192 photo URLs, on all 10 pages), so we need nothing else.
+        # DOC_ONLY is FORCED whenever the proxy is in use. It cannot be turned off on the proxy path.
+        DOC_ONLY = bool(ps) or os.environ.get("DOC_ONLY","0")=="1"
+        if DOC_ONLY:
+            def _route_doc(route):
+                try:
+                    if route.request.resource_type != "document":
+                        return route.abort()
+                    return route.continue_()
+                except Exception:
+                    try: return route.continue_()
+                    except Exception: return
+            ctx.route("**/*", _route_doc)
+            print("DOC_ONLY: only the HTML document is fetched (~47 KB/page instead of ~1.4 MB)", flush=True)
+        elif os.environ.get("BLOCK_IMAGES","1")!="0":
+            # direct/home-IP path: bandwidth is free, so keep the page renderable but drop the fat bits.
             _BLOCK_RT={"image","media","font","stylesheet"}
             _BLOCK_HOST=("google-analytics","googletagmanager","doubleclick","googlesyndication",
                 "adservice.google","facebook.net","facebook.com","fbcdn","connect.facebook",
@@ -535,9 +720,38 @@ def scraper_get(url):
              or "Checking your browser" in h or "cf-browser-verification" in h or len(h)<800)
     if blocked: h=call(True).text
     return h
+
+# curl_cffi with a real Chrome-124 TLS fingerprint. On a datacenter IP autoplius/auto24 return
+# HTTP 200 to this where plain requests / older fingerprints get 403 (verified on the VPS
+# 2026-07-30). This is the light primary fetch path (no browser); Playwright stays as the
+# fallback for genuine JS challenges. If curl_cffi is missing (e.g. on the PC) _CC is None and
+# fetch() transparently falls back to the old ScraperAPI/Playwright path - so nothing breaks.
+try:
+    from curl_cffi import requests as _cc_requests
+    _CC = _cc_requests.Session(impersonate="chrome124")
+except Exception:
+    _CC = None
+_CC_HDRS = {"Accept-Language": "lv-LV,lv;q=0.9,en;q=0.8,lt;q=0.7,et;q=0.6"}
+def _cc_get(url):
+    if _CC is None: return None
+    try:
+        r = _CC.get(url, headers=_CC_HDRS, timeout=30)
+    except Exception:
+        return None
+    h = r.text or ""
+    low = h[:3000].lower()
+    if r.status_code == 200 and len(h) > 2000 and not (
+        "just a moment" in low or "challenge-platform" in low or "cf-browser-verification" in low
+        or "checking your browser" in low or "uzgaidiet" in low or "palaukite" in low
+        or "palun oodake" in low or "peržiūros limit" in low or "viršijote" in low):
+        return h
+    return None
+
 def make_fetch(page, wait_ms=None):
     if wait_ms is None: wait_ms=int(os.environ.get("WAIT_MS","1000"))  # lower = faster page loads (auto24/autoplius)
     def fetch(url):
+        _h = _cc_get(url)                       # light curl_cffi(chrome124) path - VPS-friendly, no browser
+        if _h is not None: return _h
         if SCRAPER_KEY:
             try: return scraper_get(url)
             except Exception as e: print("  scraperapi ERR",repr(e))
@@ -546,6 +760,9 @@ def make_fetch(page, wait_ms=None):
         html=page.content()
         def _challenged(h):
             l=h.lower()
+            # A fully rendered listing/catalogue page is never a challenge page. Without this
+            # guard the loop below re-fetched good pages up to 4x (4x the proxy bytes).
+            if len(l)>60000: return False
             return ("just a moment" in l or "challenge-platform" in l or "cf-browser-verification" in l
                     or "checking your browser" in l or "uzgaidiet" in l or "prašau palaukite" in l or "palun oodake" in l
                     or "peržiūros limit" in l or "viršijote" in l)   # autoplius "view limit exceeded" block
@@ -569,7 +786,7 @@ def decide(inc, db):
     if not cands: return ("NEW_CAR",None,"no spec match")
     for cid,car in cands:
         sig=strong_signal_match(inc,car)
-        if sig and price_sane(inc.get("price_eur"),car.get("last_price")):
+        if sig and price_sane(inc.get("price_eur"),car.get("last_price"),trusted=(inc.get("source")=="autoplius")):
             return ("REPOST",cid,f"signal:{sig}")
     return ("NEEDS_REVIEW",None,"specs match, no strong signal")
 
@@ -622,10 +839,11 @@ if USE_SB:
         except Exception: return {}
     def record_price_change(info, f):
         # same listing re-seen: if the price moved, append a history point + update the current price.
-        cid=info.get("car_id"); np=f.get("price_eur")
+        cid=info.get("car_id"); np=sane_price(f.get("price_eur"))
         if not cid or np in (None,0): return False
         op=info.get("last_price")
         if op is None or np==op: return False   # no prior price or unchanged -> nothing to log
+        if op and np < 0.60*op: return False    # reject a >40% single-step DROP (mis-parse: monthly/ex-VAT/struck) - matches price_sane + revalidator guard
         try:
             _post("price_history",[{"car_id":cid,"ts":now_iso(),"price":np,"mileage":f.get("mileage_km")}])
             _patch("cars",{"car_id":f"eq.{cid}"},{"last_price":np,"last_mileage":f.get("mileage_km"),"last_seen":now_iso()})
@@ -646,15 +864,23 @@ if USE_SB:
             if f.get(k) not in (None,""): p[k]=f"eq.{f[k]}"
         return _get("cars",p)
     def save(f):
+        # Canonicalize brand at WRITE time so no source reintroduces duplicate
+        # spellings. Done before dedup (_cands queries by make) and before insert.
+        f["make"]=normalize_make(f.get("make"))
         if has_ad(f["ad_id"]): return "SAME_AD"
         cands=[c for c in _cands(f) if specs_match(f,c)]
         for car in cands:
-            if strong_signal_match(f,car) and price_sane(f.get("price_eur"),car.get("last_price")):
+            if strong_signal_match(f,car) and price_sane(f.get("price_eur"),car.get("last_price"),trusted=(f.get("source")=="autoplius")):
                 cid=car["car_id"]
                 _post("ads",[{"ad_id":f["ad_id"],"car_id":cid,"source":f.get("source"),"source_url":f.get("source_url"),"active":True,"first_seen":now_iso(),"last_seen":now_iso()}],upsert=True)
-                if f.get("price_eur")!=car.get("last_price") or f.get("mileage_km")!=car.get("last_mileage"):
-                    _post("price_history",[{"car_id":cid,"ts":f.get("posted") or now_iso(),"price":f.get("price_eur"),"mileage":f.get("mileage_km")}])
-                _patch("cars",{"car_id":f"eq.{cid}"},{"active":True,"last_price":f.get("price_eur"),"last_mileage":f.get("mileage_km"),"last_seen":now_iso()})
+                # A FAILED price parse must never wipe a good price or fake a "price change".
+                newp=sane_price(f.get("price_eur")); newm=f.get("mileage_km")
+                if newp is not None and (newp!=car.get("last_price") or newm!=car.get("last_mileage")):
+                    _post("price_history",[{"car_id":cid,"ts":f.get("posted") or now_iso(),"price":newp,"mileage":newm}])
+                upd={"active":True,"last_seen":now_iso()}
+                if newp is not None: upd["last_price"]=newp        # else keep the last known good price
+                if newm is not None: upd["last_mileage"]=newm
+                _patch("cars",{"car_id":f"eq.{cid}"},upd)
                 return "REPOST"
         # Only merge as a repost when a STRONG signal (VIN/owner/photo) confirmed it above.
         # specs_match alone is far too coarse for detail-less listings (every Focus 2010 looks
@@ -668,11 +894,13 @@ if USE_SB:
             "engine_l":f.get("engine_l"),"power_kw":f.get("power_kw"),"fuel":f.get("fuel"),"gearbox":f.get("gearbox"),
             "body":f.get("body"),"drivetrain":f.get("drivetrain"),"color":f.get("color"),"owner_code":f.get("owner_code"),
             "vin_prefix":f.get("vin_prefix"),"location":f.get("location"),"photos":f.get("photos") or [],
-            "source_url":f.get("source_url"),"description":f.get("description"),"posted":f.get("posted"),"last_price":f.get("price_eur"),
+            "source_url":f.get("source_url"),"description":f.get("description"),"posted":f.get("posted"),"last_price":sane_price(f.get("price_eur")),
             "last_mileage":f.get("mileage_km"),"active":True,"first_seen":now_iso(),"last_seen":now_iso()}],upsert=True)
         _post("ads",[{"ad_id":f["ad_id"],"car_id":cid,"source":f.get("source"),"source_url":f.get("source_url"),"active":True,"first_seen":now_iso(),"last_seen":now_iso()}],upsert=True)
         # first price point is dated to the ad's ORIGINAL posting date on the source site (falls back to now)
-        _post("price_history",[{"car_id":cid,"ts":f.get("posted") or now_iso(),"price":f.get("price_eur"),"mileage":f.get("mileage_km")}])
+        _p0=sane_price(f.get("price_eur"))
+        if _p0 is not None:   # no price point for a failed parse -> no junk in the history chart
+            _post("price_history",[{"car_id":cid,"ts":f.get("posted") or now_iso(),"price":_p0,"mileage":f.get("mileage_km")}])
         return "NEW_CAR"
     def bump_seen(ad_ids):
         ids=[a for a in ad_ids if a]
@@ -705,6 +933,71 @@ if USE_SB:
                 _patch("cars",{"car_id":f"in.({','.join(hide[i:i+50])})"},{"active":False})
             print(f"deactivate: {len(stale)} ads stale, {len(hide)} cars hidden (VIN + history kept)")
         except Exception as e: print("deactivate err",repr(e))
+    def _pfix_get(src):
+        try: return open(os.path.join(_HERE,f"pfix_{src}.txt"),encoding="utf-8").read().strip()
+        except Exception: return ""
+    def _pfix_set(src,v):
+        try: open(os.path.join(_HERE,f"pfix_{src}.txt"),"w",encoding="utf-8").write(v or "")
+        except Exception: pass
+    def photo_repair(source, host, limit):
+        # SELF-HEALING: keyset-walk EVERY active car of `source` and re-fetch the detail page for any
+        # with <2 photos, so galleries that got stuck at 1 thumbnail (e.g. dated but never photo-filled)
+        # are permanently repaired. Uses a local cursor file so it walks the whole catalogue over cycles,
+        # then loops. Genuinely single-photo ads simply stay as-is (re-checked once per full pass).
+        cur=_pfix_get(source)
+        try:
+            rows=_get("cars",{"source":f"eq.{source}","active":"eq.true","car_id":f"gt.{cur}",
+                "order":"car_id.asc","select":"car_id,source_url,photos","limit":str(limit)})
+        except Exception as e: print("photo_repair query err",repr(e)); return 0
+        if not rows:
+            _pfix_set(source,""); return 0     # reached the end -> loop back to the start next cycle
+        n=0
+        for r in rows:
+            _pfix_set(source, r["car_id"])       # advance the cursor as we go
+            if len(r.get("photos") or [])>=2: continue
+            try:
+                h=_ss.get(r["source_url"],timeout=25).text
+                if host not in h: continue       # blocked/partial page -> skip, retry on next full pass
+                if source=="autoplius": ph=ap_detail(h,r["source_url"]).get("photos")
+                elif source=="auto24":  ph=a24_detail(h,r["source_url"]).get("photos")
+                else:                    ph=ss_detail_photos(h)
+                if ph and len(ph)>=2:
+                    _patch("cars",{"car_id":f"eq.{r['car_id']}"},{"photos":ph}); n+=1
+                time.sleep(float(os.environ.get("PFIX_SLEEP","0.3")))
+            except Exception: pass
+        return n
+    def liveness(source, host, limit):
+        # SOLD/REMOVED cleanup, done SAFELY: keyset-walk active cars, re-fetch the listing, and
+        # deactivate ONLY when the page loaded fine but the listing is genuinely gone (no car data).
+        # Network errors, blocks and Cloudflare challenges never deactivate -> no false hiding.
+        DEAD=("sludinājums nav akt","nebegalioja","neaktyvus","skelbimas negalioja","pašalintas","kuulutus on aegunud","not available")
+        cur=_pfix_get("live_"+source)
+        try:
+            rows=_get("cars",{"source":f"eq.{source}","active":"eq.true","car_id":f"gt.{cur}",
+                "order":"car_id.asc","select":"car_id,source_url","limit":str(limit)})
+        except Exception as e: print("liveness query err",repr(e)); return 0
+        if not rows: _pfix_set("live_"+source,""); return 0
+        gone=0
+        for r in rows:
+            _pfix_set("live_"+source, r["car_id"])
+            try:
+                resp=_ss.get(r["source_url"],timeout=20); h=resp.text; st=resp.status_code; low=h.lower()
+                if "just a moment" in low or "challenge-platform" in low or "captcha" in low: continue   # blocked -> skip
+                dead_txt=any(d in low for d in DEAD)                    # explicit "listing not active" page
+                alive=(host in h) and not dead_txt
+                if source=="ss.lv" and not alive and not dead_txt:
+                    alive=("Motors:" in h or "Virsbūves tips" in h or "Ātrumkārba" in h or "Nobraukums" in h)
+                if st==404 or dead_txt or (not alive and 200<=st<400 and len(h)>300):
+                    _patch("cars",{"car_id":f"eq.{r['car_id']}"},{"active":False}); gone+=1
+                elif alive and source in ("autoplius","auto24"):        # still live -> refresh price (fix loan-payment bug) + photos
+                    det=ap_detail(h,r["source_url"]) if source=="autoplius" else a24_detail(h,r["source_url"])
+                    patch={}
+                    if det.get("price_eur"): patch["last_price"]=det["price_eur"]
+                    if det.get("photos") and len(det["photos"])>=2: patch["photos"]=det["photos"]
+                    if patch: _patch("cars",{"car_id":f"eq.{r['car_id']}"},patch)
+                time.sleep(float(os.environ.get("PFIX_SLEEP","0.3")))
+            except Exception: pass       # timeout / network error -> never deactivate
+        return gone
     def backfill_posted(limit=120):
         # Fill the ORIGINAL posting date for cars that don't have one yet, then re-date each car's
         # earliest price point to it. Each bot only backfills ITS OWN source (via ONLY) so the three
@@ -712,7 +1005,8 @@ if USE_SB:
         # autoplius slow (browser, rate-limited).
         ONLY=os.environ.get("ONLY","").strip().lower(); n=0
         if ONLY in ("","ss"):
-            try: rows=_get("cars",{"posted":"is.null","source":"eq.ss.lv","select":"car_id,source_url","limit":str(limit)})
+            # target cars missing posting date OR body (ss.lv shows body only on the detail page)
+            try: rows=_get("cars",{"or":"(posted.is.null,body.is.null)","source":"eq.ss.lv","select":"car_id,source_url","limit":str(limit)})
             except Exception as e: print("backfill ss query err",repr(e)); rows=[]
             for r in (rows or []):
                 try:
@@ -721,8 +1015,12 @@ if USE_SB:
                     if po: patch["posted"]=po
                     ph=ss_detail_photos(d)
                     if ph: patch["photos"]=ph
-                    if patch: _patch("cars",{"car_id":f"eq.{r['car_id']}"},patch)
-                    if po: redate_first_point(r["car_id"], po); n+=1
+                    bd=ss_detail_body(d)
+                    if bd: patch["body"]=bd        # "Virsbūves tips" -> body type (fixes body/coupe filters for ss.lv)
+                    if patch:
+                        _patch("cars",{"car_id":f"eq.{r['car_id']}"},patch)
+                        if po: redate_first_point(r["car_id"], po)
+                        n+=1
                 except Exception: pass
         if ONLY in ("","auto24"):
             try: rows=_get("cars",{"posted":"is.null","source":"eq.auto24","select":"car_id,source_url","limit":str(limit)})
@@ -776,6 +1074,19 @@ if USE_SB:
                             except Exception: pass
                 except Exception as e: print("ap bf browser fallback err",repr(e))
         print(f"backfill posted: dated {n} (ONLY={ONLY or 'all'})",flush=True)
+        # SELF-HEALING photo repair: continuously walk each source and re-fetch any car stuck with <2 photos.
+        pfx=int(os.environ.get("PFIX_LIMIT","250")); pn=0
+        if pfx>0:
+            if ONLY in ("","autoplius"): pn+=photo_repair("autoplius","autoplius-img.dgn.lt",pfx)
+            if ONLY in ("","ss"):        pn+=photo_repair("ss.lv","i.ss.",pfx)
+            if ONLY in ("","auto24"):    pn+=photo_repair("auto24","img-bcg.eu",pfx)
+            print(f"photo_repair: fixed {pn} galleries (ONLY={ONLY or 'all'})",flush=True)
+        lv=int(os.environ.get("LIVE_LIMIT","120")); gn=0
+        if lv>0:
+            if ONLY in ("","autoplius"): gn+=liveness("autoplius","autoplius-img.dgn.lt",lv)
+            if ONLY in ("","ss"):        gn+=liveness("ss.lv","i.ss.",lv)
+            if ONLY in ("","auto24"):    gn+=liveness("auto24","img-bcg.eu",lv)
+            print(f"liveness: removed {gn} sold/gone cars (ONLY={ONLY or 'all'})",flush=True)
     print("STORAGE: Supabase")
 else:
     _MEM={"ads":{}}; _CARS={}
@@ -785,6 +1096,7 @@ else:
     def record_price_change(info, f): return False
     def redate_first_point(cid, posted): pass
     def save(f):
+        f["make"]=normalize_make(f.get("make"))
         d,cid,_=decide(f,{"ads":_MEM["ads"],"cars":_CARS})
         if d=="NEW_CAR":
             cid=f"car_{f['ad_id']}"; f["car_id"]=cid; f["first_seen"]=now_iso(); f["last_price"]=f.get("price_eur"); f["active"]=True
@@ -805,7 +1117,12 @@ else:
 SS_PAGES=int(os.environ.get("SS_PAGES",5)); AP_PAGES=int(os.environ.get("AP_PAGES",3))
 A24_PAGES=int(os.environ.get("A24_PAGES",1)); DETAIL_CAP=int(os.environ.get("DETAIL_CAP",200))
 SS_DETAIL=int(os.environ.get("SS_DETAIL",1)); PAUSE=0.5
-AP_BASE="https://lv.autoplius.lt/sludinajumi/lietotas-automasinas?order_by=1&order_direction=DESC"
+# order_by=3&order_direction=DESC = newest-by-LISTING-DATE first (verified live 2026-07-27:
+# page 1 = the very newest ad_ids, top listing "Atjaunots 3 min ago"). The OLD order_by=1 was
+# autoplius' FEATURED/relevance order (promoted ads + a jumbled back-catalogue - a 1960 Merc
+# showed up at position 2), so pages 1-2 never contained today's genuinely-newest listings and
+# the collector missed brand-new LT cars entirely while its cursor walked the deep back-catalogue.
+AP_BASE="https://lv.autoplius.lt/sludinajumi/lietotas-automasinas?order_by=3&order_direction=DESC"
 A24_BASE="https://eng.auto24.ee/kasutatud/nimekiri.php?a=101102"   # cars+SUV ONLY (~14.7k); a=100 is ALL types incl. motos/trailers/trucks/machinery
 SS_BASE="https://www.ss.lv/lv/transport/cars/today/"
 SS_H={"User-Agent":"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36","Accept-Language":"lv,en;q=0.9"}
@@ -824,7 +1141,12 @@ def ss_brand_slugs():
         print("brand list err",repr(e)); return []
 def ss_brand_page(slug,n): return f"{SS_ALL}{slug}/" if n==1 else f"{SS_ALL}{slug}/page{n}.html"
 
-def run():
+def run(do_tail=True):
+    # do_tail=False -> FAST cycle: crawl the NEWEST list pages (which SAVE new cars) but SKIP the
+    # heavy post-crawl tail (date backfill + photo_repair + liveness). New listings are already
+    # stored during the crawl, so skipping the tail lets the next crawl of page 1 come sooner ->
+    # brand-new cars are detected in ~1-2 min instead of one-per-full-cycle. The tail still runs
+    # on every HEAVY_EVERY-th cycle (see __main__), so backfill/photo/liveness throughput is kept.
     if USE_SB and os.environ.get("REACTIVATE")=="1":
         try:
             _patch("cars",{"active":"eq.false"},{"active":True}); _patch("ads",{"active":"eq.false"},{"active":True})
@@ -1041,20 +1363,29 @@ def run():
         if str(e)=="skip-ltee": print("SKIP_LTEE=1 -> autoplius/auto24 skipped this run")
         else: print("browser phase error:",repr(e))
     bump_seen(seen_ids)
-    bf=int(os.environ.get("BACKFILL",0))
-    if bf>0: backfill_posted(bf)
-    if os.environ.get("DEACTIVATE")=="1":
-        deactivate(int(os.environ.get("DEACTIVATE_DAYS",3)))
+    if do_tail:
+        bf=int(os.environ.get("BACKFILL",0))
+        if bf>0: backfill_posted(bf)
+        if os.environ.get("DEACTIVATE")=="1":
+            deactivate(int(os.environ.get("DEACTIVATE_DAYS",3)))
+    else:
+        print("FAST cycle: skipped heavy tail (backfill/photo/liveness)")
     print(f"DONE. seen={seen}, new stored={new}")
     if not USE_SB: export_json()
 
 if __name__=="__main__":
     loop=int(os.environ.get("LOOP_MINUTES",0))
+    # HEAVY_EVERY: run the heavy post-crawl tail (backfill/photo/liveness) only every Nth cycle.
+    # The newest-page crawl (which stores brand-new cars) still runs EVERY cycle, so freshness
+    # improves while total tail throughput/hour is preserved. HEAVY_EVERY=1 (default) == old behaviour.
+    heavy_every=int(os.environ.get("HEAVY_EVERY",1))
     if loop>0:
-        print(f"LOOP MODE every {loop} min. Ctrl+C to stop."); k=0
+        print(f"LOOP MODE every {loop} min (heavy tail every {heavy_every} cycle[s]). Ctrl+C to stop."); k=0
         while True:
-            k+=1; print(f"\n===== cycle {k} =====")
-            try: run()
+            k+=1
+            do_tail = (heavy_every<=1) or (k % heavy_every == 1)   # cycle 1 is always a full cycle
+            print(f"\n===== cycle {k} ({'FULL' if do_tail else 'fast'}) =====")
+            try: run(do_tail=do_tail)
             except Exception as e: print("cycle error:",repr(e))
             time.sleep(loop*60)
     else:
