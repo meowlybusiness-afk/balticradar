@@ -15,8 +15,10 @@
 <meta name="twitter:title" content="BalticRadar. Visi Baltijas auto vienuviet">
 <meta name="twitter:description" content="Visi auto no ss.lv, autoplius.lt un auto24.ee vienuviet.">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
 <script>try{var _t=localStorage.getItem("br_theme")||"auto";var _e=_t==="auto"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):_t;document.documentElement.setAttribute("data-theme",_e);}catch(_){}</script>
 <style>
   /* First-paint palette = the current (Henry) theme, so the very first frame is already the
@@ -25,7 +27,7 @@
     --accent:#728C00;--accent2:#728C00;--gold:#728C00;--orange:#728C00;--up:#e0674c;--down:#728C00;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#728C00;--prate-good-bg:rgba(114,140,0,.16);
     --dark:#141416;--dark2:#0f0f11;
     --lv:#c0314f;--lt:#f5b301;--ee:#2b9fe6;--shadow:0 18px 40px -22px rgba(0,0,0,.8);--surf:rgba(20,20,22,.80);}
-  html[data-theme="light"]{--bg:#ffffff;--card:#ffffff;--card2:#fbfbfd;--ink:#1d1d1f;--ink2:#424245;--mut:#86868b;--line:#ededf0;--line2:#dfdfe4;--accent:#728C00;--accent2:#728C00;--gold:#728C00;--orange:#728C00;--down:#728C00;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#728C00;--prate-good-bg:rgba(114,140,0,.10);--up:#d2492f;--dark:#ffffff;--dark2:#fbfbfd;--shadow:0 14px 34px -20px rgba(0,0,0,.30);--surf:rgba(255,255,255,.82);}
+  html[data-theme="light"]{--bg:#ffffff;--card:#ffffff;--card2:#fbfbfd;--ink:#1d1d1f;--ink2:#424245;--mut:#6e6e73;--line:#ededf0;--line2:#dfdfe4;--accent:#728C00;--accent2:#728C00;--gold:#728C00;--orange:#728C00;--down:#728C00;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#728C00;--prate-good-bg:rgba(114,140,0,.10);--up:#d2492f;--dark:#ffffff;--dark2:#fbfbfd;--shadow:0 14px 34px -20px rgba(0,0,0,.30);--surf:rgba(255,255,255,.82);}
   html[data-theme="dark"]{--bg:#0f0f11;--card:#161618;--card2:#1c1c20;--ink:#f5f5f7;--ink2:#c7c7cc;--mut:#8e8e93;--line:#26262a;--line2:#33333a;--accent:#728C00;--accent2:#728C00;--gold:#728C00;--orange:#728C00;--down:#728C00;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#728C00;--prate-good-bg:rgba(114,140,0,.16);--up:#e0674c;--dark:#141416;--dark2:#0f0f11;--shadow:0 18px 40px -22px rgba(0,0,0,.8);--surf:rgba(20,20,22,.80);}
   html{transition:background .2s,color .2s}
   *{box-sizing:border-box}
@@ -362,10 +364,10 @@
     </nav>
     <div class="topright">
       <button id="notifyBtn" class="notify" onclick="openSub()">Paziņojumi</button>
-      <select id="theme" class="langsel" title="Tēma" style="margin-right:6px">
+      <select id="theme" class="langsel" title="Tēma" aria-label="Tēma / Theme" style="margin-right:6px">
         <option value="auto">Auto</option><option value="light">Gaišs</option><option value="dark">Tumšs</option>
       </select>
-      <select id="lang" class="langsel">
+      <select id="lang" class="langsel" aria-label="Valoda / Language">
         <option value="lv">LV</option><option value="en">EN</option>
         <option value="ru">RU</option><option value="lt">LT</option><option value="et">ET</option>
       </select>
@@ -435,12 +437,12 @@
     <div class="msf" id="msf-drive" data-k="drive"></div>
     <!-- legacy hidden selects: kept so older code paths (i18n, fillSelect) keep working -->
     <div id="legacySel" style="display:none" aria-hidden="true">
-      <select id="make"><option value="">Visas markas</option></select>
-      <select id="model"><option value="">Visi modeļi</option></select>
-      <select id="fuel"><option value="">Visas degvielas</option></select>
-      <select id="gear"><option value="">Visas ātrumkārbas</option></select>
-      <select id="bodyf"><option value="">Visas virsbūves</option></select>
-      <select id="drive"><option value="">Visas piedziņas</option></select>
+      <select id="make" aria-label="Marka / Make"><option value="">Visas markas</option></select>
+      <select id="model" aria-label="Modelis / Model"><option value="">Visi modeļi</option></select>
+      <select id="fuel" aria-label="Degviela / Fuel"><option value="">Visas degvielas</option></select>
+      <select id="gear" aria-label="Ātrumkārba / Gearbox"><option value="">Visas ātrumkārbas</option></select>
+      <select id="bodyf" aria-label="Virsbūve / Body"><option value="">Visas virsbūves</option></select>
+      <select id="drive" aria-label="Piedziņa / Drive"><option value="">Visas piedziņas</option></select>
     </div>
     <div class="row2"><input id="pmin" type="number" placeholder="Cena no"><input id="pmax" type="number" placeholder="Cena līdz"></div>
     <div class="row2"><input id="ymin" type="number" placeholder="Gads no"><input id="ymax" type="number" placeholder="Gads līdz"></div>
@@ -456,7 +458,7 @@
     <div class="mainbar">
       <span class="count" id="count"></span>
       <label class="sortpill" for="sort">
-        <select id="sort">
+        <select id="sort" aria-label="Kārtot / Sort">
           <option value="std">Standarta kārtošana</option>
           <option value="pa">Cena (lētākie vispirms)</option>
           <option value="pd">Cena (dārgākie vispirms)</option>
@@ -861,7 +863,7 @@ function ratePill(c){ return `<div class="prate" data-prate="${esc(c.car_id)}"><
 function innerCard(c,fresh){
   const ph=uniqPhotos((c.photos&&c.photos.length)?c.photos:[]).map(hq).filter(Boolean);
   const imgs=ph.length
-    ? ph.map((u,k)=>`<img loading="${k===0?'eager':'lazy'}" referrerpolicy="no-referrer" onerror="brImgFail(this)" class="${k===0?'show':''}" src="${u}">`).join("")
+    ? ph.map((u,k)=>`<img loading="${k===0?'eager':'lazy'}" decoding="async" alt="${esc(c.make)} ${esc(c.model)} ${c.year||''}" referrerpolicy="no-referrer" onerror="brImgFail(this)" class="${k===0?'show':''}" src="${u}">`).join("")
       +`<div class="dots">${ph.map((_,k)=>`<span class="${k===0?'a':''}"></span>`).join("")}</div>`
     : `<div class="noimg">${T().noPhoto}</div>`;
   const specs=[c.last_mileage!=null?km(c.last_mileage):null,esc(norm("fuel",c.fuel)),esc(norm("gear",c.gearbox)),c.engine_l?esc(c.engine_l)+" l":null,esc(norm("body",c.body))].filter(Boolean).join(" · ");
@@ -1035,7 +1037,7 @@ function updateCardPhotos(c){
   const ph=el.querySelector(".ph"); if(!ph)return;
   const pics=uniqPhotos(c.photos||[]).map(hq).filter(Boolean);
   const badge=ph.querySelector(".badge"), flag=ph.querySelector(".flag");
-  const imgs=pics.map((u,k)=>`<img loading="${k===0?'eager':'lazy'}" referrerpolicy="no-referrer" onerror="brImgFail(this)" class="${k===0?'show':''}" src="${u}">`).join("")
+  const imgs=pics.map((u,k)=>`<img loading="${k===0?'eager':'lazy'}" decoding="async" alt="${esc(c.make)} ${esc(c.model)} ${c.year||''}" referrerpolicy="no-referrer" onerror="brImgFail(this)" class="${k===0?'show':''}" src="${u}">`).join("")
     +`<div class="dots">${pics.map((_,k)=>`<span class="${k===0?'a':''}"></span>`).join("")}</div>`;
   ph.innerHTML=(badge?badge.outerHTML:"")+(flag?flag.outerHTML:"")+imgs;
   wireHoverEl(el);
@@ -2013,7 +2015,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 </script>
 
 <!-- ===================== BALTICRADAR AUTH (Stage 1) ===================== -->
-<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<!-- (duplicate Manrope font link removed; combined into the single non-blocking request in <head>) -->
 <style>
 /* Design tokens borrowed from the reference prototype, namespaced to avoid
    clashing with the existing --accent / --dark theme variables. */
@@ -2662,7 +2664,7 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 
 <!-- ============ BALTICRADAR STAGE 3-5 : filters, chips, profile, premium gate ============ -->
 <style>
-.br2{--a:#728C00;--ink:#1d1d1f;--i2:#424245;--mut:#86868b;--ln:#ededf0;--ln2:#dfdfe4;--bg2:#fbfbfd;--up:#d2492f}
+.br2{--a:#728C00;--ink:#1d1d1f;--i2:#424245;--mut:#6e6e73;--ln:#ededf0;--ln2:#dfdfe4;--bg2:#fbfbfd;--up:#d2492f}
 /* ---- heart ---- */
 #grid .card{position:relative}
 .br-heart{position:absolute;top:10px;left:10px;z-index:5;width:34px;height:34px;border-radius:50%;border:none;
@@ -3870,7 +3872,7 @@ setTimeout(wireMainPanel, 4000);
 
 
 <style id="henry-skin">
-html[data-theme="light"]{--bg:#ffffff;--card:#ffffff;--card2:#fbfbfd;--ink:#1d1d1f;--ink2:#424245;--mut:#86868b;--line:#ededf0;--line2:#dfdfe4;--accent:#728C00;--accent2:#728C00;--gold:#728C00;--orange:#728C00;--down:#728C00;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#728C00;--prate-good-bg:rgba(114,140,0,.10);--up:#d2492f;--dark:#ffffff;--dark2:#fbfbfd;--shadow:0 14px 34px -20px rgba(0,0,0,.30);--surf:rgba(255,255,255,.82)}
+html[data-theme="light"]{--bg:#ffffff;--card:#ffffff;--card2:#fbfbfd;--ink:#1d1d1f;--ink2:#424245;--mut:#6e6e73;--line:#ededf0;--line2:#dfdfe4;--accent:#728C00;--accent2:#728C00;--gold:#728C00;--orange:#728C00;--down:#728C00;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#728C00;--prate-good-bg:rgba(114,140,0,.10);--up:#d2492f;--dark:#ffffff;--dark2:#fbfbfd;--shadow:0 14px 34px -20px rgba(0,0,0,.30);--surf:rgba(255,255,255,.82)}
 html[data-theme="dark"]{--bg:#0f0f11;--card:#161618;--card2:#1c1c20;--ink:#f5f5f7;--ink2:#c7c7cc;--mut:#8e8e93;--line:#26262a;--line2:#33333a;--accent:#728C00;--accent2:#728C00;--gold:#728C00;--orange:#728C00;--down:#728C00;/*prate-good: separate revertible price-rating token, was green*/--prate-good:#728C00;--prate-good-bg:rgba(114,140,0,.16);--up:#e0674c;--dark:#141416;--dark2:#0f0f11;--shadow:0 18px 40px -22px rgba(0,0,0,.8);--surf:rgba(20,20,22,.80)}
 body{font-family:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif;font-size:15px;line-height:1.6;letter-spacing:-.01em;background:var(--bg);color:var(--ink)}
 h1,h2,h3,h4,.secttl,.mtitle,.bigprice,.name{letter-spacing:-.025em}
