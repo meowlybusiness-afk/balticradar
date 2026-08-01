@@ -873,6 +873,7 @@ function innerCard(c,fresh){
       <div class="cardfoot">
         <div><span class="bigprice">${eur(c.last_price)}</span>${ratePill(c)}</div>
         <span class="loc">${esc(c.location||c.country||"")}<br>${postedTxt(c)}</span></div>
+      ${c.source_url&&c.source_url!=="#"?`<a class="cardsrc" href="${esc(c.source_url)}" target="_blank" rel="noopener nofollow" onclick="event.stopPropagation()" style="display:block;margin-top:10px;text-align:center;font-weight:700;font-size:12px;color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:10px;padding:9px;background:var(--card2)">${esc(T().openOrig)}</a>`:''}
     </div>`;
 }
 function wireHoverEl(card){
@@ -1224,7 +1225,17 @@ function attrPreds(p){
   if(srvModelOK()){const x=inPred("model",modelRaws()); if(x)p.push(x);}
   return p;
 }
-function qPred(){const qq=String(F.q||"").trim().replace(/[(),*]/g," ").trim(); return qq?`or=(make.ilike.*${encodeURIComponent(qq)}*,model.ilike.*${encodeURIComponent(qq)}*)`:"";}
+function qPred(){
+  // Multi-word search: "Audi A6" used to look for that whole string in ONE field (make OR model)
+  // and matched nothing. Split into tokens; EACH token must appear in make OR model, so "Audi A6"
+  // = make/model contains "audi" AND make/model contains "a6".
+  const raw=String(F.q||"").trim().replace(/[(),*]/g," ").replace(/\s+/g," ").trim();
+  if(!raw)return "";
+  const toks=raw.split(" ").filter(Boolean).slice(0,5);
+  if(toks.length===1){const q=encodeURIComponent(toks[0]); return `or=(make.ilike.*${q}*,model.ilike.*${q}*)`;}
+  const parts=toks.map(t=>{const q=encodeURIComponent(t); return `or(make.ilike.*${q}*,model.ilike.*${q}*)`;});
+  return `and=(${parts.join(",")})`;
+}
 function buildServerQ(){
   const p=[];
   {const cp=inPred("country",countryFilter); if(cp)p.push(cp);}
