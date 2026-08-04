@@ -250,7 +250,7 @@ def ap_detail(html, source_url=None):
     CW={"Latvija":"LV","Latvia":"LV","Igaunija":"EE","Estija":"EE","Estonia":"EE","Lietuva":"LT","Lithuania":"LT"}
     lm=re.search(r"([A-ZĀ-Ž][^\n,<>]{1,28}),\s*(Lietuva|Latvija|Igaunija|Estija|Estonia|Latvia|Lithuania)", src)
     location=f"{lm.group(1).strip()}, {lm.group(2)}" if lm else None
-    country=CW.get(lm.group(2),"LT") if lm else "LT"
+    country="LT"   # FLAG = SOURCE PORTAL: autoplius is the Lithuanian marketplace -> always LT. Real city still shown in `location`.
     return {"ad_id":ad_id,"source_url":source_url,"make":make,"model":model,"year":year,
         "engine_cc":engine_cc,"fuel":_kw(kw,AP_LABELS["fuel"]),"gearbox":_kw(kw,AP_LABELS["gearbox"]),
         "body":_kw(kw,AP_LABELS["body"]),"drivetrain":_kw(kw,AP_LABELS["drivetrain"]),
