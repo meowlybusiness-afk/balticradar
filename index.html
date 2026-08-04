@@ -873,7 +873,7 @@ function innerCard(c,fresh){
     : `<div class="noimg">${T().noPhoto}</div>`;
   const specs=[c.last_mileage!=null?km(c.last_mileage):null,esc(norm("fuel",c.fuel)),esc(norm("gear",c.gearbox)),c.engine_l?esc(c.engine_l)+" l":null,esc(norm("body",c.body))].filter(Boolean).join(" · ");
   return `<div class="ph">${fresh?'<span class="badge">'+(T().newBadge||"NEW")+'</span>':''}
-    <span class="flag"><span class="fdot ${esc(c.country)}"></span>${esc(c.country)}</span>${imgs}${c.source_url&&c.source_url!=="#"?`<a class="cardsrc" href="${esc(c.source_url)}" target="_blank" rel="noopener nofollow" onclick="event.stopPropagation()" title="${esc(T().openOrig)}" aria-label="${esc(T().openOrig)}" style="position:absolute;top:8px;right:8px;z-index:3;width:38px;height:38px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.62);color:#fff;border-radius:10px;text-decoration:none;font-size:18px;font-weight:800;line-height:1;transition:transform .15s ease,background .15s ease" onmouseover="this.style.transform='scale(1.25)';this.style.background='rgba(0,0,0,.9)'" onmouseout="this.style.transform='';this.style.background='rgba(0,0,0,.62)'">↗</a>`:''}</div>
+    <span class="flag"><span class="fdot ${esc(c.country)}"></span>${esc(c.country)}</span>${imgs}</div>
     <div class="body">
       <div class="name">${esc(c.make)} ${esc(c.model)}<span class="yr">${c.year||""}</span></div>
       <div class="specrow">${specs||"&nbsp;"}</div>
