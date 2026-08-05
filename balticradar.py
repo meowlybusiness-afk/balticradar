@@ -941,6 +941,52 @@ if USE_SB:
                 _patch("cars",{"car_id":f"in.({','.join(hide[i:i+50])})"},{"active":False})
             print(f"deactivate: {len(stale)} ads stale, {len(hide)} cars hidden (VIN + history kept)")
         except Exception as e: print("deactivate err",repr(e))
+    def ap_sold_sweep():
+        # AUTOPLIUS sold-detection with ZERO detail fetches (dodges the per-IP view-limit). The list-only
+        # year-sweep visits every live autoplius ad and bumps its last_seen; ap_year_sweep records the
+        # START time of each COMPLETED full pass in pfix_ap_pass_baseline.txt. Any active autoplius car
+        # whose last_seen is older than that baseline was NOT seen during a whole pass -> it is genuinely
+        # gone. Because the cutoff is a completed-pass timestamp (not a fixed age), this is INERT until a
+        # full pass has finished and can NEVER retire a car the sweep just hasn't reached yet.
+        #   * year NULL / <1990 cars are unreachable by the year-sweep -> PROTECTED (left to the revalidator)
+        #   * per-run batch cap drains a legitimate backlog gradually; a huge count aborts (bug backstop)
+        base=_pfix_get("ap_pass_baseline")
+        if not base: print("ap_sold_sweep: no completed sweep pass yet -> skip (safe)",flush=True); return
+        try:
+            stale=_get("ads",{"active":"eq.true","source":"eq.autoplius","last_seen":f"lt.{base}",
+                              "select":"ad_id,car_id","limit":"6000"})
+        except Exception as e: print("ap_sold_sweep query err",repr(e)); return
+        if not stale: print("ap_sold_sweep: none stale (all live ads seen this pass)",flush=True); return
+        hard=int(os.environ.get("AP_SOLD_HARD","12000"))
+        if len(stale)>=hard:
+            print(f"ap_sold_sweep: {len(stale)} stale >= HARD cap {hard} -> ABORT (looks like a sweep gap/bug, not sales)",flush=True); return
+        cids=list({s["car_id"] for s in stale if s.get("car_id")})
+        protect=set()                                   # never retire cars the sweep cannot reach
+        for i in range(0,len(cids),100):
+            ch=cids[i:i+100]
+            try:
+                rows=_get("cars",{"car_id":f"in.({','.join(ch)})","or":"(year.is.null,year.lt.1990)","select":"car_id","limit":"6000"})
+                for r in (rows or []): protect.add(r["car_id"])
+            except Exception: pass
+        batch=int(os.environ.get("AP_SOLD_BATCH","2000"))
+        kill_cids=[c for c in cids if c not in protect][:batch]
+        ks=set(kill_cids)
+        kill_ads=[s["ad_id"] for s in stale if s.get("car_id") in ks and s.get("ad_id")]
+        for i in range(0,len(kill_ads),50):
+            try: _patch("ads",{"ad_id":f"in.({','.join(kill_ads[i:i+50])})"},{"active":False})
+            except Exception as e: print("ap_sold_sweep ad patch err",repr(e))
+        still=set()                                     # keep a car visible if it still has another active ad
+        for i in range(0,len(kill_cids),50):
+            ch=kill_cids[i:i+50]
+            try:
+                rows=_get("ads",{"active":"eq.true","car_id":f"in.({','.join(ch)})","select":"car_id","limit":"6000"})
+                for r in (rows or []): still.add(r.get("car_id"))
+            except Exception: pass
+        hide=[c for c in kill_cids if c not in still]
+        for i in range(0,len(hide),50):
+            try: _patch("cars",{"car_id":f"in.({','.join(hide[i:i+50])})"},{"active":False})
+            except Exception as e: print("ap_sold_sweep car patch err",repr(e))
+        print(f"ap_sold_sweep: {len(stale)} stale, {len(protect)} protected(gap), {len(hide)} cars retired (baseline {base[:16]})",flush=True)
     def _pfix_get(src):
         try: return open(os.path.join(_HERE,f"pfix_{src}.txt"),encoding="utf-8").read().strip()
         except Exception: return ""
@@ -1118,6 +1164,7 @@ else:
     def get_cursor(src): return 1
     def set_cursor(src,page): pass
     def deactivate(days=3): pass
+    def ap_sold_sweep(): pass
     def backfill_posted(limit=120): pass
     print("STORAGE: listings.json preview (set SUPABASE_* for full catalogue)")
 
@@ -1290,6 +1337,7 @@ def run(do_tail=True):
                 per=int(os.environ.get("AP_YEARS_PER_RUN",2)); yp=int(os.environ.get("AP_YEAR_PAGES",150))
                 ystart=get_cursor("ap_year")
                 if not isinstance(ystart,int) or ystart>=len(years): ystart=0
+                if ystart==0: _pfix_set("ap_pass_start", now_iso())   # mark the start of a fresh full catalogue pass (for ap_sold_sweep baseline)
                 apcap=int(os.environ.get("AP_DETAIL_CAP", os.environ.get("DETAIL_CAP",4000)))
                 apause=float(os.environ.get("AP_PAUSE","3"))  # throttle: pause after each NEW detail to stay under autoplius rate-limit
                 det=0; yi=ystart; _apbf=[0]   # _apbf: count of NULL mileages backfilled from list cards this run
@@ -1366,7 +1414,12 @@ def run(do_tail=True):
                             time.sleep(apause)
                         print(f"ap_year {y} p{n} DONE: new total {new}, det {det}", flush=True); time.sleep(PAUSE)
                     print(f"ap_year {y}: done, new total {new}, det {det}"); yi+=1
-                set_cursor("ap_year", 0 if yi>=len(years) else yi)
+                if yi>=len(years):
+                    _ps=_pfix_get("ap_pass_start")
+                    if _ps: _pfix_set("ap_pass_baseline", _ps)   # full pass done: any autoplius car unseen since it began is gone
+                    set_cursor("ap_year", 0)
+                else:
+                    set_cursor("ap_year", yi)
             if ONLY in ("","autoplius"):
                 crawl("autoplius",AP_BASE,AP_PAGES,lambda t:ap_list(t,"lv"),ap_detail,None,page_url,"autoplius")
                 if os.environ.get("AP_FULL")=="1": ap_year_sweep()
@@ -1389,6 +1442,8 @@ def run(do_tail=True):
         if bf>0: backfill_posted(bf)
         if os.environ.get("DEACTIVATE")=="1":
             deactivate(int(os.environ.get("DEACTIVATE_DAYS",3)))
+        if os.environ.get("AP_SOLD_SWEEP")=="1":      # list-only autoplius sold-detection (no view-limit); inert until a full pass completes
+            ap_sold_sweep()
     else:
         print("FAST cycle: skipped heavy tail (backfill/photo/liveness)")
     print(f"DONE. seen={seen}, new stored={new}")
