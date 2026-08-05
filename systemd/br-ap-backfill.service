@@ -1,0 +1,17 @@
+[Unit]
+Description=BalticRadar autoplius NULL-mileage backfill (list-only year sweep, no detail fetches)
+After=network-online.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/balticradar
+Environment=SUPABASE_URL=https://wrilvoukvyubgpomuoyn.supabase.co
+Environment=ONLY=autoplius NO_PROXY_BR=1 AP_FULL=1 AP_LIST_ONLY=1 AP_PAGES=0 BACKFILL=0 LIVE_LIMIT=0 PFIX_LIMIT=0 AP_PATCH_PHOTOS=0 AP_YEARS_PER_RUN=1 AP_YEAR_PAGES=150 AP_PAGE_PAUSE=2.0 LOOP_MINUTES=5 PYTHONUNBUFFERED=1
+ExecStart=/bin/sh -c "SUPABASE_KEY=$(cat /opt/balticradar/balticradar_key.txt) exec /opt/balticradar/venv/bin/python balticradar.py"
+Restart=always
+RestartSec=30
+MemoryMax=1400M
+
+[Install]
+WantedBy=multi-user.target

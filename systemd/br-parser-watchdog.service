@@ -1,0 +1,7 @@
+[Unit]
+Description=BalticRadar autoplius parser watchdog (detect list-parser breakage, alert, capture evidence)
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/balticradar
+Environment=SUPABASE_URL=https://wrilvoukvyubgpomuoyn.supabase.co
+ExecStart=/bin/sh -c "SUPABASE_KEY=$(cat /opt/balticradar/balticradar_key.txt) /opt/balticradar/venv/bin/python ap_parser_watchdog.py"
