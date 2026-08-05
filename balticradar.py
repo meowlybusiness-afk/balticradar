@@ -1371,7 +1371,7 @@ def run(do_tail=True):
                             # save without a per-car detail fetch (~20x fewer requests). Details/photos
                             # can be backfilled later; priority is getting all ~42k listed quickly.
                             rich=ap_list_rich(txt)["ads"]
-                            if os.environ.get("WD_DUMP")=="1" and len(rich)>=12:   # freshest real list page for the parser watchdog (no separate fetch)
+                            if os.environ.get("WD_DUMP")=="1" and len(rich)>=20:   # only FULL pages (~20-25 ads) -> watchdog never judges yield off a tiny last-page sample
                                 try:
                                     _hd=os.path.join(_HERE,"health"); os.makedirs(_hd,exist_ok=True)
                                     open(os.path.join(_hd,"ap_last_list.html"),"w").write(txt)

@@ -36,9 +36,11 @@ HEALTH = os.path.join(HERE, "health")
 os.makedirs(HEALTH, exist_ok=True)
 
 DUMP = os.path.join(HEALTH, "ap_last_list.html")                   # written by br-ap-backfill (WD_DUMP=1)
-MIN_MILEAGE_YIELD = float(os.environ.get("WD_MIN_YIELD", "0.55"))   # sample runs ~0.95; alarm well below
-MIN_ADS          = int(os.environ.get("WD_MIN_ADS", "8"))
+MIN_MILEAGE_YIELD = float(os.environ.get("WD_MIN_YIELD", "0.50"))   # full pages run ~0.72-0.95; alarm well below
+MIN_ADS          = int(os.environ.get("WD_MIN_ADS", "18"))          # need a full page for a trustworthy yield; tiny pages = inconclusive
 MAX_DUMP_AGE_MIN = int(os.environ.get("WD_MAX_DUMP_AGE_MIN", "30")) # older than this => fetch path is down
+BREAK_STREAK     = int(os.environ.get("WD_BREAK_STREAK", "2"))      # debounce: only alert after N consecutive same not-OK runs (kills single-page flukes)
+STREAK_FILE      = os.path.join(HEALTH, "wd_streak.txt")
 
 def now(): return datetime.datetime.utcnow().isoformat() + "Z"
 
@@ -95,8 +97,18 @@ def run():
     with open(os.path.join(HEALTH, "watchdog.log"), "a") as f:
         f.write(json.dumps(report) + "\n")
     print(json.dumps(report, indent=2), flush=True)
-    if status != "OK":
-        alert(report)
+    # Debounce: NO_ADS is inconclusive (never alert). PARSER_BROKEN / FETCH_STALE only alert once the SAME
+    # status has held for BREAK_STREAK consecutive runs -> a single unlucky page can never page your phone.
+    try: prev = open(STREAK_FILE).read().strip().split(":")
+    except Exception: prev = ["OK", "0"]
+    streak = (int(prev[1]) + 1) if (len(prev) == 2 and prev[0] == status) else 1
+    try: open(STREAK_FILE, "w").write(f"{status}:{streak}")
+    except Exception: pass
+    if status in ("PARSER_BROKEN", "FETCH_STALE"):
+        if streak >= BREAK_STREAK:
+            alert(report)
+        else:
+            print(f"debounce: {status} streak {streak}/{BREAK_STREAK} - not alerting yet (likely a fluke)", flush=True)
     return 0 if status == "OK" else 2
 
 def alert(report):
