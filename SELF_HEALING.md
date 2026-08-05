@@ -21,8 +21,12 @@ autoplius' per-IP detail-page VIEW LIMIT and needs **no proxy**. Added 2026-08-0
 3. **Watchdog** — service+timer **`br-parser-watchdog`** (every 20 min). Does NOT fetch autoplius
    (a cold request gets CF-challenged). Instead the backfill drops its freshest good list page at
    `health/ap_last_list.html`; the watchdog runs the **real** `ap_list_rich` on it and measures
-   mileage-yield. Writes `health/parser_status.json` + appends `health/watchdog.log`; emails via Resend
-   if `RESEND_API_KEY` is set (not on the VPS by default → logs only). Status values:
+   mileage-yield. Writes `health/parser_status.json` + appends `health/watchdog.log`, and on a not-OK
+   status pushes a **Telegram** alert (bot `BalticRadar24Bot`; falls back to Resend email if `TG_*`
+   unset). The Telegram creds live ONLY in the root-only VPS drop-in
+   `/etc/systemd/system/br-parser-watchdog.service.d/telegram.conf` (`TG_BOT_TOKEN`,`TG_CHAT_ID`) —
+   NEVER commit them. The unit sets `SuccessExitStatus=2` so a breakage-detected run (exit 2) is not
+   flagged "failed". Status values:
    - `OK` — yield ≥ 0.55 (healthy pages run ~0.72–0.95).
    - `PARSER_BROKEN` — page + ads fine but mileage vanished ⇒ **autoplius changed the markup, fix the regex.**
    - `FETCH_STALE` — no fresh dump (backfill down / CF / IP) ⇒ **not a parser bug.**

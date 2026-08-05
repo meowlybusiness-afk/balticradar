@@ -100,25 +100,40 @@ def run():
     return 0 if status == "OK" else 2
 
 def alert(report):
+    """Notify on a not-OK status. Telegram first (free, phone push, no domain/key ceremony); Resend email
+    as a fallback if TG isn't configured. Both are optional -- with neither set, the status file + log are
+    still written, so nothing is lost. Sending here costs ZERO Claude tokens (plain HTTP from the VPS)."""
+    msg = (f"⚠️ BalticRadar watchdog: autoplius list-parser {report['status']}\n"
+           f"mileage_yield={report['mileage_yield']} (min {report['min_yield']}), "
+           f"price_yield={report['price_yield']}, ads={report['ads']}\n"
+           f"fetch: {report['fetch']}\nts: {report['ts']}\n"
+           f"If PARSER_BROKEN: autoplius changed the results-page markup -> fix the mileage regex in "
+           f"ap_list_rich against {report['sample']}. If FETCH_STALE: backfill/CF/IP, not a parser bug.")
+    sent = False
+    tok, chat = os.environ.get("TG_BOT_TOKEN"), os.environ.get("TG_CHAT_ID")
+    if tok and chat:
+        try:
+            import requests
+            r = requests.post(f"https://api.telegram.org/bot{tok}/sendMessage",
+                              json={"chat_id": chat, "text": msg}, timeout=20)
+            if r.ok: print("alert -> telegram", flush=True); sent = True
+            else:    print("telegram send failed:", r.status_code, r.text[:200], flush=True)
+        except Exception as e:
+            print("telegram send FAILED:", repr(e), flush=True)
     key = os.environ.get("RESEND_API_KEY")
-    to  = os.environ.get("WD_ALERT_TO", "meowlybusiness@gmail.com")
-    if not key:
-        print("ALERT (no RESEND_API_KEY, logged only):", report["status"], flush=True); return
-    try:
-        import requests
-        body = (f"BalticRadar watchdog: autoplius list-parser <b>{report['status']}</b><br><br>"
-                f"mileage_yield={report['mileage_yield']} (min {report['min_yield']}), "
-                f"price_yield={report['price_yield']}, ads={report['ads']}<br>"
-                f"fetch: {report['fetch']}<br>sample: {report['sample']}<br>ts: {report['ts']}<br><br>"
-                f"If PARSER_BROKEN: autoplius changed the results-page markup -> fix the mileage regex in "
-                f"ap_list_rich against the saved sample. If FETCH_STALE: backfill/CF/IP, not a parser bug.")
-        requests.post("https://api.resend.com/emails",
-            headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
-            json={"from": "alerts@balticradar.com", "to": [to],
-                  "subject": f"[BalticRadar] autoplius parser {report['status']}", "html": body}, timeout=20)
-        print("alert emailed to", to, flush=True)
-    except Exception as e:
-        print("alert email FAILED:", repr(e), flush=True)
+    if not sent and key:
+        try:
+            import requests
+            requests.post("https://api.resend.com/emails",
+                headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+                json={"from": "alerts@balticradar.com", "to": [os.environ.get("WD_ALERT_TO", "meowlybusiness@gmail.com")],
+                      "subject": f"[BalticRadar] autoplius parser {report['status']}",
+                      "html": msg.replace(chr(10), "<br>")}, timeout=20)
+            print("alert -> email", flush=True); sent = True
+        except Exception as e:
+            print("alert email FAILED:", repr(e), flush=True)
+    if not sent:
+        print("ALERT (no TG/email channel configured, logged only):", report["status"], flush=True)
 
 if __name__ == "__main__":
     raise SystemExit(run())
