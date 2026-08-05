@@ -451,6 +451,14 @@ def ap_list_rich(html, lang="lv"):
             if d and int(d)>=100: f["price_eur"]=int(d); break
         im=re.search(r'https://autoplius-img\.dgn\.lt/[^\s"\'<>]+?\.jpg',seg)
         if im: f["photos"]=[im.group(0)]
+        # Mileage straight from the LIST card (own <span>NNN km</span>, after the engine-spec span).
+        # This dodges autoplius' per-IP detail-page VIEW LIMIT entirely -> new autoplius cars now get
+        # mileage with ZERO detail fetches (the old ap_list_rich only had price/photo/date). Anchored on
+        # the closing </span> so CO2 "g/km" and other stray "km" never match.
+        mm=re.search(r'<span>\s*([\d][\d\s ]{1,})\s*km\s*</span>',seg)
+        if mm:
+            _km=int(re.sub(r'\D','',mm.group(1)))
+            if 0<_km<=1500000: f["mileage_km"]=_km
         po=rel_posted(seg)          # "Pirms X ..." badge -> posting date (only on freshly-bumped ads)
         if po: f["posted"]=po
         ads.append(f)
@@ -1284,7 +1292,7 @@ def run(do_tail=True):
                 if not isinstance(ystart,int) or ystart>=len(years): ystart=0
                 apcap=int(os.environ.get("AP_DETAIL_CAP", os.environ.get("DETAIL_CAP",4000)))
                 apause=float(os.environ.get("AP_PAUSE","3"))  # throttle: pause after each NEW detail to stay under autoplius rate-limit
-                det=0; yi=ystart
+                det=0; yi=ystart; _apbf=[0]   # _apbf: count of NULL mileages backfilled from list cards this run
                 while yi<min(ystart+per,len(years)):
                     y=years[yi]; yb=f"{AP_BASE}&make_date_from={y}&make_date_to={y}"
                     print(f"ap_year {y}: START (up to {yp} pages, detail cap {apcap})", flush=True)
@@ -1315,11 +1323,24 @@ def run(do_tail=True):
                             # save without a per-car detail fetch (~20x fewer requests). Details/photos
                             # can be backfilled later; priority is getting all ~42k listed quickly.
                             rich=ap_list_rich(txt)["ads"]
+                            if os.environ.get("WD_DUMP")=="1" and len(rich)>=12:   # freshest real list page for the parser watchdog (no separate fetch)
+                                try:
+                                    _hd=os.path.join(_HERE,"health"); os.makedirs(_hd,exist_ok=True)
+                                    open(os.path.join(_hd,"ap_last_list.html"),"w").write(txt)
+                                except Exception: pass
                             exb=ad_info_batch([a["ad_id"] for a in rich])
                             for a in rich:
                                 seen+=1; seen_ids.add(a["ad_id"])
                                 if a["ad_id"] in exb:
-                                    record_price_change(exb[a["ad_id"]], a)   # log price move on same listing
+                                    _info=exb[a["ad_id"]]
+                                    record_price_change(_info, a)   # log price move on same listing
+                                    # BACKFILL NULL mileage straight from the list card (autoplius shows it on
+                                    # the results page). This clears the historical NULL-mileage backlog with
+                                    # ZERO detail fetches -> never trips the per-IP detail VIEW LIMIT. Only ever
+                                    # writes when the car currently has no mileage, so it can't overwrite good data.
+                                    if _info.get("last_mileage") is None and a.get("mileage_km") and _info.get("car_id"):
+                                        try: _patch("cars",{"car_id":f"eq.{_info['car_id']}"},{"last_mileage":a["mileage_km"]}); _apbf[0]+=1
+                                        except Exception: pass
                                     # already have the car; backfill its photo if it has none yet
                                     if a.get("photos") and os.environ.get("AP_PATCH_PHOTOS","1")=="1":
                                         try: _patch("cars",{"car_id":f"eq.car_{a['ad_id']}","photos":"eq.{}"},{"photos":a["photos"]})
@@ -1328,7 +1349,7 @@ def run(do_tail=True):
                                 a["source"]="autoplius"
                                 try: save(a); new+=1
                                 except Exception as e: print("  ap save FAIL",a["ad_id"],repr(e),flush=True)
-                            print(f"ap_year {y} p{n}: list-only {len(rich)} parsed, new total {new}",flush=True)
+                            print(f"ap_year {y} p{n}: list-only {len(rich)} parsed, new total {new}, mileage_backfilled {_apbf[0]}",flush=True)
                             if len(ads) < 12:   # full pages are ~20; a short page = last real page or fallback -> year done
                                 print(f"ap_year {y} p{n}: partial page ({len(ads)} ads) -> year done",flush=True); break
                             time.sleep(float(os.environ.get("AP_PAGE_PAUSE","1.0")))
