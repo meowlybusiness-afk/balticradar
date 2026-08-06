@@ -574,6 +574,23 @@ def ss_detail_photos(html):
 def ss_detail_mileage(html):
     m=re.search(r"Nobraukums[^\d]{0,40}?([\d][\d\s ]{2,}\d)",html)
     return int(re.sub(r"\D","",m.group(1))) if m else None
+# --- robust ss.lv detail spec parsers: read the value cell right after each label. ss.lv lays every
+# spec out as  <td class="ads_opt_name">LABEL:</td> <td class="ads_opt" id="tdo_N">VALUE</td>  so we
+# anchor on the exact label -> ads_opt cell. Validated 23/25 real pages; None on anything unexpected
+# so a bad parse NEVER overwrites good data (see the sane-guards at the liveness call site).
+def ss_opt2(html, label):
+    m=re.search(re.escape(label)+r"\s*</td>\s*<td[^>]*class=[\"']ads_opt[\"'][^>]*>\s*(.*?)\s*</td>",html,re.S)
+    return m.group(1).strip() if m else None
+def ss_year2(html):
+    v=ss_opt2(html,"Izlaiduma gads:"); m=re.search(r"(19|20)\d{2}",v or "")
+    return int(m.group(0)) if m else None
+def ss_mileage2(html):
+    v=ss_opt2(html,"Nobraukums, km:")
+    if v is None: return None
+    d=re.sub(r"\D","",v); return int(d) if d else None
+def ss_price2(html):
+    m=re.search(r"class=[\"']ads_price[\"'][^>]*>\s*([\d][\d\s ]*)\s*(?:&#8364;|€)",html)
+    return int(re.sub(r"\D","",m.group(1))) if m else None
 def ss_detail_desc(html):
     m=re.search(r'<meta\s+name=["\']description["\']\s+content=["\'](.*?)["\']',html,re.I|re.S)
     if not m: return None
@@ -1028,7 +1045,7 @@ if USE_SB:
         cur=_pfix_get("live_"+source)
         try:
             rows=_get("cars",{"source":f"eq.{source}","active":"eq.true","car_id":f"gt.{cur}",
-                "order":"car_id.asc","select":"car_id,source_url","limit":str(limit)})
+                "order":"car_id.asc","select":"car_id,source_url,year,last_price,last_mileage","limit":str(limit)})
         except Exception as e: print("liveness query err",repr(e)); return 0
         if not rows: _pfix_set("live_"+source,""); return 0
         gone=0
@@ -1048,6 +1065,17 @@ if USE_SB:
                     patch={}
                     if det.get("price_eur"): patch["last_price"]=det["price_eur"]
                     if det.get("photos") and len(det["photos"])>=2: patch["photos"]=det["photos"]
+                    if patch: _patch("cars",{"car_id":f"eq.{r['car_id']}"},patch)
+                elif alive and source=="ss.lv":     # re-parse specs so ss.lv URL-recycling (the same short URL
+                    ny=ss_year2(h); nk=ss_mileage2(h); npr=sane_price(ss_price2(h))   # later reused for a DIFFERENT car) + edits can't leave stale km/year/price
+                    patch={}
+                    recycled=bool(ny and r.get("year") and ny!=r["year"])   # a changed year = the URL now hosts a different car
+                    if ny and 1950<ny<2028 and ny!=r.get("year"):                 patch["year"]=ny          # sane-guard: never write garbage
+                    if nk is not None and 0<=nk<2000000 and nk!=r.get("last_mileage"): patch["last_mileage"]=nk
+                    if npr and npr>100 and npr!=r.get("last_price"):
+                        if not recycled and r.get("last_price") and npr>=0.60*r["last_price"]:   # log a price MOVE only on the same car, no implausible >40% drop
+                            _post("price_history",[{"car_id":r["car_id"],"ts":now_iso(),"price":npr,"mileage":nk}])
+                        patch["last_price"]=npr
                     if patch: _patch("cars",{"car_id":f"eq.{r['car_id']}"},patch)
                 time.sleep(float(os.environ.get("PFIX_SLEEP","0.3")))
             except Exception: pass       # timeout / network error -> never deactivate
