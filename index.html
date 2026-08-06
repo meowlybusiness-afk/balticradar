@@ -3799,14 +3799,21 @@ function filterCarList(rows){
     + '.brflimg{width:56px;height:56px;border-radius:12px;object-fit:cover;flex:none;background:var(--card2,#f4f4f6)}'
     + '.brflmid{flex:1;min-width:0}'
     + '.brflname{font-weight:700;font-size:15px;color:var(--ink,#1d1d1f);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}'
-    + '.brflprice{font-weight:800;font-size:19px;color:var(--accent,#728C00);margin-top:2px}'
+    + '.brflprice{font-weight:800;font-size:20px;color:#2e6be6;margin-top:2px}'
     + '.brflchev{color:var(--mut,#86868b);font-size:18px;line-height:1;transition:transform .2s;border-left:1px solid var(--line,#ededf0);padding-left:14px;align-self:stretch;display:flex;align-items:center}'
     + '.brflrow.open .brflchev{transform:rotate(180deg)}'
-    + '.brflbody{max-height:0;overflow:hidden;transition:max-height .28s ease;padding:0 16px}'
-    + '.brflrow.open .brflbody{max-height:520px;padding:2px 16px 14px}'
-    + '.brflspecs{font-size:13px;color:var(--mut,#86868b);font-weight:600;margin-bottom:10px}'
-    + '.brflhrow{display:flex;justify-content:space-between;font-size:13px;padding:4px 0;border-bottom:1px dashed var(--line,#ededf0)}'
-    + '.brflopen{display:inline-block;margin-top:12px;background:var(--accent,#728C00);color:#fff;padding:9px 18px;border-radius:999px;font-weight:700;font-size:13px;text-decoration:none}';
+    + '.brflbody{max-height:0;overflow:hidden;transition:max-height .3s ease;padding:0 16px}'
+    + '.brflrow.open .brflbody{max-height:1400px;padding:2px 16px 16px}'
+    + '.brflopen{display:block;text-align:center;margin:14px 0;background:#f5a623;color:#fff;padding:15px;border-radius:12px;font-weight:800;font-size:16px;text-decoration:none}'
+    + '.brflhh{font-weight:800;font-size:15px;color:var(--ink);margin:8px 0 10px}'
+    + '.brflt{width:100%;border:1px solid var(--line);border-radius:14px;border-collapse:collapse;font-size:14px;overflow:hidden}'
+    + '.brflt td{padding:11px 8px;text-align:center;border-bottom:1px solid var(--line);border-right:1px solid var(--line);color:var(--ink)}'
+    + '.brflt tr:last-child td{border-bottom:none}.brflt td:last-child{border-right:none}'
+    + '.brflt .d{font-size:12px;font-weight:800;margin-left:3px}.brflt .dn{color:#2e9e5b}.brflt .up{color:#d2492f}'
+    + '.brflfoot{display:flex;justify-content:space-between;background:#5b5b7a;color:#fff;padding:13px 16px;border-radius:12px;margin-top:10px;font-weight:600;font-size:14px}'
+    + '.brflleg{display:flex;gap:16px;font-size:12px;color:var(--mut);margin:2px 0 8px}'
+    + '.brflleg span::before{content:\"\";display:inline-block;width:13px;height:3px;vertical-align:middle;margin-right:5px;border-radius:2px}'
+    + '.brflleg .lp::before{background:#d2492f}.brflleg .lm::before{background:#728C00}';
     document.head.appendChild(st);
   }
   BRProfile._flCars = {};
@@ -3824,6 +3831,29 @@ function filterCarList(rows){
       + '</div>';
   }).join('');
 }
+// 2-line history chart for the filter expand: RED = price, GREEN = mileage (independent scales).
+function sparkline2(pts){
+  var P=pts.filter(function(p){return p.price!=null;});
+  if(P.length<2) return '';
+  var w=560,h=170,padL=8,padR=8,padT=12,padB=14;
+  var pr=P.map(function(p){return p.price;});
+  var mi=P.map(function(p){return p.mileage;}).filter(function(x){return x!=null;});
+  var pmn=Math.min.apply(null,pr),pmx=Math.max.apply(null,pr); if(pmx===pmn)pmx=pmn+1;
+  var mmn=mi.length?Math.min.apply(null,mi):0,mmx=mi.length?Math.max.apply(null,mi):1; if(mmx===mmn)mmx=mmn+1;
+  var X=function(i){return padL+(w-padL-padR)*(i/(P.length-1));};
+  var Yp=function(v){return padT+(h-padT-padB)*(1-(v-pmn)/(pmx-pmn));};
+  var Ym=function(v){return padT+(h-padT-padB)*(1-(v-mmn)/(mmx-mmn));};
+  var lp=P.map(function(p,i){return (i?'L':'M')+X(i).toFixed(1)+','+Yp(p.price).toFixed(1);}).join(' ');
+  var mp=[]; P.forEach(function(p,i){if(p.mileage!=null)mp.push([i,p.mileage]);});
+  var lm=mp.length>=2?mp.map(function(a,i){return (i?'L':'M')+X(a[0]).toFixed(1)+','+Ym(a[1]).toFixed(1);}).join(' '):'';
+  return '<svg viewBox="0 0 '+w+' '+h+'" width="100%" style="display:block;margin:6px 0">'
+    + '<path d="'+lp+'" fill="none" stroke="#d2492f" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>'
+    + (lm?'<path d="'+lm+'" fill="none" stroke="#728C00" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>':'')
+    + P.map(function(p,i){return '<circle cx="'+X(i).toFixed(1)+'" cy="'+Yp(p.price).toFixed(1)+'" r="3.1" fill="#d2492f"/>';}).join('')
+    + mp.map(function(a){return '<circle cx="'+X(a[0]).toFixed(1)+'" cy="'+Ym(a[1]).toFixed(1)+'" r="3.1" fill="#728C00"/>';}).join('')
+    + '</svg>'
+    + '<div class="brflleg"><span class="lp">Cena</span><span class="lm">Nobraukums</span></div>';
+}
 BRProfile.flToggle = async function(cid){
   var row=document.getElementById('flr-'+cid), body=document.getElementById('flb-'+cid);
   if(!row||!body) return;
@@ -3831,18 +3861,26 @@ BRProfile.flToggle = async function(cid){
   if(!open || body.dataset.loaded) return;
   body.dataset.loaded='1';
   var c=(BRProfile._flCars||{})[cid]||{};
-  var specs=[c.year,(c.last_mileage!=null?km(c.last_mileage):null),norm('fuel',c.fuel),c.country].filter(Boolean).join(' · ');
-  var openLbl=((typeof ML==='function'&&ML().openAd)||'Atvērt sludinājumu');
-  body.innerHTML='<div class="brflspecs">'+esc(specs)+'</div>'
-    + '<div class="brflhist" style="font-size:13px;color:var(--mut)">'+P().searching+'</div>'
-    + (c.source_url?'<a class="brflopen" href="'+c.source_url+'" target="_blank" rel="noopener">'+openLbl+'</a>':'');
+  var openLbl=((typeof ML==='function'&&ML().openAd)||'Apskatīt sludinājumu');
+  body.innerHTML=(c.source_url?'<a class="brflopen" href="'+c.source_url+'" target="_blank" rel="noopener">'+openLbl+'</a>':'')
+    + '<div class="brflhist" style="font-size:13px;color:var(--mut)">'+P().searching+'</div>';
   try{
-    var r=await fetch(SB_URL+'/rest/v1/price_history?car_id=eq.'+encodeURIComponent(cid)+'&select=ts,price&order=ts.asc',{headers:SBH});
+    var r=await fetch(SB_URL+'/rest/v1/price_history?car_id=eq.'+encodeURIComponent(cid)+'&select=ts,price,mileage&order=ts.asc',{headers:SBH});
     var pts=(await r.json()).filter(function(p){return p.price!=null;});
     var hbox=body.querySelector('.brflhist'); if(!hbox) return;
-    if(pts.length<2){ hbox.innerHTML='<span class="muted">'+T().histOne+'</span>'; }
-    else{ hbox.innerHTML='<div style="font-weight:700;font-size:12px;color:var(--ink);margin:2px 0 6px">'+T().priceHist+'</div>'
-        + pts.map(function(p){return '<div class="brflhrow"><span>'+p.ts.slice(0,10)+'</span><b>'+eur(p.price)+'</b></div>';}).join(''); }
+    if(!pts.length){ hbox.innerHTML='<span class="muted">'+T().histOne+'</span>'; return; }
+    var first=pts[0], last=pts[pts.length-1], tot=last.price-first.price;
+    var days=Math.max(0,Math.round((Date.now()-new Date(first.ts).getTime())/86400000));
+    var rev=pts.slice().reverse();
+    var trows=rev.map(function(p,i){
+      var older=rev[i+1], ch=older?p.price-older.price:null;
+      var d=ch==null?'':'<span class="d '+(ch<0?'dn':'up')+'">'+(ch>0?'+':'-')+nf(Math.abs(ch))+'€</span>';
+      return '<tr><td><b>'+eur(p.price)+'</b>'+d+'</td><td>'+(p.mileage!=null?km(p.mileage):'—')+'</td><td>'+(c.year||'—')+' g.</td><td>'+dt(p.ts)+'</td></tr>';
+    }).join('');
+    hbox.innerHTML='<div class="brflhh">Cenas izmaiņas šajā sludinājumā</div>'
+      + sparkline2(pts)
+      + '<table class="brflt">'+trows+'</table>'
+      + '<div class="brflfoot"><span>Cenas izmaiņa: <b>'+(tot>0?'+':'')+eur(tot)+'</b></span><span>Ilgums: <b>'+days+' diena(s)</b></span></div>';
   }catch(e){}
 };
 BRProfile.runFilter = async function(id, sort){
