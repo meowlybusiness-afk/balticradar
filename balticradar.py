@@ -1002,6 +1002,46 @@ if USE_SB:
                 _patch("ads",{"car_id":f"in.({','.join(kill[i:i+50])})"},{"active":False})
             except Exception as e: print("ap_sold_sweep patch err",repr(e))
         print(f"ap_sold_sweep: coverage {cov:.0%} OK, {len(cids)} stale>{days}d, retired {len(kill)}",flush=True)
+    def ss_sold_sweep():
+        # SS.LV sold/expired detection. ss.lv ARCHIVED pages are JS-rendered (no reliable server-side
+        # "gone" marker in the scraped HTML), so liveness cannot catch them -- the only reliable signal is
+        # ABSENCE from the brand list-sweep. Same SELF-GATING safety as ap_sold_sweep: retire a ss.lv car
+        # only if (1) coverage healthy (>= SS_SOLD_COVERAGE re-seen within a day), (2) not seen for
+        # SS_SOLD_DAYS days, (3) make is set (NULL-make special-category cars aren't reachable by the brand
+        # sweep -> protected). Batch cap + hard abort. Aborts (retires nothing) until the deepened brand
+        # crawl makes last_seen trustworthy.
+        import datetime as _dt
+        def _cnt(params):
+            try:
+                r=_S.get(f"{SB_URL}/rest/v1/cars",params={**params,"select":"car_id"},
+                         headers={"Prefer":"count=exact","Range":"0-0"},timeout=30)
+                cr=r.headers.get("content-range",""); return int(cr.split("/")[1]) if "/" in cr else -1
+            except Exception: return -1
+        days=int(os.environ.get("SS_SOLD_DAYS","7")); cov_min=float(os.environ.get("SS_SOLD_COVERAGE","0.85"))
+        fresh_cut=(_dt.datetime.utcnow()-_dt.timedelta(days=1)).isoformat()+"Z"
+        cut=(_dt.datetime.utcnow()-_dt.timedelta(days=days)).isoformat()+"Z"
+        total=_cnt({"source":"eq.ss.lv","active":"eq.true"})
+        fresh=_cnt({"source":"eq.ss.lv","active":"eq.true","last_seen":f"gte.{fresh_cut}"})
+        if total<=0 or fresh<0: print("ss_sold_sweep: count err -> skip",flush=True); return
+        cov=fresh/total
+        if cov<cov_min:
+            print(f"ss_sold_sweep: coverage {cov:.0%} < {cov_min:.0%} -> ABORT (crawl not caught up; last_seen unreliable)",flush=True); return
+        try:
+            stale=_get("cars",{"source":"eq.ss.lv","active":"eq.true","last_seen":f"lt.{cut}",
+                               "make":"not.is.null","select":"car_id","limit":"6000"})
+        except Exception as e: print("ss_sold_sweep query err",repr(e)); return
+        cids=[s["car_id"] for s in (stale or []) if s.get("car_id")]
+        if not cids: print(f"ss_sold_sweep: coverage {cov:.0%} OK, 0 cars >{days}d stale",flush=True); return
+        hard=int(os.environ.get("SS_SOLD_HARD","8000"))
+        if len(cids)>=hard:
+            print(f"ss_sold_sweep: {len(cids)} candidates >= HARD {hard} -> ABORT (unexpected volume, safety)",flush=True); return
+        kill=cids[:int(os.environ.get("SS_SOLD_BATCH","1000"))]
+        for i in range(0,len(kill),50):
+            try:
+                _patch("cars",{"car_id":f"in.({','.join(kill[i:i+50])})"},{"active":False})
+                _patch("ads",{"car_id":f"in.({','.join(kill[i:i+50])})"},{"active":False})
+            except Exception as e: print("ss_sold_sweep patch err",repr(e))
+        print(f"ss_sold_sweep: coverage {cov:.0%} OK, {len(cids)} stale>{days}d, retired {len(kill)}",flush=True)
     def _pfix_get(src):
         try: return open(os.path.join(_HERE,f"pfix_{src}.txt"),encoding="utf-8").read().strip()
         except Exception: return ""
@@ -1191,6 +1231,7 @@ else:
     def set_cursor(src,page): pass
     def deactivate(days=3): pass
     def ap_sold_sweep(): pass
+    def ss_sold_sweep(): pass
     def backfill_posted(limit=120): pass
     print("STORAGE: listings.json preview (set SUPABASE_* for full catalogue)")
 
@@ -1470,6 +1511,8 @@ def run(do_tail=True):
             deactivate(int(os.environ.get("DEACTIVATE_DAYS",3)))
         if os.environ.get("AP_SOLD_SWEEP")=="1":      # list-only autoplius sold-detection (no view-limit); inert until a full pass completes
             ap_sold_sweep()
+        if os.environ.get("SS_SOLD_SWEEP")=="1":      # ss.lv sold/expired detection by list-sweep absence; self-gates on coverage
+            ss_sold_sweep()
     else:
         print("FAST cycle: skipped heavy tail (backfill/photo/liveness)")
     print(f"DONE. seen={seen}, new stored={new}")
