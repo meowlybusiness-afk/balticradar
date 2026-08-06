@@ -881,7 +881,7 @@ function innerCard(c,fresh){
     : `<div class="noimg">${T().noPhoto}</div>`;
   const specs=[c.last_mileage!=null?km(c.last_mileage):null,esc(norm("fuel",c.fuel)),esc(norm("gear",c.gearbox)),c.engine_l?esc(c.engine_l)+" l":null,esc(norm("body",c.body))].filter(Boolean).join(" · ");
   return `<div class="ph">${fresh?'<span class="badge">'+(T().newBadge||"NEW")+'</span>':''}
-    <span class="flag"><span class="fdot ${esc(c.country)}"></span>${esc(c.country)}</span>${imgs}</div>
+    <span class="flag"><span class="fdot ${esc(c.country)}"></span>${esc(c.country)}</span>${imgs}<button class="br-share" onclick="shareCar('${c.car_id}',event)" title="Share">⤴</button></div>
     <div class="body">
       <div class="name">${esc(c.make)} ${esc(c.model)}<span class="yr">${c.year||""}</span></div>
       <div class="specrow">${specs||"&nbsp;"}</div>
@@ -1646,10 +1646,26 @@ function relAge(ts){if(!ts)return"-";const d=Math.floor((Date.now()-new Date(ts)
   const M={lv:["Šodien","Vakar"," dienas atpakaļ"],en:["Today","Yesterday"," days ago"],ru:["Сегодня","Вчера"," дн. назад"],lt:["Šiandien","Vakar"," d. atgal"],et:["Täna","Eile"," p tagasi"]}[lang]||["Today","Yesterday"," days ago"];
   if(d<=0)return M[0];if(d===1)return M[1];return d+M[2];}
 function toast(msg){let el=document.getElementById("__toast");if(!el){el=document.createElement("div");el.id="__toast";el.style.cssText="position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:11px 20px;border-radius:10px;z-index:99999;font-weight:700;box-shadow:var(--shadow);transition:opacity .3s";document.body.appendChild(el);}el.textContent=msg;el.style.opacity="1";clearTimeout(el._h);el._h=setTimeout(()=>{el.style.opacity="0";},1900);}
-function shareCar(id){const url=location.origin+location.pathname+"?car="+encodeURIComponent(id);
-  if(navigator.share){navigator.share({title:"BalticRadar",url:url}).catch(()=>{});}
-  else if(navigator.clipboard){navigator.clipboard.writeText(url).then(()=>toast(ML().copied)).catch(()=>toast(url));}
-  else toast(url);}
+function shareClose(){var o=document.getElementById("shov");if(o)o.remove();}
+function shareCar(id,ev){ if(ev&&ev.stopPropagation)ev.stopPropagation(); if(ev&&ev.preventDefault)ev.preventDefault();
+  var url=location.origin+location.pathname+"?car="+encodeURIComponent(id);
+  if(!document.getElementById("sh-css")){var st=document.createElement("style");st.id="sh-css";st.textContent=
+    ".shov{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100000;display:flex;align-items:flex-end;justify-content:center}"
+    +".shbox{background:var(--card,#fff);width:100%;max-width:460px;border-radius:20px 20px 0 0;padding:18px 18px 26px;box-shadow:0 -10px 40px rgba(0,0,0,.3)}"
+    +"@media(min-width:600px){.shov{align-items:center}.shbox{border-radius:20px}}"
+    +".shttl{font-weight:800;font-size:16px;color:var(--ink);margin:2px 0 14px;text-align:center}"
+    +".shbtn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;box-sizing:border-box;padding:14px;margin:8px 0;border-radius:12px;border:1px solid var(--line,#ededf0);background:var(--card2,#f7f7f9);color:var(--ink,#1d1d1f);font-weight:700;font-size:15px;cursor:pointer;text-decoration:none;font-family:inherit}"
+    +".shbtn.wa{background:#25D366;color:#fff;border-color:#25D366}.shbtn.tg{background:#2AABEE;color:#fff;border-color:#2AABEE}";
+    document.head.appendChild(st);}
+  var wa="https://wa.me/?text="+encodeURIComponent(url);
+  var tg="https://t.me/share/url?url="+encodeURIComponent(url);
+  var nat=navigator.share?'<button class="shbtn" onclick="shareClose();navigator.share({title:\'BalticRadar\',url:\''+url+'\'}).catch(function(){})">📲 '+(ML().share||"Share")+'</button>':'';
+  var ov=document.createElement("div");ov.id="shov";ov.className="shov";ov.onclick=shareClose;
+  ov.innerHTML='<div class="shbox" onclick="event.stopPropagation()"><div class="shttl">'+(ML().share||"Share")+'</div>'
+    +'<a class="shbtn wa" href="'+wa+'" target="_blank" rel="noopener" onclick="shareClose()">WhatsApp</a>'
+    +'<a class="shbtn tg" href="'+tg+'" target="_blank" rel="noopener" onclick="shareClose()">Telegram</a>'+nat
+    +'<button class="shbtn" onclick="if(navigator.clipboard)navigator.clipboard.writeText(\''+url+'\');toast(ML().copied);shareClose()">🔗 '+(ML().copied||"Copy link")+'</button></div>';
+  document.body.appendChild(ov);}
 function openModal(c){
   galIdx=0;const t=T();
   const ph=uniqPhotos((c.photos&&c.photos.length)?c.photos:[]).map(hq);
@@ -2686,6 +2702,8 @@ tick(); setInterval(()=>{if(!document.hidden)tick();},REFRESH_MS);
 .br-heart.on{background:#728C00}
 .br-heart .o{display:block}.br-heart .f{display:none}
 .br-heart.on .o{display:none}.br-heart.on .f{display:block}
+.br-share{position:absolute;bottom:10px;right:10px;z-index:5;width:34px;height:34px;border-radius:50%;border:none;background:rgba(255,255,255,.92);cursor:pointer;display:grid;place-items:center;font-size:15px;line-height:1;box-shadow:0 2px 10px -2px rgba(0,0,0,.35);color:#1d1d1f;padding:0;transition:.15s}
+.br-share:hover{transform:scale(1.12)}
 .br-mheart{display:inline-flex;align-items:center;gap:7px;border:1px solid #dfdfe4;background:#fff;color:#1d1d1f;
   border-radius:999px;padding:10px 18px;font-weight:600;font-size:13px;cursor:pointer;font-family:Manrope,sans-serif;margin:10px 0}
 .br-mheart.on{background:#728C00;color:#0f0f11;border-color:#728C00}
@@ -3863,6 +3881,7 @@ BRProfile.flToggle = async function(cid){
   var c=(BRProfile._flCars||{})[cid]||{};
   var openLbl=((typeof ML==='function'&&ML().openAd)||'Apskatīt sludinājumu');
   body.innerHTML=(c.source_url?'<a class="brflopen" href="'+c.source_url+'" target="_blank" rel="noopener">'+openLbl+'</a>':'')
+    + '<button class="brflopen" style="background:#5b5b7a;border:none;cursor:pointer;margin-top:0" onclick="shareCar(\''+cid+'\',event)">⤴ '+(ML().share||"Share")+'</button>'
     + '<div class="brflhist" style="font-size:13px;color:var(--mut)">'+P().searching+'</div>';
   try{
     var r=await fetch(SB_URL+'/rest/v1/price_history?car_id=eq.'+encodeURIComponent(cid)+'&select=ts,price,mileage&order=ts.asc',{headers:SBH});
