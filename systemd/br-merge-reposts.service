@@ -1,0 +1,8 @@
+[Unit]
+Description=BalticRadar merge reposts (same-photo relistings -> one car + combined price history)
+[Service]
+Type=oneshot
+WorkingDirectory=/opt/balticradar
+Environment=MERGE=1
+Environment=MERGE_CAP=500
+ExecStart=/opt/balticradar/venv/bin/python merge_reposts.py

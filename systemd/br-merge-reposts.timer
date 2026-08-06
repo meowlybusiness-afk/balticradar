@@ -1,0 +1,8 @@
+[Unit]
+Description=Merge reposts every 3h
+[Timer]
+OnBootSec=20min
+OnUnitActiveSec=3h
+Persistent=true
+[Install]
+WantedBy=timers.target
