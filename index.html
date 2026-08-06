@@ -1518,6 +1518,7 @@ async function brOpenDeepLink(){
     }
   }catch(e){}
   const id=brCarParam(); if(!id){_brDeepDone=true;return;}
+  window._brNoHist=true;   // a plain shared ?car link opens REGULAR info only (no price/mileage history)
   await openCarById(id);
 }
 function sparkline(pts){
@@ -1705,13 +1706,14 @@ function openModal(c){
         ${spec(t.loc,c.location||c.country)}${spec(t.vin,c.vin_prefix)}${spec(t.source,c.source)}
         ${spec({lv:"Ievietots",en:"Posted",ru:"Размещено",lt:"Įdėta",et:"Postitatud"}[lang]||"Posted", c.posted?new Date(c.posted).toLocaleString("lv-LV",{timeZone:"Europe/Riga"}):"")}
       </div>
-      <div class="hist" id="hist"><h3>${t.priceHist}</h3><div class="muted">${t.loading}</div></div>
+      <div class="hist" id="hist"${window._brNoHist?' style="display:none"':''}><h3>${t.priceHist}</h3><div class="muted">${t.loading}</div></div>
       <div class="mdesc" id="mdesc" style="display:none"></div><div id="txnote" style="margin-top:6px"></div>
       ${simHtml}
     </div>`;
   document.getElementById("ov").classList.add("show");
   paintRatings([c]);          // market valuation for the badge inside the modal too
-  loadHistory(c.car_id);
+  if(!window._brNoHist)loadHistory(c.car_id);
+  window._brNoHist=false;   // consume the shared-link flag so favourites/alerts still show history
   loadDesc(c);
   loadModalPhotos(c,sim);
 }
