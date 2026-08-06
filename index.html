@@ -2996,7 +2996,7 @@ function decorate(){
       sh = document.createElement('button');
       sh.className='br-share'; sh.textContent='⤴'; sh.title='Share';
       sh.onclick=function(e){ e.stopPropagation(); e.preventDefault(); shareCar(sh.dataset.cid, e); };
-      card.appendChild(sh);
+      (card.querySelector('.ph')||card).appendChild(sh);
     }
     sh.dataset.cid = id;
   });
