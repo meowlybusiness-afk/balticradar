@@ -959,51 +959,49 @@ if USE_SB:
             print(f"deactivate: {len(stale)} ads stale, {len(hide)} cars hidden (VIN + history kept)")
         except Exception as e: print("deactivate err",repr(e))
     def ap_sold_sweep():
-        # AUTOPLIUS sold-detection with ZERO detail fetches (dodges the per-IP view-limit). The list-only
-        # year-sweep visits every live autoplius ad and bumps its last_seen; ap_year_sweep records the
-        # START time of each COMPLETED full pass in pfix_ap_pass_baseline.txt. Any active autoplius car
-        # whose last_seen is older than that baseline was NOT seen during a whole pass -> it is genuinely
-        # gone. Because the cutoff is a completed-pass timestamp (not a fixed age), this is INERT until a
-        # full pass has finished and can NEVER retire a car the sweep just hasn't reached yet.
-        #   * year NULL / <1990 cars are unreachable by the year-sweep -> PROTECTED (left to the revalidator)
-        #   * per-run batch cap drains a legitimate backlog gradually; a huge count aborts (bug backstop)
-        base=_pfix_get("ap_pass_baseline")
-        if not base: print("ap_sold_sweep: no completed sweep pass yet -> skip (safe)",flush=True); return
+        # AUTOPLIUS sold-detection, list-sweep based, with a SELF-GATING coverage check so it can NEVER
+        # over-retire the way the first version did (a rate-limited year left live cars unseen and they
+        # were wrongly hidden). Detail-page verification is impossible here -- autoplius view-limits
+        # detail fetches from a single IP -- which is exactly why the gate matters. Retire an active
+        # autoplius car only when ALL hold:
+        #   (1) COVERAGE healthy: >= AP_SOLD_COVERAGE of active autoplius cars were re-seen within a day.
+        #       If coverage is poor, last_seen is untrustworthy -> ABORT, retire nothing (safe by default).
+        #   (2) NOT seen for AP_SOLD_DAYS days: many full passes run in that window, so a live car -- even
+        #       one in an occasionally rate-limited year -- would have been seen at least once.
+        #   (3) year in 1990..2026 (sweepable). year NULL/<1990 are unreachable -> left to the revalidator.
+        # Plus a per-run batch cap and a hard-abort backstop.
+        import datetime as _dt
+        def _cnt(params):
+            try:
+                r=_S.get(f"{SB_URL}/rest/v1/cars",params={**params,"select":"car_id"},
+                         headers={"Prefer":"count=exact","Range":"0-0"},timeout=30)
+                cr=r.headers.get("content-range",""); return int(cr.split("/")[1]) if "/" in cr else -1
+            except Exception: return -1
+        days=int(os.environ.get("AP_SOLD_DAYS","7")); cov_min=float(os.environ.get("AP_SOLD_COVERAGE","0.85"))
+        fresh_cut=(_dt.datetime.utcnow()-_dt.timedelta(days=1)).isoformat()+"Z"
+        cut=(_dt.datetime.utcnow()-_dt.timedelta(days=days)).isoformat()+"Z"
+        total=_cnt({"source":"eq.autoplius","active":"eq.true"})
+        fresh=_cnt({"source":"eq.autoplius","active":"eq.true","last_seen":f"gte.{fresh_cut}"})
+        if total<=0 or fresh<0: print("ap_sold_sweep: count err -> skip",flush=True); return
+        cov=fresh/total
+        if cov<cov_min:
+            print(f"ap_sold_sweep: coverage {cov:.0%} < {cov_min:.0%} -> ABORT (sweep not caught up; last_seen unreliable)",flush=True); return
         try:
-            stale=_get("ads",{"active":"eq.true","source":"eq.autoplius","last_seen":f"lt.{base}",
-                              "select":"ad_id,car_id","limit":"6000"})
+            stale=_get("cars",{"source":"eq.autoplius","active":"eq.true","last_seen":f"lt.{cut}",
+                               "and":"(year.gte.1990,year.lte.2026)","select":"car_id","limit":"6000"})
         except Exception as e: print("ap_sold_sweep query err",repr(e)); return
-        if not stale: print("ap_sold_sweep: none stale (all live ads seen this pass)",flush=True); return
-        hard=int(os.environ.get("AP_SOLD_HARD","12000"))
-        if len(stale)>=hard:
-            print(f"ap_sold_sweep: {len(stale)} stale >= HARD cap {hard} -> ABORT (looks like a sweep gap/bug, not sales)",flush=True); return
-        cids=list({s["car_id"] for s in stale if s.get("car_id")})
-        protect=set()                                   # never retire cars the sweep cannot reach
-        for i in range(0,len(cids),100):
-            ch=cids[i:i+100]
+        cids=[s["car_id"] for s in (stale or []) if s.get("car_id")]
+        if not cids: print(f"ap_sold_sweep: coverage {cov:.0%} OK, 0 cars >{days}d stale",flush=True); return
+        hard=int(os.environ.get("AP_SOLD_HARD","6000"))
+        if len(cids)>=hard:
+            print(f"ap_sold_sweep: {len(cids)} candidates >= HARD {hard} -> ABORT (unexpected volume, safety)",flush=True); return
+        kill=cids[:int(os.environ.get("AP_SOLD_BATCH","1000"))]
+        for i in range(0,len(kill),50):
             try:
-                rows=_get("cars",{"car_id":f"in.({','.join(ch)})","or":"(year.is.null,year.lt.1990)","select":"car_id","limit":"6000"})
-                for r in (rows or []): protect.add(r["car_id"])
-            except Exception: pass
-        batch=int(os.environ.get("AP_SOLD_BATCH","2000"))
-        kill_cids=[c for c in cids if c not in protect][:batch]
-        ks=set(kill_cids)
-        kill_ads=[s["ad_id"] for s in stale if s.get("car_id") in ks and s.get("ad_id")]
-        for i in range(0,len(kill_ads),50):
-            try: _patch("ads",{"ad_id":f"in.({','.join(kill_ads[i:i+50])})"},{"active":False})
-            except Exception as e: print("ap_sold_sweep ad patch err",repr(e))
-        still=set()                                     # keep a car visible if it still has another active ad
-        for i in range(0,len(kill_cids),50):
-            ch=kill_cids[i:i+50]
-            try:
-                rows=_get("ads",{"active":"eq.true","car_id":f"in.({','.join(ch)})","select":"car_id","limit":"6000"})
-                for r in (rows or []): still.add(r.get("car_id"))
-            except Exception: pass
-        hide=[c for c in kill_cids if c not in still]
-        for i in range(0,len(hide),50):
-            try: _patch("cars",{"car_id":f"in.({','.join(hide[i:i+50])})"},{"active":False})
-            except Exception as e: print("ap_sold_sweep car patch err",repr(e))
-        print(f"ap_sold_sweep: {len(stale)} stale, {len(protect)} protected(gap), {len(hide)} cars retired (baseline {base[:16]})",flush=True)
+                _patch("cars",{"car_id":f"in.({','.join(kill[i:i+50])})"},{"active":False})
+                _patch("ads",{"car_id":f"in.({','.join(kill[i:i+50])})"},{"active":False})
+            except Exception as e: print("ap_sold_sweep patch err",repr(e))
+        print(f"ap_sold_sweep: coverage {cov:.0%} OK, {len(cids)} stale>{days}d, retired {len(kill)}",flush=True)
     def _pfix_get(src):
         try: return open(os.path.join(_HERE,f"pfix_{src}.txt"),encoding="utf-8").read().strip()
         except Exception: return ""
