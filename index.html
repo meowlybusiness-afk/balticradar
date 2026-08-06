@@ -2994,7 +2994,7 @@ function decorate(){
     var sh = card.querySelector('.br-share');
     if(!sh){
       sh = document.createElement('button');
-      sh.className='br-share'; sh.textContent='⤴'; sh.title='Share';
+      sh.className='br-share'; sh.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" style="display:block"><path d="M14 9V5l7 7-7 7v-4.06C9.34 11.94 5.71 13.16 3 16c1.02-5 4.16-8.16 11-8.94z"/></svg>'; sh.title='Share';
       sh.onclick=function(e){ e.stopPropagation(); e.preventDefault(); shareCar(sh.dataset.cid, e); };
       (card.querySelector('.ph')||card).appendChild(sh);
     }
