@@ -906,7 +906,7 @@ function render(cars){
   grid.querySelector(".empty")?.remove();
   if(!cars.length&&!rendered.size){grid.innerHTML='<div class="empty">'+T().noResults+'</div>';lastSig="";return;}
   cars.forEach((c,i)=>{let el=rendered.get(c.car_id);
-    if(!el){el=document.createElement("div");el.className="card";el.addEventListener("click",()=>openModal(c));
+    if(!el){el=document.createElement("div");el.className="card";el.addEventListener("click",()=>{ if(c.source_url&&c.source_url!=='#'){window.open(c.source_url,'_blank','noopener');}else{openModal(c);} });
       if(firstLoad)el.style.animationDelay=Math.min(i*40,400)+"ms";
       el.innerHTML=innerCard(c,!firstLoad);rendered.set(c.car_id,el);grid.appendChild(el);wireHoverEl(el);}
     else{const p=el.querySelector(".bigprice");if(p&&p.textContent!==eur(c.last_price))p.textContent=eur(c.last_price);}});
