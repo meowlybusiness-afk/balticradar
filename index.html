@@ -881,7 +881,7 @@ function innerCard(c,fresh){
     : `<div class="noimg">${T().noPhoto}</div>`;
   const specs=[c.last_mileage!=null?km(c.last_mileage):null,esc(norm("fuel",c.fuel)),esc(norm("gear",c.gearbox)),c.engine_l?esc(c.engine_l)+" l":null,esc(norm("body",c.body))].filter(Boolean).join(" · ");
   return `<div class="ph">${fresh?'<span class="badge">'+(T().newBadge||"NEW")+'</span>':''}
-    <span class="flag"><span class="fdot ${esc(c.country)}"></span>${esc(c.country)}</span>${imgs}<button class="br-share" onclick="shareCar('${c.car_id}',event)" title="Share">⤴</button></div>
+    <span class="flag"><span class="fdot ${esc(c.country)}"></span>${esc(c.country)}</span>${imgs}</div>
     <div class="body">
       <div class="name">${esc(c.make)} ${esc(c.model)}<span class="yr">${c.year||""}</span></div>
       <div class="specrow">${specs||"&nbsp;"}</div>
@@ -2991,6 +2991,14 @@ function decorate(){
     }
     b.dataset.cid = id;
     b.classList.toggle('on', FAV.has(id));
+    var sh = card.querySelector('.br-share');
+    if(!sh){
+      sh = document.createElement('button');
+      sh.className='br-share'; sh.textContent='⤴'; sh.title='Share';
+      sh.onclick=function(e){ e.stopPropagation(); e.preventDefault(); shareCar(sh.dataset.cid, e); };
+      card.appendChild(sh);
+    }
+    sh.dataset.cid = id;
   });
 }
 new MutationObserver(function(){ decorate(); wireMainPanel(); })
