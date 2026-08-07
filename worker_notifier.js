@@ -535,6 +535,8 @@ const FREQ_LABEL = {
 function buildHtml(C, name, filterName, cars, drops, extra, freq, magic) {
   const rows = cars.map((c) => carRow(C, c, drops[c.car_id], magic)).join("");
   const n = cars.length;
+  // Preheader = the notification/preview snippet. Concise "Make Model Year — price" list per car.
+  const preview = cars.map((c) => (`${(c.make || "").trim()} ${(c.model || "").trim()} ${c.year || ""}`).trim() + (c.last_price ? ` — ${eur(c.last_price)}` : "")).join(" · ");
   const hello = name ? `, ${name}` : "";
   const more = extra > 0
     ? `<tr><td style="padding:2px 0 14px;text-align:center;font:600 13px/1.5 ${FONT};color:${INK2}">&hellip;un vēl <b style="color:${INK}">${extra}</b> jauni sludinājumi pēc šī filtra: <a href="${C.SITE}" target="_blank" style="color:${ACC};text-decoration:none;font-weight:800">skatīt visus</a></td></tr>`
@@ -547,12 +549,12 @@ function buildHtml(C, name, filterName, cars, drops, extra, freq, magic) {
     '<title>Jauni auto | BalticRadar</title>' +
     `<style>${MQ}</style></head>` +
     '<body style="margin:0;padding:0;background:#f4f5f7;-webkit-font-smoothing:antialiased">' +
-    `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${n} jauns(-i) auto pēc filtra &bdquo;${filterName}&ldquo;, tikko parādījās.</div>` +
+    `<div style="display:none;max-height:0;overflow:hidden;opacity:0">${preview}</div>` +
     '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f4f5f7">' +
     '<tr><td align="center" style="padding:26px 12px">' +
     '<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" class="wrap" style="width:600px;max-width:600px">' +
     '<tr><td style="padding:0 4px 18px">' +
-    `<a href="${C.SITE}" target="_blank" style="text-decoration:none;font:800 24px/1 ${FONT};color:${INK};letter-spacing:-.03em">Baltic<span style="color:${ACC}">Radar</span></a></td></tr>` +
+    `<a href="${C.SITE}" target="_blank" style="text-decoration:none;display:inline-block"><img src="${C.SITE}/br-icon-black.png" width="30" height="30" alt="BalticRadar" border="0" style="vertical-align:middle;border:0;margin-right:9px"><span style="font:800 24px/1 ${FONT};color:${INK};letter-spacing:-.03em;vertical-align:middle">BalticRadar</span></a></td></tr>` +
     '<tr><td style="padding:0 0 16px">' +
     `<table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#ffffff;border:1px solid ${LINE};border-radius:16px">` +
     '<tr><td style="padding:20px 18px">' +
@@ -799,8 +801,12 @@ async function run(env, overrides) {
 
     const shown = claimedHits.slice(0, C.MAX_PER_EMAIL);
     const extra = claimedHits.length - shown.length;
+    // Subject: a SINGLE new car shows "Make Model Year — price" so the phone notification title is
+    // the car itself; multiple cars keep the count (the preheader then lists them).
+    const _one = claimedHits[0];
+    const _subjPrice = (v) => { const x = parseInt(v, 10); return isNaN(x) ? "" : x.toLocaleString("en-US").replace(/,/g, " ") + " €"; };
     const subject = claimedHits.length === 1
-      ? `${claimedHits.length} jauna mašīna`
+      ? ((`${(_one.make || "").trim()} ${(_one.model || "").trim()} ${_one.year || ""}`).trim() + (_one.last_price ? ` — ${_subjPrice(_one.last_price)}` : "")) || "1 jauna mašīna"
       : `${claimedHits.length} jaunas mašīnas`;
     // ONE magic-link token per recipient e-mail: every car button reuses it (the token logs the
     // recipient into THEIR account; the differing ?car=<id> is just the redirect target). Null on
@@ -936,6 +942,9 @@ export default {
       const dry = u.searchParams.get("dry") !== "0"; // default DRY unless explicitly &dry=0
       const wantSend = u.searchParams.get("send") === "1";
       const token = u.searchParams.get("token") || "";
+      // SECURITY: /run (even dry) exposes user e-mails + filters in its log, so gate the WHOLE
+      // endpoint behind RUN_TOKEN. Without a valid token nobody can reach the run output at all.
+      if (!C0.RUN_TOKEN || token !== C0.RUN_TOKEN) return json({ error: "forbidden: valid ?token required" }, 403);
       const overrides = {};
       const lm = u.searchParams.get("lookback_min");
       if (lm) overrides.LOOKBACK_MIN = lm;
